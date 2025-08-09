@@ -24,7 +24,10 @@
         spellcheck="false"
         aria-label="حقل إدخال الإجابة"
       />
-      <div id="answer-info" class="answer-info" aria-live="polite" aria-atomic="true"></div>
+      <!-- هنا تم تعديل القسم ليشمل اسم اللاعب ووقت الإجابة -->
+      <div id="answer-info" class="answer-info" aria-live="polite" aria-atomic="true">
+        <!-- سيتم تحديثه ديناميكياً لعرض اسم اللاعب ووقت الإجابة -->
+      </div>
       <div id="points-display" class="points-display">النقاط: 0</div>
     </section>
 
@@ -40,6 +43,10 @@
     <section id="players-list-container" class="players-list-container" aria-label="قائمة اللاعبين">
       <h2>🏆 المتصدرون</h2>
       <ul id="players-list" role="list"></ul>
+
+      <!-- إضافة قائمة التوب 5 -->
+      <h2>🔥 التوب 5 لاعبين</h2>
+      <ul id="top-players-list" role="list"></ul>
     </section>
 
     <!-- الشات: فول سكرين، عند الفتح يظهر فوراً، مع خانة كتابة واضحة -->
