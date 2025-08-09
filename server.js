@@ -15,13 +15,13 @@ const POINTS_PER_CORRECT = 10;
 const words = [
   "تفاحة","برمجة","مكتبة","حاسوب","شجرة","سماء","زهرة","ماء","كرة","كتاب",
   "قلم","نافذة","بحر","مدرسة","مدينة","سيارة","هاتف","طائرة","قهوة","شمس",
-  "قمر","نهر","جبل","مطر","نوم","بطيخ","عراسي والله","صديق","سعادة","ليل",
+  "قمر","نهر","جبل","مطر","نوم","كول","حب","صديق","سلامييي","ليل",
   "نهار","بيت","سفينة","صندوق","مفتاح","حديقة","شارع","طاولة","كرسي","باب",
   "نافذة","صورة","لوحة","موسيقى","قلم رصاص","مطبخ","مروحة","ساعة","قطار","مستشفى",
   "مطار","ملعب","بحيرة","نبات","غابة","صحراء","صخرة","سماء","نجمة","بركان",
-  "ثلج","رياح","غيمة","صوت","رائحة","لون","طعم","شاطئ","سيف","ذاكرة",
-  "حلم","ايرين عمك","كتاب","مكتبة","مكتوب","لغة","كهرباء","ضوء","ظل","ظل",
-  "سلامييي","لولو","برد","حار","رمل","صابون","زيت","سكر","ملح","فلفل",
+  "ثلج","رياح","غيمة","صوت","رائحة","لون","طعم","لمس","شعور","ذاكرة",
+  "حلم","ذكريات","كتاب","مكتبة","مكتوب","لغة","كهرباء","ضوء","ظل","ظل",
+  "بطيخ","لولو","برد","حار","رمل","صابون","زيت","سكر","ملح","فلفل",
   "طبيب","مهندس","معلم","طالب","عالم","فنان","موسيقي","كاتب","مصور","مزارع",
   "طبيب اسنان","ممرضة","شرطي","جندي","طيار","بحار","رجل اعمال","طالب جامعي","مدير","عامل",
   "حداد","نجار","ميكانيكي","مبرمج","محامي","قاضي","سياسي","رئيس","وزير","رجل دين",
@@ -31,13 +31,13 @@ const words = [
 ];
 
 const specialNamesColors = {
-  "جهاد": "#00ffe7",    // نيوني أزرق سماوي
-  "زيزو": "#ff3366",    // نيوني أحمر وردي
-  "أسامة": "#cc33ff",   // نيوني بنفسجي
-  "مصطفى": "#33ff99",  // نيوني أخضر فاتح
-  "حلا": "#ff33cc",     // نيوني وردي قوي
-  "نور": "#ffff33",     // نيوني أصفر
-  "كول": "#33ccff"      // نيوني أزرق فاتح
+  "جهاد": "#00ffe7",
+  "زيزو": "#ff3366",
+  "أسامة": "#cc33ff",
+  "مصطفى": "#33ff99",
+  "حلا": "#ff33cc",
+  "نور": "#ffff33",
+  "كول": "#33ccff"
 };
 
 let players = [];
@@ -51,14 +51,16 @@ function chooseNewWord() {
   io.emit('newWord', currentWord);
 }
 
-// تحديث قائمة اللاعبين مع إرسال اللون الخاص إن وجد
+// تحديث قائمة اللاعبين مع إرسال اللون الخاص، أسرع وقت، وعدد الفوزات
 function updatePlayersList() {
   players.sort((a, b) => b.score - a.score);
   io.emit('updatePlayers', players.map(p => ({
     id: p.id,
     name: p.name,
     score: p.score,
-    color: specialNamesColors[p.name] || null
+    color: specialNamesColors[p.name] || null,
+    bestTime: p.bestTime !== undefined ? p.bestTime : null,
+    wins: p.wins || 0
   })));
 }
 
@@ -80,6 +82,7 @@ io.on('connection', socket => {
     score: 0,
     wins: 0,
     canAnswer: true,
+    bestTime: undefined, // أسرع وقت للإجابة
   };
   players.push(newPlayer);
 
@@ -137,10 +140,16 @@ io.on('connection', socket => {
 
     if (answer === currentWord) {
       player.score += POINTS_PER_CORRECT;
+
+      // تحديث أسرع وقت إذا كان أفضل
+      if (player.bestTime === undefined || timeUsed < player.bestTime) {
+        player.bestTime = timeUsed;
+      }
+
       socket.emit('updateScore', player.score);
       io.emit('chatMessage', {
         system: true,
-        message: `✅ ${player.name} أجاب بشكل صحيح في ${timeUsed} ثانية!`
+        message: `✅ ${player.name} أجاب بشكل صحيح!`
       });
       socket.emit('correctAnswer', { timeUsed });
       updatePlayersList();
@@ -167,12 +176,12 @@ io.on('connection', socket => {
       socket.emit('chatMessage', { system: true, message: '❌ إجابة خاطئة، حاول مرة أخرى!' });
       // السماح بالإجابة مرة أخرى فور الخطأ
       player.canAnswer = true;
-      // (يمكنك أيضاً إرسال حدث enableAnswer للعميل إن أردت)
       socket.emit('wrongAnswer');
     }
   });
 
   socket.on('kickPlayer', targetId => {
+    // فقط أول لاعب (الأدمن) يمكنه الطرد
     if (players.length > 0 && socket.id === players[0].id) {
       const index = players.findIndex(p => p.id === targetId);
       if (index !== -1) {
