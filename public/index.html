@@ -13,6 +13,7 @@
     <header>
       <h1>⚡ لعبة الكلمات السريعة ⚡</h1>
     </header>
+
     <section class="game-section">
       <div class="word-box" aria-live="polite" aria-atomic="true" id="current-word">جاري التحميل...</div>
       <input
@@ -23,14 +24,14 @@
         spellcheck="false"
         aria-label="حقل إدخال الإجابة"
       />
-
-      <div id="answer-time" class="answer-time"></div>
-
+      <div id="answer-info" class="answer-info" aria-live="polite" aria-atomic="true"></div>
       <div id="points-display" class="points-display">النقاط: 0</div>
     </section>
 
     <section class="controls">
-      <button id="btn-chat" class="btn-main" aria-expanded="false" aria-controls="chat-container">💬 الشات</button>
+      <button id="btn-chat" class="btn-main" aria-expanded="false" aria-controls="chat-container" aria-haspopup="true">
+        💬 الشات <span id="chat-notify" class="chat-notify" aria-hidden="true"></span>
+      </button>
       <button id="btn-change-name" class="btn-main">✍️ تغيير الاسم</button>
       <button id="btn-instructions" class="btn-main">📖 تعليمات اللعبة</button>
       <button id="btn-zizo" class="btn-main">❤️ لعبة زيزو</button>
@@ -41,7 +42,7 @@
       <ul id="players-list" role="list"></ul>
     </section>
 
-    <!-- الشات -->
+    <!-- الشات: فول سكرين، عند الفتح يظهر فوراً، مع خانة كتابة واضحة -->
     <aside id="chat-container" class="chat-container" aria-live="polite" aria-atomic="true" hidden>
       <header class="chat-header">
         <h3>الشات</h3>
@@ -84,7 +85,7 @@
       </form>
     </dialog>
 
-    <!-- نافذة التعليمات -->
+    <!-- نافذة تعليمات اللعبة -->
     <dialog id="instructions-dialog" aria-modal="true" aria-labelledby="instructions-title">
       <h3 id="instructions-title">تعليمات اللعبة</h3>
       <div class="instructions-content">
@@ -104,16 +105,13 @@
       <button id="close-instructions" type="button">إغلاق</button>
     </dialog>
 
-    <!-- مودال ملف اللاعب -->
-    <dialog id="player-profile-modal" aria-modal="true" aria-labelledby="player-profile-title">
-      <h3 id="player-profile-title">ملف اللاعب</h3>
-      <div id="player-profile-content">
-        <p><strong>الاسم:</strong> <span id="profile-name"></span></p>
-        <p><strong>أسرع وقت للإجابة:</strong> <span id="profile-best-time"></span> ثانية</p>
-        <p><strong>النقاط الكلية:</strong> <span id="profile-total-points"></span></p>
-        <p><strong>عدد مرات الفوز:</strong> <span id="profile-wins"></span></p>
+    <!-- مودال معلومات اللاعب -->
+    <dialog id="player-info-dialog" aria-modal="true" aria-labelledby="player-info-title">
+      <button id="close-player-info" aria-label="إغلاق معلومات اللاعب" class="close-player-info-btn">✖️</button>
+      <h3 id="player-info-title">معلومات اللاعب</h3>
+      <div id="player-info-content" class="player-info-content">
+        <!-- سيُملأ ديناميكيًا -->
       </div>
-      <button id="close-player-profile" type="button">إغلاق</button>
     </dialog>
   </main>
 </body>
