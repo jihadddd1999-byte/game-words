@@ -342,10 +342,41 @@ header h1 {
 /* صندوق إدخال الرسائل في الشات */
 .chat-form {
   display: flex;
-  gap: 10px;
-  padding: 12px 18px;
+  gap: 8px;
+  padding: 8px 12px;
   background: #003366;
-  border-top: 1px solid #0059b3;
+  border-radius: 0 0 14px 14px;
+}
+
+.chat-form input[type="text"] {
+  flex-grow: 1;
+  font-size: 1rem;
+  border-radius: 30px;
+  border: none;
+  padding: 10px 15px;
+  outline: none;
+}
+
+.chat-form button {
+  background: #00bbff;
+  border: none;
+  border-radius: 30px;
+  color: #002233;
+  padding: 10px 20px;
+  cursor: pointer;
+  font-weight: 700;
+  font-size: 1rem;
+  box-shadow: 0 0 15px #00ccffcc;
+  user-select: none;
+  min-width: 80px;
+}
+
+/* يظهر الزر بشكل واضح في الجوال */
+@media (max-width: 600px) {
+  .chat-form button {
+    min-width: 60px;
+    padding: 10px 12px;
+  }
 }
 
 #chat-input {
