@@ -113,8 +113,11 @@ socket.on('chatMessage', data => {
 });
 
 // استقبال تأكيد إجابة صحيحة بدون رسالة شات (حسب طلبك)
-socket.on('correctAnswer', () => {
-  canAnswer = false;
+socket.on('correctAnswer', data => {
+  // data.timeUsed بالثواني
+  const seconds = Math.round(data.timeUsed);
+  document.getElementById('answer-time').textContent = `أجاب خلال ${seconds} ثانية`;
+  // تحديث النقاط وما إلى ذلك
 });
 
 // استقبال طرد من السيرفر
