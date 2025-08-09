@@ -113,13 +113,23 @@ socket.on('chatMessage', data => {
 });
 
 // استقبال تأكيد إجابة صحيحة بدون رسالة شات (حسب طلبك)
+
 socket.on('correctAnswer', data => {
-  // data.timeUsed بالثواني
-  const seconds = Math.round(data.timeUsed);
-  document.getElementById('answer-time').textContent = `أجاب خلال ${seconds} ثانية`;
-  // تحديث النقاط وما إلى ذلك
+  answerTimeDisplay.textContent = `أجبت في: ${data.timeUsed} ثانية`;
+  canAnswer = false;
+  setTimeout(() => {
+    answerTimeDisplay.textContent = '';
+    canAnswer = true;
+  }, 2000);
 });
 
+socket.on('wrongAnswer', () => {
+  canAnswer = true;
+});
+
+socket.on('enableAnswer', () => {
+  canAnswer = true;
+});
 // استقبال طرد من السيرفر
 socket.on('kicked', () => {
   alert('تم طردك من اللعبة.');
