@@ -94,6 +94,7 @@ header h1 {
     0 0 18px #00d0ffcc;
 }
 
+/* إضافة تصميم لعرض معلومات الإجابة (اسم اللاعب والوقت) */
 .answer-info {
   color: #55ff77;
   font-weight: 700;
@@ -101,8 +102,10 @@ header h1 {
   margin-top: 6px;
   font-size: 1.1rem;
   text-align: center;
+  user-select: none;
 }
 
+/* نقاط اللاعب */
 .points-display {
   font-size: 1.4rem;
   font-weight: 800;
@@ -172,6 +175,7 @@ header h1 {
   box-shadow: 0 0 25px #00bfffcc;
   max-height: 280px;
   overflow-y: auto;
+  margin-bottom: 20px;
 }
 
 .players-list-container h2 {
@@ -240,6 +244,16 @@ header h1 {
 .chat-container.open {
   opacity: 1;
   visibility: visible;
+}
+
+/* تحسين الشات على الجوال ليملأ الشاشة بالكامل */
+@media (max-width: 600px) {
+  .chat-container {
+    width: 100vw;
+    height: 100vh;
+    padding: 0;
+    border-radius: 0;
+  }
 }
 
 .chat-header {
@@ -371,7 +385,6 @@ header h1 {
   min-width: 80px;
 }
 
-/* يظهر الزر بشكل واضح في الجوال */
 @media (max-width: 600px) {
   .chat-form button {
     min-width: 60px;
@@ -426,7 +439,7 @@ header h1 {
   outline: none;
 }
 
-/* مودال تغيير الاسم */
+/* مودال تغيير الاسم وتعليمات ومعلومات اللاعب */
 dialog#change-name-dialog,
 dialog#instructions-dialog,
 dialog#player-info-dialog {
@@ -474,4 +487,48 @@ dialog#change-name-dialog button {
   padding: 10px 15px;
   cursor: pointer;
   transition: background 0.3s ease;
-  background: linear-gradient(135deg, #00bb
+  background: linear-gradient(135deg, #00bbff, #0099cc);
+  color: #002233;
+  user-select: none;
+  margin: 5px 3px 0 0;
+}
+
+dialog#change-name-dialog input:focus,
+dialog#instructions-dialog button:hover,
+dialog#instructions-dialog button:focus,
+dialog#change-name-dialog button:hover,
+dialog#change-name-dialog button:focus {
+  background: linear-gradient(135deg, #00ddff, #00ccff);
+  outline: none;
+}
+
+/* مودال تعليمات اللعبة */
+.instructions-content {
+  max-height: 240px;
+  overflow-y: auto;
+  font-weight: 600;
+  padding-right: 5px;
+  margin-bottom: 12px;
+}
+
+.instructions-content ol {
+  padding-left: 20px;
+}
+
+.instructions-content li {
+  margin-bottom: 8px;
+}
+
+/* مودال معلومات اللاعب */
+.player-info-content {
+  font-size: 1.1rem;
+  line-height: 1.5;
+  padding-top: 12px;
+}
+
+/* إخفاء زر الإلغاء في تغيير الاسم في الجوال */
+@media (max-width: 420px) {
+  dialog#change-name-dialog menu button[type="reset"] {
+    display: none;
+  }
+}
