@@ -234,3 +234,10 @@ const PORT = process.env.PORT || 10000;
 server.listen(PORT, () => {
   console.log(`Server running on port ${PORT}`);
 });
+// في تحديث قائمة اللاعبين، أرسل لكل لاعب بياناته الشخصية (نقاط، فوز، أسرع وقت)
+socket.emit('updatePlayerData', {
+  name: player.name,
+  score: player.score,
+  wins: player.wins,
+  fastestTime: player.fastestTime || null,
+});
