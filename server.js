@@ -1,6 +1,8 @@
 const express = require('express');
 const http = require('http');
 const { Server } = require('socket.io');
+const fs = require('fs');
+const path = require('path');
 
 const app = express();
 const server = http.createServer(app);
@@ -44,6 +46,61 @@ let players = [];
 let currentWord = '';
 let wordTimer = null;
 
+const STATS_FILE = path.join(__dirname, 'stats.json');
+
+let statsData = {};
+
+// تحميل بيانات الإحصائيات من الملف عند بدء السيرفر
+function loadStats() {
+  try {
+    if (fs.existsSync(STATS_FILE)) {
+      const data = fs.readFileSync(STATS_FILE, 'utf8');
+      statsData = JSON.parse(data);
+      console.log('تم تحميل بيانات الإحصائيات من الملف.');
+    } else {
+      statsData = {};
+      console.log('ملف الإحصائيات غير موجود، تم إنشاء بيانات جديدة.');
+    }
+  } catch (err) {
+    console.error('خطأ في تحميل بيانات الإحصائيات:', err);
+    statsData = {};
+  }
+}
+
+// حفظ بيانات الإحصائيات في الملف
+function saveStats() {
+  try {
+    fs.writeFileSync(STATS_FILE, JSON.stringify(statsData, null, 2), 'utf8');
+    //console.log('تم حفظ بيانات الإحصائيات بنجاح.');
+  } catch (err) {
+    console.error('خطأ في حفظ بيانات الإحصائيات:', err);
+  }
+}
+
+// تحديث بيانات اللاعب في الإحصائيات وحفظها
+function updatePlayerStats(player) {
+  if (!player.name) return;
+  if (!statsData[player.name]) {
+    statsData[player.name] = {
+      wins: 0,
+      bestTime: null,
+    };
+  }
+  // تحديث عدد مرات الفوز
+  statsData[player.name].wins = player.wins;
+
+  // تحديث أفضل وقت إذا كان أفضل
+  if (player.bestTime !== null) {
+    if (
+      statsData[player.name].bestTime === null ||
+      player.bestTime < statsData[player.name].bestTime
+    ) {
+      statsData[player.name].bestTime = player.bestTime;
+    }
+  }
+  saveStats();
+}
+
 // اختيار كلمة جديدة عشوائية
 function chooseNewWord() {
   const idx = Math.floor(Math.random() * words.length);
@@ -67,6 +124,8 @@ function sendSystemMessage(message) {
   io.emit('chatMessage', { system: true, message });
 }
 
+loadStats();
+
 io.on('connection', socket => {
   if (players.length >= MAX_PLAYERS) {
     socket.emit('chatMessage', { system: true, message: 'عذراً، عدد اللاعبين وصل للحد الأقصى.' });
@@ -74,14 +133,27 @@ io.on('connection', socket => {
     return;
   }
 
+  // إذا الاسم محفوظ سابقًا في الإحصائيات، نستخدمه
+  let savedName = null;
+
   const newPlayer = {
     id: socket.id,
-    name: `لاعب${Math.floor(Math.random() * 1000)}`,
+    name: null,
     score: 0,
     wins: 0,
-    bestTime: null, // أقل زمن إجابة صحيح
+    bestTime: null,
     canAnswer: true,
   };
+
+  // عند انضمام اللاعب، نستخدم اسماً عشوائياً مؤقتاً، ثم نرسل له ليغيره أو يعيده
+  newPlayer.name = `لاعب${Math.floor(Math.random() * 1000)}`;
+
+  // إذا الاسم موجود في إحصائيات مخزنة، نعيد استخدامه (نبحث باسم عشوائي غير مثالي - يمكن تحسينه لاحقًا)
+  // هنا نرسل للاعب ليختار اسم، أو المستخدم سيختار الاسم لاحقًا في اللعبة
+  // لذا هذا الجزء يبقى للاسم الافتراضي فقط
+
+  // لكن عند تعيين الاسم من العميل (socket.on('setName')) نعيد تحميل الإحصائيات الخاصة به
+
   players.push(newPlayer);
 
   socket.emit('welcome', { id: socket.id });
@@ -101,6 +173,16 @@ io.on('connection', socket => {
     if (player) {
       const oldName = player.name;
       player.name = name.trim().substring(0, 20);
+
+      // استرجاع الإحصائيات إذا موجودة لهذا الاسم
+      if (statsData[player.name]) {
+        player.wins = statsData[player.name].wins || 0;
+        player.bestTime = statsData[player.name].bestTime || null;
+      } else {
+        player.wins = 0;
+        player.bestTime = null;
+      }
+
       updatePlayersList();
       sendSystemMessage(`${oldName} غير اسمه إلى ${player.name}`);
     }
@@ -129,7 +211,6 @@ io.on('connection', socket => {
     if (!data || typeof data.answer !== 'string') return;
 
     if (!player.canAnswer) {
-      // يمنع الإجابة المتكررة بدون إعادة تفعيل
       return;
     }
 
@@ -139,7 +220,6 @@ io.on('connection', socket => {
     if (answer === currentWord) {
       player.score += POINTS_PER_CORRECT;
 
-      // تحديث أقل زمن إجابة صحيح
       if (player.bestTime === null || timeUsed < player.bestTime) {
         player.bestTime = timeUsed;
       }
@@ -152,14 +232,18 @@ io.on('connection', socket => {
       socket.emit('correctAnswer', { timeUsed });
       updatePlayersList();
 
-      player.canAnswer = false; // يمنع الإجابة المتكررة حتى كلمة جديدة
+      player.canAnswer = false;
 
       if (player.score >= WINNING_SCORE) {
         player.wins++;
+        updatePlayerStats(player); // حفظ بيانات الفوز والوقت
+
         io.emit('playerWon', { name: player.name, wins: player.wins });
+
+        // إعادة تعيين النقاط لجميع اللاعبين عند الفوز
         players.forEach(p => {
           p.score = 0;
-          p.canAnswer = true; // إعادة تفعيل الإجابة للجميع
+          p.canAnswer = true;
         });
         updatePlayersList();
       }
@@ -167,12 +251,12 @@ io.on('connection', socket => {
       if (wordTimer) clearTimeout(wordTimer);
       wordTimer = setTimeout(() => {
         chooseNewWord();
-        players.forEach(p => p.canAnswer = true); // إعادة تفعيل الإجابة مع كلمة جديدة
+        players.forEach(p => p.canAnswer = true);
       }, 2000);
 
+      updatePlayerStats(player); // حفظ بيانات كل مرة يتم فيها الإجابة الصحيحة (تحديث أفضل وقت)
     } else {
       socket.emit('chatMessage', { system: true, message: '❌ إجابة خاطئة، حاول مرة أخرى!' });
-      // السماح بالإجابة مرة أخرى فور الخطأ
       player.canAnswer = true;
       socket.emit('wrongAnswer');
     }
@@ -192,35 +276,16 @@ io.on('connection', socket => {
   });
 
   socket.on('requestStats', () => {
-    // إرسال بيانات إحصائيات لكل اللاعبين
-    const stats = players.map(p => ({
-      name: p.name,
-      score: p.score,
-      wins: p.wins,
-      bestTime: p.bestTime,
+    // نرسل بيانات الإحصائيات المجمعة لجميع اللاعبين (من statsData)
+    const statsArray = Object.keys(statsData).map(name => ({
+      name,
+      wins: statsData[name].wins || 0,
+      bestTime: statsData[name].bestTime,
+      score: players.find(p => p.name === name)?.score || 0,
     }));
-    socket.emit('statsData', stats);
+
+    socket.emit('statsData', statsArray);
   });
 
   socket.on('disconnect', () => {
-    const index = players.findIndex(p => p.id === socket.id);
-    if (index !== -1) {
-      const leftPlayer = players.splice(index, 1)[0];
-      sendSystemMessage(`${leftPlayer.name} خرج من اللعبة.`);
-      updatePlayersList();
-
-      if (players.length === 0) {
-        currentWord = '';
-        if (wordTimer) {
-          clearTimeout(wordTimer);
-          wordTimer = null;
-        }
-      }
-    }
-  });
-});
-
-const PORT = process.env.PORT || 10000;
-server.listen(PORT, () => {
-  console.log(`Server running on port ${PORT}`);
-});
+    const index = players.findIndex(p
