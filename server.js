@@ -15,13 +15,13 @@ const POINTS_PER_CORRECT = 10;
 const words = [
   "تفاحة","برمجة","مكتبة","حاسوب","شجرة","سماء","زهرة","ماء","كرة","كتاب",
   "قلم","نافذة","بحر","مدرسة","مدينة","سيارة","هاتف","طائرة","قهوة","شمس",
-  "قمر","نهر","جبل","مطر","نوم","كول","حب","صديق","سلامييي","ليل",
+  "قمر","نهر","جبل","مطر","نوم","بطيخ","حب","صديق","سلامييي","ليل",
   "نهار","بيت","سفينة","صندوق","مفتاح","حديقة","شارع","طاولة","كرسي","باب",
   "نافذة","صورة","لوحة","موسيقى","قلم رصاص","مطبخ","مروحة","ساعة","قطار","مستشفى",
   "مطار","ملعب","بحيرة","نبات","غابة","صحراء","صخرة","سماء","نجمة","بركان",
-  "ثلج","رياح","غيمة","صوت","رائحة","لون","طعم","لمس","شعور","ذاكرة",
+  "ثلج","رياح","غيمة","صوت","لولو","لون","طعم","لمس","شعور","ذاكرة",
   "حلم","ذكريات","كتاب","مكتبة","مكتوب","لغة","كهرباء","ضوء","ظل","ظل",
-  "بطيخ","لولو","برد","حار","رمل","صابون","زيت","سكر","ملح","فلفل",
+  "ايرين عمك","حرام ايرين يموت","برد","حار","رمل","صابون","زيت","سكر","ملح","فلفل",
   "طبيب","مهندس","معلم","طالب","عالم","فنان","موسيقي","كاتب","مصور","مزارع",
   "طبيب اسنان","ممرضة","شرطي","جندي","طيار","بحار","رجل اعمال","طالب جامعي","مدير","عامل",
   "حداد","نجار","ميكانيكي","مبرمج","محامي","قاضي","سياسي","رئيس","وزير","رجل دين",
@@ -40,77 +40,84 @@ const specialNamesColors = {
   "كول": "#33ccff"
 };
 
-let players = [];
+// للاحتفاظ ببيانات اللاعبين عبر الجلسات (ببساطة داخل الذاكرة هنا)
+const players = new Map(); // key: socket.id, value: player object
+
 let currentWord = '';
 let wordTimer = null;
 
-// اختيار كلمة جديدة عشوائية
 function chooseNewWord() {
   const idx = Math.floor(Math.random() * words.length);
   currentWord = words[idx];
   io.emit('newWord', currentWord);
 }
 
-// تحديث قائمة اللاعبين مع إرسال اللون الخاص، أسرع وقت، وعدد الفوزات
 function updatePlayersList() {
-  players.sort((a, b) => b.score - a.score);
-  io.emit('updatePlayers', players.map(p => ({
-    id: p.id,
-    name: p.name,
-    score: p.score,
-    color: specialNamesColors[p.name] || null,
-    bestTime: p.bestTime !== undefined ? p.bestTime : null,
-    wins: p.wins || 0
-  })));
+  // نرتب اللاعبين حسب نقاطهم
+  const sortedPlayers = Array.from(players.values())
+    .sort((a, b) => b.score - a.score)
+    .map(p => ({
+      id: p.id,
+      name: p.name,
+      score: p.score,
+      color: specialNamesColors[p.name] || null,
+    }));
+
+  io.emit('updatePlayers', sortedPlayers);
 }
 
-// إرسال رسالة نظامية للشات
 function sendSystemMessage(message) {
   io.emit('chatMessage', { system: true, message });
 }
 
 io.on('connection', socket => {
-  if (players.length >= MAX_PLAYERS) {
+  if (players.size >= MAX_PLAYERS) {
     socket.emit('chatMessage', { system: true, message: 'عذراً، عدد اللاعبين وصل للحد الأقصى.' });
     socket.disconnect(true);
     return;
   }
 
-  const newPlayer = {
-    id: socket.id,
-    name: `لاعب${Math.floor(Math.random() * 1000)}`,
-    score: 0,
-    wins: 0,
-    canAnswer: true,
-    bestTime: undefined, // أسرع وقت للإجابة
-  };
-  players.push(newPlayer);
+  // محاولة استعادة بيانات اللاعب القديم (مثلاً من معرف الجهاز إذا أردت إضافة في المستقبل)
+  // حالياً نستخدم فقط بيانات جديدة لكل اتصال جديد
+  let player = players.get(socket.id);
+  if (!player) {
+    player = {
+      id: socket.id,
+      name: `لاعب${Math.floor(Math.random() * 1000)}`,
+      score: 0,
+      wins: 0,
+      bestTime: Number.POSITIVE_INFINITY,
+      totalScore: 0,
+      canAnswer: true,
+    };
+    players.set(socket.id, player);
+  }
 
   socket.emit('welcome', { id: socket.id });
-  sendSystemMessage(`${newPlayer.name} دخل اللعبة.`);
+  sendSystemMessage(`${player.name} دخل اللعبة.`);
   updatePlayersList();
 
   if (!currentWord) {
     chooseNewWord();
   } else {
     socket.emit('newWord', currentWord);
-    socket.emit('updateScore', newPlayer.score);
+    socket.emit('updateScore', player.score);
   }
 
   socket.on('setName', name => {
     if (!name || typeof name !== 'string' || name.trim() === '') return;
-    const player = players.find(p => p.id === socket.id);
-    if (player) {
-      const oldName = player.name;
-      player.name = name.trim().substring(0, 20);
+    const p = players.get(socket.id);
+    if (p) {
+      const oldName = p.name;
+      p.name = name.trim().substring(0, 20);
       updatePlayersList();
-      sendSystemMessage(`${oldName} غير اسمه إلى ${player.name}`);
+      sendSystemMessage(`${oldName} غير اسمه إلى ${p.name}`);
     }
   });
 
   socket.on('sendMessage', msg => {
-    const player = players.find(p => p.id === socket.id);
-    if (!player) return;
+    const p = players.get(socket.id);
+    if (!p) return;
 
     if (msg.trim() === 'إيرين') {
       socket.emit('chatMessage', { system: true, message: 'تم تفعيل تأثير إيرين على اسمك!' });
@@ -118,20 +125,19 @@ io.on('connection', socket => {
     }
 
     io.emit('chatMessage', {
-      name: player.name,
+      name: p.name,
       message: msg,
       system: false,
-      color: specialNamesColors[player.name] || null,
+      color: specialNamesColors[p.name] || null,
     });
   });
 
   socket.on('submitAnswer', data => {
-    const player = players.find(p => p.id === socket.id);
-    if (!player) return;
+    const p = players.get(socket.id);
+    if (!p) return;
     if (!data || typeof data.answer !== 'string') return;
 
-    if (!player.canAnswer) {
-      // يمنع الإجابة المتكررة بدون إعادة تفعيل
+    if (!p.canAnswer) {
       return;
     }
 
@@ -139,29 +145,28 @@ io.on('connection', socket => {
     const timeUsed = parseFloat(data.timeUsed) || 0;
 
     if (answer === currentWord) {
-      player.score += POINTS_PER_CORRECT;
+      p.score += POINTS_PER_CORRECT;
+      p.totalScore += POINTS_PER_CORRECT;
+      if (timeUsed < p.bestTime) p.bestTime = timeUsed;
 
-      // تحديث أسرع وقت إذا كان أفضل
-      if (player.bestTime === undefined || timeUsed < player.bestTime) {
-        player.bestTime = timeUsed;
-      }
+      socket.emit('updateScore', p.score);
 
-      socket.emit('updateScore', player.score);
-      io.emit('chatMessage', {
-        system: true,
-        message: `✅ ${player.name} أجاب بشكل صحيح!`
-      });
-      socket.emit('correctAnswer', { timeUsed });
+      // إبلاغ الجميع بالوقت واللاعب (ليس كشات، بل أسفل الإجابات)
+      io.emit('showAnswerTime', { name: p.name, time: timeUsed });
+      io.emit('clearAnswerTime');
+
       updatePlayersList();
 
-      player.canAnswer = false; // يمنع الإجابة المتكررة حتى كلمة جديدة
+      p.canAnswer = false;
 
-      if (player.score >= WINNING_SCORE) {
-        player.wins++;
-        io.emit('playerWon', { name: player.name, wins: player.wins });
-        players.forEach(p => {
-          p.score = 0;
-          p.canAnswer = true; // إعادة تفعيل الإجابة للجميع
+      if (p.score >= WINNING_SCORE) {
+        p.wins++;
+        io.emit('playerWon', { name: p.name, wins: p.wins });
+
+        // إعادة تعيين النقاط والإجابات لكل اللاعبين
+        players.forEach(pl => {
+          pl.score = 0;
+          pl.canAnswer = true;
         });
         updatePlayersList();
       }
@@ -169,25 +174,37 @@ io.on('connection', socket => {
       if (wordTimer) clearTimeout(wordTimer);
       wordTimer = setTimeout(() => {
         chooseNewWord();
-        players.forEach(p => p.canAnswer = true); // إعادة تفعيل الإجابة مع كلمة جديدة
+        players.forEach(pl => pl.canAnswer = true);
       }, 2000);
 
     } else {
-      socket.emit('chatMessage', { system: true, message: '❌ إجابة خاطئة، حاول مرة أخرى!' });
-      // السماح بالإجابة مرة أخرى فور الخطأ
-      player.canAnswer = true;
+      // لا نرسل رسالة شات عند الخطأ أو الصواب حسب طلبك
+      p.canAnswer = true;
       socket.emit('wrongAnswer');
     }
   });
 
+  // طلب معلومات لاعب محدد
+  socket.on('requestPlayerInfo', playerId => {
+    const p = players.get(playerId);
+    if (p) {
+      socket.emit('playerInfoData', {
+        name: p.name,
+        totalScore: p.totalScore,
+        wins: p.wins,
+        bestTime: p.bestTime === Number.POSITIVE_INFINITY ? 0 : p.bestTime,
+      });
+    }
+  });
+
   socket.on('kickPlayer', targetId => {
-    // فقط أول لاعب (الأدمن) يمكنه الطرد
-    if (players.length > 0 && socket.id === players[0].id) {
-      const index = players.findIndex(p => p.id === targetId);
-      if (index !== -1) {
-        const kickedPlayer = players.splice(index, 1)[0];
+    // صلاحية الطرد لأول لاعب متصل (أدمن)
+    if (players.size > 0 && socket.id === Array.from(players.keys())[0]) {
+      if (players.has(targetId)) {
+        const kickedPlayer = players.get(targetId);
         io.to(kickedPlayer.id).emit('kicked');
         io.emit('chatMessage', { system: true, message: `${kickedPlayer.name} تم طرده من اللعبة.` });
+        players.delete(targetId);
         updatePlayersList();
         io.sockets.sockets.get(kickedPlayer.id)?.disconnect(true);
       }
@@ -195,13 +212,13 @@ io.on('connection', socket => {
   });
 
   socket.on('disconnect', () => {
-    const index = players.findIndex(p => p.id === socket.id);
-    if (index !== -1) {
-      const leftPlayer = players.splice(index, 1)[0];
-      sendSystemMessage(`${leftPlayer.name} خرج من اللعبة.`);
+    const p = players.get(socket.id);
+    if (p) {
+      sendSystemMessage(`${p.name} خرج من اللعبة.`);
+      players.delete(socket.id);
       updatePlayersList();
 
-      if (players.length === 0) {
+      if (players.size === 0) {
         currentWord = '';
         if (wordTimer) {
           clearTimeout(wordTimer);
@@ -214,7 +231,6 @@ io.on('connection', socket => {
 
 // تشغيل السيرفر على البورت المناسب (ريندر يدعم env.PORT)
 const PORT = process.env.PORT || 10000;
-
 server.listen(PORT, () => {
   console.log(`Server running on port ${PORT}`);
 });
