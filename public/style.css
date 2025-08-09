@@ -132,7 +132,6 @@ header h1 {
   user-select: none;
   min-width: 110px;
   text-align: center;
-  position: relative; /* مهم لعداد الإشعارات */
 }
 
 .btn-main:hover,
@@ -140,32 +139,6 @@ header h1 {
   background: linear-gradient(135deg, #00bbff, #00eeff);
   transform: scale(1.05);
   outline: none;
-}
-
-/* --- عداد إشعارات فوق زر الشات فقط --- */
-#btn-chat {
-  position: relative;
-}
-
-#btn-chat #chat-notification {
-  position: absolute;
-  top: 4px;
-  right: 12px;
-  background: #ff3366;
-  color: white;
-  font-weight: 900;
-  font-size: 0.75rem;
-  min-width: 18px;
-  height: 18px;
-  line-height: 18px;
-  border-radius: 50%;
-  text-align: center;
-  user-select: none;
-  box-shadow:
-    0 0 6px #ff3366aa,
-    inset 0 0 6px #ff3366cc;
-  display: none; /* مخفي افتراضياً */
-  pointer-events: none;
 }
 
 /* --- قائمة اللاعبين --- */
@@ -406,4 +379,29 @@ dialog#change-name-dialog menu {
 
 .instructions-content ol {
   padding-inline-start: 20px;
-  margin: 0 0 20px 0
+  margin: 0 0 20px 0;
+  color: #aaffff;
+}
+
+#close-instructions {
+  display: block;
+  margin: 0 auto;
+  background: linear-gradient(135deg, #0099ff, #00ccff);
+  border: none;
+  color: #002233;
+  font-weight: 700;
+  padding: 12px 25px;
+  border-radius: 40px;
+  cursor: pointer;
+  box-shadow:
+    0 0 15px #00ccffcc,
+    inset 0 -3px 10px #0077ccaa;
+  transition: background 0.3s ease, transform 0.15s ease;
+}
+
+#close-instructions:hover,
+#close-instructions:focus {
+  background: linear-gradient(135deg, #00bbff, #00eeff);
+  transform: scale(1.05);
+  outline: none;
+}
