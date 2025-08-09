@@ -1,104 +1,105 @@
-<!DOCTYPE html>
-<html lang="ar" dir="rtl">
-<head>
-  <meta charset="UTF-8" />
-  <meta name="viewport" content="width=device-width, initial-scale=1, maximum-scale=1" />
-  <title>لعبة الكلمات السريعة</title>
-  <link rel="stylesheet" href="style.css" />
-  <script src="/socket.io/socket.io.js" defer></script>
-  <script src="game.js" defer></script>
-</head>
-<body>
-  <main id="app-container">
-    <header>
-      <h1>☄️لعبة الكلمات السريعة☄️</h1>
-    </header>
+<!DOCTYPE html>    <html lang="ar" dir="rtl">    
+<head>    
+  <meta charset="UTF-8" />    
+  <meta name="viewport" content="width=device-width, initial-scale=1, maximum-scale=1" />    
+  <title>لعبة الكلمات السريعة</title>    
+  <link rel="stylesheet" href="style.css" />    
+  <script src="/socket.io/socket.io.js" defer></script>    
+  <script src="game.js" defer></script>    
+</head>    
+<body>    
+  <main id="app-container">    
+    <header>    
+      <h1>⚡ لعبة الكلمات السريعة ⚡</h1>    
+    </header>    
+    <section class="game-section">    
+      <div class="word-box" aria-live="polite" aria-atomic="true" id="current-word">جاري التحميل...</div>    <input    
+    type="text"    
+    id="input-answer"    
+    placeholder="اكتب الكلمة هنا"    
+    autocomplete="off"    
+    spellcheck="false"    
+    aria-label="حقل إدخال الإجابة"    
+  />    
 
-    <section class="game-section">
-      <div id="current-word" class="word-box" aria-live="polite" aria-atomic="true">انتظر الكلمة...</div>
-      <input
-        type="text"
-        id="input-answer"
-        placeholder="اكتب الكلمة هنا"
-        autocomplete="off"
-        spellcheck="false"
-        aria-label="ادخل الاجابة"
-      />
-      <div id="answer-time" class="answer-time" aria-live="polite"></div>
-      <div id="points-display" class="points-display">النقاط: 0 - مرات الفوز: 0</div>
-    </section>
+  <div id="answer-time" class="answer-time"></div>    
 
-    <section class="controls">
-      <button id="btn-chat" class="btn-main" aria-expanded="false" aria-controls="chat-container">الشات 💬</button>
-      <button id="btn-change-name" class="btn-main">تغيير الاسم ✍️</button>
-      <button id="btn-instructions" class="btn-main">تعليمات اللعبة 📋</button>
-      <button id="btn-zizo" class="btn-main">لعبة  زيزو📍</button>
-    </section>
+  <div id="points-display" class="points-display">النقاط: 0</div>    
+</section>    
 
-    <section id="players-list-container" class="players-list-container" aria-label="قائمة اللاعبين">
-      <h2>قائمة اللاعبين</h2>
-      <ul id="players-list" role="list"></ul>
-    </section>
+<section class="controls">    
+  <button id="btn-chat" class="btn-main" aria-expanded="false" aria-controls="chat-container">💬 الشات</button>    
+  <button id="btn-change-name" class="btn-main">✍️ تغيير الاسم</button>    
+  <button id="btn-instructions" class="btn-main">📖 تعليمات اللعبة</button>    
+  <button id="btn-zizo" class="btn-main">❤️ لعبة زيزو</button>    
+</section>    
 
-    <!-- نافذة الشات full screen تظهر وتختفي -->
-    <aside id="chat-container" class="chat-container" aria-live="polite" aria-atomic="true" hidden>
-      <header class="chat-header">
-        <h3>الشات</h3>
-        <button id="btn-close-chat" aria-label="إغلاق الشات">×</button>
-      </header>
-      <section id="chat-messages" class="chat-messages" role="log" aria-live="polite"></section>
-      <form id="chat-form" class="chat-form" aria-label="إرسال رسالة في الشات">
-        <input
-          type="text"
-          id="chat-input"
-          placeholder="اكتب رسالة..."
-          autocomplete="off"
-          spellcheck="false"
-          aria-label="رسالة الشات"
-          required
-          maxlength="120"
-        />
-        <button type="submit" id="btn-send-chat" class="btn-send">إرسال</button>
-      </form>
-    </aside>
+<section id="players-list-container" class="players-list-container" aria-label="قائمة اللاعبين">    
+  <h2>🏆 المتصدرون</h2>    
+  <ul id="players-list" role="list"></ul>    
+</section>    
 
-    <!-- حوار تغيير الاسم -->
-    <dialog id="change-name-dialog" aria-modal="true" aria-labelledby="change-name-title">
-      <form method="dialog" id="change-name-form">
-        <h3 id="change-name-title">تغيير الاسم</h3>
-        <input
-          type="text"
-          id="input-name"
-          placeholder="ادخل اسمك الجديد"
-          autocomplete="off"
-          spellcheck="false"
-          maxlength="20"
-          required
-          aria-label="اسم جديد"
-        />
-        <menu>
-          <button id="cancel-name" type="reset">إلغاء</button>
-          <button id="confirm-name" type="submit">تأكيد</button>
-        </menu>
-      </form>
-    </dialog>
+<!-- الشات -->    
+<aside id="chat-container" class="chat-container" aria-live="polite" aria-atomic="true" hidden>    
+  <header class="chat-header">    
+    <h3>الشات</h3>    
+    <button id="btn-close-chat" aria-label="إغلاق الشات">✖️</button>    
+  </header>    
+  <section id="chat-messages" class="chat-messages" role="log" aria-live="polite"></section>    
+  <form id="chat-form" class="chat-form" aria-label="إرسال رسالة شات">    
+    <input    
+      type="text"    
+      id="chat-input"    
+      placeholder="اكتب رسالة..."    
+      autocomplete="off"    
+      spellcheck="false"    
+      aria-label="نص الرسالة"    
+      required    
+      maxlength="120"    
+    />    
+    <button type="submit" id="btn-send-chat" class="btn-send">إرسال</button>    
+  </form>    
+</aside>    
 
-    <!-- حوار التعليمات -->
-    <dialog id="instructions-dialog" aria-modal="true" aria-labelledby="instructions-title">
-      <h3 id="instructions-title">تعليمات اللعبة</h3>
-      <div class="instructions-content">
-        <ol>
-          <li>اكتب الكلمة المعروضة واضغط Enter للإجابة.</li>
-          <li>تحصل على 10 نقاط لكل إجابة صحيحة.</li>
-          <li>أول من يصل إلى 100 نقطة يفوز باللعبة.</li>
-          <li>يمكنك تغيير اسمك من زر "تغيير الاسم".</li>
-          <li>زر "لعبة زيزو" ينقلك إلى اللعبة الخارجية.</li>
-          <li>الشات يظهر ويختفي بزر "الشات".</li>
-          <li>الإجابات الصحيحة تعرض اسم اللاعب ووقت الإجابة تحت خانة الإجابات.</li>
-        </ol>
-      </div>
-      <button id="close-instructions" type="button">إغلاق</button>
-    </dialog>
-  </main>
-</body>
+<!-- نافذة تغيير الاسم -->    
+<dialog id="change-name-dialog" aria-modal="true" aria-labelledby="change-name-title">    
+  <form method="dialog" id="change-name-form">    
+    <h3 id="change-name-title">تغيير الاسم</h3>    
+    <input    
+      type="text"    
+      id="input-name"    
+      placeholder="اكتب اسمك الجديد"    
+      autocomplete="off"    
+      spellcheck="false"    
+      maxlength="20"    
+      required    
+      aria-label="اسم جديد"    
+    />    
+    <menu>    
+      <button id="cancel-name" type="reset">إلغاء</button>    
+      <button id="confirm-name" type="submit">تأكيد</button>    
+    </menu>    
+  </form>    
+</dialog>    
+<!-- نافذة التعليمات -->    
+<dialog id="instructions-dialog" aria-modal="true" aria-labelledby="instructions-title">    
+  <h3 id="instructions-title">تعليمات اللعبة</h3>    
+  <div class="instructions-content">    
+    <ol>    
+      <li>تظهر كلمة على الشاشة، اكتبها بأسرع وقت ممكن واضغط Enter.</li>    
+      <li>كل إجابة صحيحة تمنحك 10 نقاط.</li>    
+      <li>اللاعب الذي يصل إلى 100 نقطة يفوز باللعبة.</li>    
+      <li>يمكنك التواصل مع اللاعبين الآخرين عبر الشات.</li>    
+      <li>استخدم زر "تغيير الاسم" لتعديل اسمك في اللعبة.</li>    
+      <li>اضغط زر "لعبة زيزو" للذهاب إلى اللعبة الخارجية.</li>    
+      <li>هناك كلمات خاصة تظهر بألوان وتأثير اهتزاز في الشات.</li>    
+      <li>لا تكرر الإجابة على نفس الكلمة أكثر من مرة.</li>    
+      <li>استمتع باللعب وحاول الوصول إلى القمة!</li>    
+      <li>احترم اللاعبين الآخرين والتزم باللعب النظيف.</li>    
+    </ol>    
+  </div>    
+  <button id="close-instructions" type="button">إغلاق</button>    
+</dialog>
+  </main>    
+</body>    
 </html>
