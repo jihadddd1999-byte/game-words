@@ -30,12 +30,12 @@ let playerId = null;
 let currentWord = '';
 let startTime = 0;
 let myScore = 0;
-let myWins = 0;
+let winsCount = 0;
 let playerName = localStorage.getItem('playerName') || `لاعب${Math.floor(Math.random() * 1000)}`;
 
-let canAnswer = true;
+let canAnswer = true; // لمنع الإجابات المتكررة
 
-// أسماء خاصة مع ألوان وأهتزاز متوافق مع السيرفر
+// خريطة ألوان خاصة للأسماء (مطابقة للسيرفر)
 const specialNameColors = {
   "جهاد": "#00ffe7",
   "زيزو": "#ff3366",
@@ -46,29 +46,23 @@ const specialNameColors = {
   "كول": "#33ccff"
 };
 
+// --- وظائف مساعدة ---
+
 function scrollChatToBottom() {
   chatMessages.scrollTop = chatMessages.scrollHeight;
 }
 
-// تلوين اسم اللاعب مع إظهار عدد الفوز وإضافة اهتزاز للأسماء الخاصة
+// تلوين اسم اللاعب في الشات أو قائمة المتصدرين
 function colorizeName(name) {
   const color = specialNameColors[name];
-  const winsCount = (playersData[name] && playersData[name].wins) || 0;
-  let style = color ? `color: ${color}; font-weight: 700;` : '';
-  let shakeClass = (name === "زيزو") ? "special-word shake" : "special-word";
-
-  // لو الاسم "زيزو" اضف اهتزاز وهكذا فقط له
   if (color) {
-    return `<span class="${shakeClass}" style="${style}">${name}</span>${winsCount > 0 ? ` <sup style="color:#fff; font-weight:bold;">🏆${winsCount}</sup>` : ''}`;
-  } else {
-    return `${name}${winsCount > 0 ? ` <sup style="color:#fff; font-weight:bold;">🏆${winsCount}</sup>` : ''}`;
+    // نستخدم span مع اللون مباشرة
+    return `<span style="color: ${color}; font-weight: 700;">${name}</span>`;
   }
+  return name;
 }
 
-// قائمة لتخزين بيانات اللاعبين (أسماء + عدد مرات الفوز) لتسهيل التلوين
-const playersData = {};
-
-// تمييز الكلمات الخاصة داخل نص الرسالة مع ألوان وهزة (من الشات)
+// تمييز الكلمات الخاصة داخل نص الرسالة (تلوين + اهتزاز)
 function highlightSpecialWords(text) {
   const specialWords = {
     'زيزو': { color: '#ff3366', shake: true },
@@ -83,7 +77,6 @@ function highlightSpecialWords(text) {
   Object.keys(specialWords).forEach(word => {
     const { color, shake } = specialWords[word];
     const shakeClass = shake ? ' shake' : '';
-    // حماية من الاستبدال داخل كلمات أخرى عبر \b
     const regex = new RegExp(`\\b${word}\\b`, 'gu');
     result = result.replace(regex, `<span class="special-word${shakeClass}" style="color:${color}">${word}</span>`);
   });
@@ -117,8 +110,6 @@ function addChatMessage({ name, message, system = false }) {
 function updatePlayersList(players) {
   playersList.innerHTML = '';
   players.forEach((p, i) => {
-    playersData[p.name] = { wins: p.wins, score: p.score };
-
     const li = document.createElement('li');
     li.dataset.id = p.id;
 
@@ -135,7 +126,7 @@ function updatePlayersList(players) {
   });
 }
 
-// --- الأحداث ---
+// --- أحداث ---
 
 btnChat.addEventListener('click', () => {
   if (chatContainer.classList.contains('open')) {
@@ -199,18 +190,17 @@ btnZizo.addEventListener('click', () => {
 
 inputAnswer.addEventListener('keydown', e => {
   if (e.key === 'Enter') {
-    if (!canAnswer) return;
+    if (!canAnswer) return; 
     const answer = inputAnswer.value.trim();
     if (!answer) return;
 
-    canAnswer = false;
+    canAnswer = false; 
     const timeUsed = ((Date.now() - startTime) / 1000).toFixed(2);
     socket.emit('submitAnswer', { answer, timeUsed });
     inputAnswer.value = '';
   }
 });
 
-// استقبال الكلمة الجديدة
 socket.on('newWord', word => {
   currentWord = word;
   wordDisplay.textContent = word;
@@ -219,24 +209,15 @@ socket.on('newWord', word => {
   canAnswer = true;
 });
 
-// استقبال تحديث النقاط
 socket.on('updateScore', score => {
   myScore = score;
-  pointsDisplay.textContent = `النقاط: ${myScore} - مرات الفوز: ${myWins}`;
+  pointsDisplay.textContent = `النقاط: ${myScore}`;
 });
 
-// استقبال تحديث قائمة اللاعبين مع عدد مرات الفوز
 socket.on('updatePlayers', players => {
   updatePlayersList(players);
-  // تحديث wins اذا الاسم مطابق
-  const me = players.find(p => p.id === playerId);
-  if (me) {
-    myWins = me.wins || 0;
-    pointsDisplay.textContent = `النقاط: ${myScore} - مرات الفوز: ${myWins}`;
-  }
 });
 
-// استقبال رسائل الشات
 socket.on('chatMessage', data => {
   addChatMessage({
     name: data.system ? '' : data.name,
@@ -245,26 +226,21 @@ socket.on('chatMessage', data => {
   });
 });
 
-// استقبال فوز لاعب
 socket.on('playerWon', data => {
-  myWins = data.wins;
+  winsCount = data.wins;
   alert(`🎉 مبروك ${data.name} لقد فزت باللعبة!`);
-  pointsDisplay.textContent = `النقاط: ${myScore} - مرات الفوز: ${myWins}`;
 });
 
-// استقبال طرد اللاعب
 socket.on('kicked', () => {
   alert('تم طردك من اللعبة بواسطة الأدمن.');
   window.location.reload();
 });
 
-// استقبال الترحيب وحفظ الـ id
 socket.on('welcome', data => {
   playerId = data.id;
   socket.emit('setName', playerName);
 });
 
-// عند الإجابة الصحيحة
 socket.on('correctAnswer', data => {
   answerTimeDisplay.textContent = `أجبت في: ${data.timeUsed} ثانية`;
   canAnswer = false;
@@ -274,12 +250,10 @@ socket.on('correctAnswer', data => {
   }, 2000);
 });
 
-// عند الإجابة الخاطئة
 socket.on('wrongAnswer', () => {
   canAnswer = true;
 });
 
-// إعادة تفعيل الإجابة
 socket.on('enableAnswer', () => {
   canAnswer = true;
 });
