@@ -77,21 +77,34 @@ io.on('connection', socket => {
     return;
   }
 
-  // محاولة استعادة بيانات اللاعب القديم (مثلاً من معرف الجهاز إذا أردت إضافة في المستقبل)
-  // حالياً نستخدم فقط بيانات جديدة لكل اتصال جديد
-  let player = players.get(socket.id);
-  if (!player) {
-    player = {
-      id: socket.id,
-      name: `لاعب${Math.floor(Math.random() * 1000)}`,
-      score: 0,
-      wins: 0,
-      bestTime: Number.POSITIVE_INFINITY,
-      totalScore: 0,
-      canAnswer: true,
-    };
-    players.set(socket.id, player);
+  // عند دخول اللعبة
+socket.on('welcome', data => {
+  // استرجاع بيانات اللاعب من localStorage إذا وجدت
+  const savedData = localStorage.getItem('playerData');
+  if (savedData) {
+    const playerData = JSON.parse(savedData);
+    socket.emit('setName', playerData.name); // ارسال الاسم للسيرفر
   }
+});
+
+// عند تحديث اللاعب (مثلاً تغيير الاسم، النقاط، الفوز، أسرع وقت)
+function savePlayerDataLocally(name, score, wins, fastestTime) {
+  const data = { name, score, wins, fastestTime };
+  localStorage.setItem('playerData', JSON.stringify(data));
+}
+
+// عندما يتم تحديث البيانات من السيرفر
+socket.on('updatePlayerData', data => {
+  // data = { name, score, wins, fastestTime }
+  savePlayerDataLocally(data.name, data.score, data.wins, data.fastestTime);
+});
+
+// عند استقبال نتيجة صحيحة
+socket.on('correctAnswer', data => {
+  // تحديث العرض مثلاً في خانة الإجابات
+  // ...
+  savePlayerDataLocally(currentPlayerName, currentScore, currentWins, data.timeUsed);
+});
 
   socket.emit('welcome', { id: socket.id });
   sendSystemMessage(`${player.name} دخل اللعبة.`);
