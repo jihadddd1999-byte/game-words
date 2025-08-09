@@ -2,533 +2,476 @@
 *,
 *::before,
 *::after {
-  box-sizing: border-box;
+box-sizing: border-box;
 }
 
 body {
-  margin: 0;
-  font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
-  background: linear-gradient(135deg, #0a1426, #1f3a93);
-  color: #e0f7fa;
-  direction: rtl;
-  min-height: 100vh;
-  display: flex;
-  justify-content: center;
-  align-items: flex-start;
-  padding: 10px;
-  -webkit-font-smoothing: antialiased;
-  -moz-osx-font-smoothing: grayscale;
+margin: 0;
+font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
+background: linear-gradient(135deg, #0a1426, #1f3a93);
+color: #e0f7fa;
+direction: rtl;
+min-height: 100vh;
+display: flex;
+justify-content: center;
+align-items: flex-start;
+padding: 10px;
+-webkit-font-smoothing: antialiased;
+-moz-osx-font-smoothing: grayscale;
 }
 
 #app-container {
-  background: rgba(8, 23, 43, 0.85);
-  border-radius: 18px;
-  padding: 25px 20px;
-  width: 100%;
-  max-width: 480px;
-  box-shadow:
-    0 0 10px #0077ff88,
-    0 0 30px #00bfff66,
-    0 0 60px #00eaff33;
-  user-select: none;
+background: rgba(8, 23, 43, 0.85);
+border-radius: 18px;
+padding: 25px 20px;
+width: 100%;
+max-width: 480px;
+box-shadow:
+0 0 10px #0077ff88,
+0 0 30px #00bfff66,
+0 0 60px #00eaff33;
+user-select: none;
 }
 
 header h1 {
-  font-weight: 900;
-  font-size: 2.4rem;
-  text-align: center;
-  margin-bottom: 25px;
-  color: #00e5ff;
-  text-shadow:
-    0 0 10px #00e5ffcc,
-    0 0 20px #00c8ffbb,
-    0 0 30px #0099ddcc;
+font-weight: 900;
+font-size: 2.4rem;
+text-align: center;
+margin-bottom: 25px;
+color: #00e5ff;
+text-shadow:
+0 0 10px #00e5ffcc,
+0 0 20px #00c8ffbb,
+0 0 30px #0099ddcc;
 }
 
 /* --- قسم اللعبة --- */
 .game-section {
-  display: flex;
-  flex-direction: column;
-  align-items: center;
-  gap: 15px;
+display: flex;
+flex-direction: column;
+align-items: center;
+gap: 15px;
 }
 
 .word-box {
-  background: linear-gradient(145deg, #003366, #0059b3);
-  padding: 18px 48px;
-  border-radius: 60px;
-  font-size: 2.5rem;
-  font-weight: 900;
-  letter-spacing: 0.18em;
-  color: #aaffff;
-  text-shadow: 0 0 20px #00ccffaa;
-  user-select: none;
-  width: 100%;
-  max-width: 400px;
-  text-align: center;
-  box-shadow: 0 0 25px #00ccff99;
-  transition: background 0.4s ease;
+background: linear-gradient(145deg, #003366, #0059b3);
+padding: 18px 48px;
+border-radius: 60px;
+font-size: 2.5rem;
+font-weight: 900;
+letter-spacing: 0.18em;
+color: #aaffff;
+text-shadow: 0 0 20px #00ccffaa;
+user-select: none;
+width: 100%;
+max-width: 400px;
+text-align: center;
+box-shadow: 0 0 25px #00ccff99;
+transition: background 0.4s ease;
 }
 
 #input-answer {
-  width: 100%;
-  max-width: 400px;
-  font-size: 1.3rem;
-  padding: 12px 20px;
-  border-radius: 40px;
-  border: none;
-  outline: none;
-  text-align: center;
-  font-weight: 700;
-  color: #003355;
-  background: #aaffff;
-  box-shadow:
-    inset 0 0 12px #00bbff88,
-    0 0 12px #00bbffbb;
-  transition: box-shadow 0.3s ease;
+width: 100%;
+max-width: 400px;
+font-size: 1.3rem;
+padding: 12px 20px;
+border-radius: 40px;
+border: none;
+outline: none;
+text-align: center;
+font-weight: 700;
+color: #003355;
+background: #aaffff;
+box-shadow:
+inset 0 0 12px #00bbff88,
+0 0 12px #00bbffbb;
+transition: box-shadow 0.3s ease;
 }
 
 #input-answer:focus {
-  box-shadow:
-    inset 0 0 18px #00d0ffcc,
-    0 0 18px #00d0ffcc;
+box-shadow:
+inset 0 0 18px #00d0ffcc,
+0 0 18px #00d0ffcc;
 }
 
-/* إضافة تصميم لعرض معلومات الإجابة (اسم اللاعب والوقت) */
 .answer-info {
-  color: #55ff77;
-  font-weight: 700;
-  min-height: 1.4em;
-  margin-top: 6px;
-  font-size: 1.1rem;
-  text-align: center;
-  user-select: none;
+color: #55ff77;
+font-weight: 700;
+min-height: 1.4em;
+margin-top: 6px;
+font-size: 1.1rem;
+text-align: center;
 }
 
-/* نقاط اللاعب */
 .points-display {
-  font-size: 1.4rem;
-  font-weight: 800;
-  color: #00e5ff;
-  text-shadow: 0 0 15px #00aaffbb;
+font-size: 1.4rem;
+font-weight: 800;
+color: #00e5ff;
+text-shadow: 0 0 15px #00aaffbb;
 }
 
 /* --- أزرار التحكم --- */
 .controls {
-  display: flex;
-  justify-content: center;
-  gap: 14px;
-  margin: 25px 0;
-  flex-wrap: wrap;
+display: flex;
+justify-content: center;
+gap: 14px;
+margin: 25px 0;
+flex-wrap: wrap;
 }
 
 .btn-main {
-  background: linear-gradient(135deg, #0099ff, #00ccff);
-  border: none;
-  padding: 10px 22px;
-  font-weight: 700;
-  font-size: 1.1rem;
-  border-radius: 40px;
-  color: #002233;
-  box-shadow:
-    0 0 15px #00ccffcc,
-    inset 0 -3px 10px #0077ccaa;
-  cursor: pointer;
-  transition: background 0.3s ease, transform 0.15s ease;
-  user-select: none;
-  min-width: 110px;
-  text-align: center;
-  position: relative;
+background: linear-gradient(135deg, #0099ff, #00ccff);
+border: none;
+padding: 10px 22px;
+font-weight: 700;
+font-size: 1.1rem;
+border-radius: 40px;
+color: #002233;
+box-shadow:
+0 0 15px #00ccffcc,
+inset 0 -3px 10px #0077ccaa;
+cursor: pointer;
+transition: background 0.3s ease, transform 0.15s ease;
+user-select: none;
+min-width: 110px;
+text-align: center;
+position: relative;
 }
 
 .btn-main:hover,
 .btn-main:focus {
-  background: linear-gradient(135deg, #00bbff, #00eeff);
-  transform: scale(1.05);
-  outline: none;
+background: linear-gradient(135deg, #00bbff, #00eeff);
+transform: scale(1.05);
+outline: none;
 }
 
 /* اشعار الرسائل الجديدة في زر الشات */
 .chat-notify {
-  position: absolute;
-  top: 3px;
-  left: 10px;
-  background-color: #ff3b3b;
-  color: white;
-  font-size: 0.8rem;
-  font-weight: 900;
-  padding: 0 7px;
-  border-radius: 15px;
-  user-select: none;
-  display: none;
-  pointer-events: none;
-  line-height: 1.3;
-  min-width: 18px;
-  text-align: center;
+position: absolute;
+top: 3px;
+left: 10px;
+background-color: #ff3b3b;
+color: white;
+font-size: 0.8rem;
+font-weight: 900;
+padding: 0 7px;
+border-radius: 15px;
+user-select: none;
+display: none;
+pointer-events: none;
+line-height: 1.3;
+min-width: 18px;
+text-align: center;
 }
 
 /* --- قائمة اللاعبين --- */
 .players-list-container {
-  background: #004070cc;
-  border-radius: 14px;
-  padding: 12px 18px;
-  box-shadow: 0 0 25px #00bfffcc;
-  max-height: 280px;
-  overflow-y: auto;
-  margin-bottom: 20px;
+background: #004070cc;
+border-radius: 14px;
+padding: 12px 18px;
+box-shadow: 0 0 25px #00bfffcc;
+max-height: 280px;
+overflow-y: auto;
 }
 
 .players-list-container h2 {
-  margin: 0 0 12px 0;
-  color: #00e5ff;
-  font-weight: 800;
+margin: 0 0 12px 0;
+color: #00e5ff;
+font-weight: 800;
 }
 
 #players-list {
-  list-style: none;
-  margin: 0;
-  padding: 0;
+list-style: none;
+margin: 0;
+padding: 0;
 }
 
 #players-list li {
-  padding: 6px 8px;
-  font-weight: 700;
-  border-bottom: 1px solid #0077cc55;
-  cursor: pointer;
-  transition: color 0.3s ease;
-  display: flex;
-  justify-content: space-between;
-  align-items: center;
+padding: 6px 8px;
+font-weight: 700;
+border-bottom: 1px solid #0077cc55;
+cursor: pointer;
+transition: color 0.3s ease;
+display: flex;
+justify-content: space-between;
+align-items: center;
 }
 
 #players-list li:hover,
 #players-list li:focus {
-  color: #00ffff;
-  outline: none;
+color: #00ffff;
+outline: none;
 }
 
 /* ألوان الترتيب */
 #players-list li:nth-child(1) {
-  color: red;
+color: red;
 }
 
 #players-list li:nth-child(2) {
-  color: green;
+color: green;
 }
 
 #players-list li:nth-child(3) {
-  color: orange;
+color: orange;
 }
 
 /* --- الشات --- */
 .chat-container {
-  position: fixed;
-  top: 0;
-  left: 0;
-  width: 100vw;
-  height: 100vh;
-  background: rgba(8, 23, 43, 0.97);
-  border-radius: 0;
-  box-shadow:
-    0 0 30px #00ccffaa,
-    inset 0 0 40px #00bbff88;
-  display: flex;
-  flex-direction: column;
-  opacity: 0;
-  visibility: hidden;
-  transition: opacity 0.3s ease;
-  z-index: 9999;
-  padding: 0;
+position: fixed;
+top: 0;
+left: 0;
+width: 100vw;
+height: 100vh;
+background: rgba(8, 23, 43, 0.97);
+border-radius: 0;
+box-shadow:
+0 0 30px #00ccffaa,
+inset 0 0 40px #00bbff88;
+display: flex;
+flex-direction: column;
+opacity: 0;
+visibility: hidden;
+transition: opacity 0.3s ease;
+z-index: 9999;
+padding: 0;
 }
 
 .chat-container.open {
-  opacity: 1;
-  visibility: visible;
-}
-
-/* تحسين الشات على الجوال ليملأ الشاشة بالكامل */
-@media (max-width: 600px) {
-  .chat-container {
-    width: 100vw;
-    height: 100vh;
-    padding: 0;
-    border-radius: 0;
-  }
+opacity: 1;
+visibility: visible;
 }
 
 .chat-header {
-  display: flex;
-  justify-content: space-between;
-  align-items: center;
-  background: #003366;
-  padding: 12px 18px;
-  color: #aaffff;
-  font-weight: 700;
-  font-size: 1.3rem;
-  user-select: none;
+display: flex;
+justify-content: space-between;
+align-items: center;
+background: #003366;
+padding: 12px 18px;
+color: #aaffff;
+font-weight: 700;
+font-size: 1.3rem;
+user-select: none;
 }
 
 .chat-header button {
-  background: none;
-  border: none;
-  color: #aaffff;
-  font-size: 1.8rem;
-  cursor: pointer;
-  transition: color 0.2s ease;
+background: none;
+border: none;
+color: #aaffff;
+font-size: 1.8rem;
+cursor: pointer;
+transition: color 0.2s ease;
 }
 
 .chat-header button:hover,
 .chat-header button:focus {
-  color: #00ffff;
-  outline: none;
+color: #00ffff;
+outline: none;
 }
 
 .chat-messages {
-  flex: 1 1 auto;
-  padding: 15px 20px;
-  overflow-y: auto;
-  color: #d0f0ff;
-  font-size: 1.1rem;
-  line-height: 1.4;
-  user-select: text;
-  word-wrap: break-word;
-  background: rgba(0, 0, 0, 0.1);
+flex: 1 1 auto;
+padding: 15px 20px;
+overflow-y: auto;
+color: #d0f0ff;
+font-size: 1.1rem;
+line-height: 1.4;
+user-select: text;
+word-wrap: break-word;
+background: rgba(0, 0, 0, 0.1);
 }
 
 .chat-message {
-  margin-bottom: 10px;
-  word-break: break-word;
+margin-bottom: 10px;
+word-break: break-word;
 }
 
 .chat-system-message {
-  font-style: italic;
-  color: #77ffaa;
-  text-align: center;
-  user-select: none;
+font-style: italic;
+color: #77ffaa;
+text-align: center;
+user-select: none;
 }
 
 .chat-name {
-  font-weight: 800;
-  color: #00cfff;
-  margin-left: 8px;
-  user-select: text;
+font-weight: 800;
+color: #00cfff;
+margin-left: 8px;
+user-select: text;
 }
 
 /* كلمات خاصة ملونة ومهتزة */
 .special-word {
-  font-weight: 900;
-  user-select: text;
+font-weight: 900;
+user-select: text;
 }
 
 .special-word.shake {
-  animation: shake 0.6s ease infinite alternate;
+animation: shake 0.6s ease infinite alternate;
 }
 
 .special-word[style*="red"] {
-  color: red;
+color: red;
 }
 
 .special-word[style*="blue"] {
-  color: blue;
+color: blue;
 }
 
 .special-word[style*="pink"] {
-  color: #ff69b4; /* لون وردي */
+color: #ff69b4; /* لون وردي */
 }
 
 .special-word[style*="violet"] {
-  color: violet;
+color: violet;
 }
 
 .special-word[style*="lightgreen"] {
-  color: #90ee90;
+color: #90ee90;
 }
 
 /* اهتزاز */
 @keyframes shake {
-  0% { transform: translateX(0) }
-  25% { transform: translateX(-2px) }
-  50% { transform: translateX(2px) }
-  75% { transform: translateX(-2px) }
-  100% { transform: translateX(0) }
+0% { transform: translateX(0) }
+25% { transform: translateX(-2px) }
+50% { transform: translateX(2px) }
+75% { transform: translateX(-2px) }
+100% { transform: translateX(0) }
 }
 
 /* صندوق إدخال الرسائل في الشات */
 .chat-form {
-  display: flex;
-  gap: 8px;
-  padding: 8px 12px;
-  background: #003366;
-  border-radius: 0 0 14px 14px;
+display: flex;
+gap: 8px;
+padding: 8px 12px;
+background: #003366;
+border-radius: 0 0 14px 14px;
 }
 
 .chat-form input[type="text"] {
-  flex-grow: 1;
-  font-size: 1rem;
-  border-radius: 30px;
-  border: none;
-  padding: 10px 15px;
-  outline: none;
+flex-grow: 1;
+font-size: 1rem;
+border-radius: 30px;
+border: none;
+padding: 10px 15px;
+outline: none;
 }
 
 .chat-form button {
-  background: #00bbff;
-  border: none;
-  border-radius: 30px;
-  color: #002233;
-  padding: 10px 20px;
-  cursor: pointer;
-  font-weight: 700;
-  font-size: 1rem;
-  box-shadow: 0 0 15px #00ccffcc;
-  user-select: none;
-  min-width: 80px;
+background: #00bbff;
+border: none;
+border-radius: 30px;
+color: #002233;
+padding: 10px 20px;
+cursor: pointer;
+font-weight: 700;
+font-size: 1rem;
+box-shadow: 0 0 15px #00ccffcc;
+user-select: none;
+min-width: 80px;
 }
 
+/* يظهر الزر بشكل واضح في الجوال */
 @media (max-width: 600px) {
-  .chat-form button {
-    min-width: 60px;
-    padding: 10px 12px;
-  }
+.chat-form button {
+min-width: 60px;
+padding: 10px 12px;
+}
 }
 
 #chat-input {
-  flex: 1;
-  font-size: 1.2rem;
-  padding: 10px 15px;
-  border-radius: 30px;
-  border: none;
-  outline: none;
-  font-weight: 700;
-  background: #aaffff;
-  color: #003355;
-  box-shadow:
-    inset 0 0 12px #00bbff88,
-    0 0 12px #00bbffbb;
-  transition: box-shadow 0.3s ease;
+flex: 1;
+font-size: 1.2rem;
+padding: 10px 15px;
+border-radius: 30px;
+border: none;
+outline: none;
+font-weight: 700;
+background: #aaffff;
+color: #003355;
+box-shadow:
+inset 0 0 12px #00bbff88,
+0 0 12px #00bbffbb;
+transition: box-shadow 0.3s ease;
 }
 
 #chat-input:focus {
-  box-shadow:
-    inset 0 0 18px #00d0ffcc,
-    0 0 18px #00d0ffcc;
+box-shadow:
+inset 0 0 18px #00d0ffcc,
+0 0 18px #00d0ffcc;
 }
 
 .btn-send {
-  background: linear-gradient(135deg, #0099ff, #00ccff);
-  border: none;
-  padding: 10px 22px;
-  font-weight: 700;
-  font-size: 1.1rem;
-  border-radius: 40px;
-  color: #002233;
-  box-shadow:
-    0 0 15px #00ccffcc,
-    inset 0 -3px 10px #0077ccaa;
-  cursor: pointer;
-  transition: background 0.3s ease, transform 0.15s ease;
-  user-select: none;
-  min-width: 110px;
-  text-align: center;
+background: linear-gradient(135deg, #0099ff, #00ccff);
+border: none;
+padding: 10px 22px;
+font-weight: 700;
+font-size: 1.1rem;
+border-radius: 40px;
+color: #002233;
+box-shadow:
+0 0 15px #00ccffcc,
+inset 0 -3px 10px #0077ccaa;
+cursor: pointer;
+transition: background 0.3s ease, transform 0.15s ease;
+user-select: none;
+min-width: 110px;
+text-align: center;
 }
 
 .btn-send:hover,
 .btn-send:focus {
-  background: linear-gradient(135deg, #00bbff, #00eeff);
-  transform: scale(1.05);
-  outline: none;
+background: linear-gradient(135deg, #00bbff, #00eeff);
+transform: scale(1.05);
+outline: none;
 }
 
-/* مودال تغيير الاسم وتعليمات ومعلومات اللاعب */
+/* مودال تغيير الاسم */
 dialog#change-name-dialog,
 dialog#instructions-dialog,
 dialog#player-info-dialog {
-  width: 90%;
-  max-width: 400px;
-  border-radius: 16px;
-  border: none;
-  background: linear-gradient(145deg, #003366, #0059b3);
-  color: #aaffff;
-  box-shadow:
-    0 0 25px #00cfffcc,
-    inset 0 0 40px #0099ccaa;
-  padding: 20px 25px;
-  font-weight: 700;
-  user-select: none;
-  position: relative;
+width: 90%;
+max-width: 400px;
+border-radius: 16px;
+border: none;
+background: linear-gradient(145deg, #003366, #0059b3);
+color: #aaffff;
+box-shadow:
+0 0 25px #00cfffcc,
+inset 0 0 40px #0099ccaa;
+padding: 20px 25px;
+font-weight: 700;
+user-select: none;
+position: relative;
 }
 
 /* زر إغلاق مودال معلومات اللاعب */
 .close-player-info-btn {
-  position: absolute;
-  top: 8px;
-  left: 8px;
-  background: none;
-  border: none;
-  color: #aaffff;
-  font-size: 1.5rem;
-  cursor: pointer;
-  transition: color 0.2s ease;
+position: absolute;
+top: 8px;
+left: 8px;
+background: none;
+border: none;
+color: #aaffff;
+font-size: 1.5rem;
+cursor: pointer;
+transition: color 0.2s ease;
 }
 
 .close-player-info-btn:hover,
 .close-player-info-btn:focus {
-  color: #00ffff;
-  outline: none;
+color: #00ffff;
+outline: none;
 }
 
 dialog#change-name-dialog input,
 dialog#instructions-dialog button,
 dialog#change-name-dialog button {
-  font-size: 1.1rem;
-  font-weight: 700;
-  border-radius: 10px;
-  border: none;
-  padding: 10px 15px;
-  cursor: pointer;
-  transition: background 0.3s ease;
-  background: linear-gradient(135deg, #00bbff, #0099cc);
-  color: #002233;
-  user-select: none;
-  margin: 5px 3px 0 0;
-}
-
-dialog#change-name-dialog input:focus,
-dialog#instructions-dialog button:hover,
-dialog#instructions-dialog button:focus,
-dialog#change-name-dialog button:hover,
-dialog#change-name-dialog button:focus {
-  background: linear-gradient(135deg, #00ddff, #00ccff);
-  outline: none;
-}
-
-/* مودال تعليمات اللعبة */
-.instructions-content {
-  max-height: 240px;
-  overflow-y: auto;
-  font-weight: 600;
-  padding-right: 5px;
-  margin-bottom: 12px;
-}
-
-.instructions-content ol {
-  padding-left: 20px;
-}
-
-.instructions-content li {
-  margin-bottom: 8px;
-}
-
-/* مودال معلومات اللاعب */
-.player-info-content {
-  font-size: 1.1rem;
-  line-height: 1.5;
-  padding-top: 12px;
-}
-
-/* إخفاء زر الإلغاء في تغيير الاسم في الجوال */
-@media (max-width: 420px) {
-  dialog#change-name-dialog menu button[type="reset"] {
-    display: none;
-  }
-}
+font-size: 1.1rem;
+font-weight: 700;
+border-radius: 10px;
+border: none;
+padding: 10px 15px;
+cursor: pointer;
+transition: background 0.3s ease;
+background: linear-gradient(135deg, #00bb
