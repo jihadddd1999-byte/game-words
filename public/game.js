@@ -24,11 +24,7 @@ const closeInstructionsBtn = document.getElementById('close-instructions');
 
 const btnZizo = document.getElementById('btn-zizo');
 
-// زر الإحصائيات
-const btnStats = document.getElementById('btn-stats');
-const statsDialog = document.getElementById('stats-dialog');
-const statsList = document.getElementById('stats-list');
-const closeStatsBtn = document.getElementById('close-stats');
+const playersList = document.getElementById('players-list');
 
 let playerId = null;
 let currentWord = '';
@@ -38,8 +34,6 @@ let winsCount = 0;
 let playerName = localStorage.getItem('playerName') || `لاعب${Math.floor(Math.random() * 1000)}`;
 
 let canAnswer = true; // لمنع الإجابات المتكررة
-
-let unreadMessages = 0;
 
 // خريطة ألوان خاصة للأسماء (مطابقة للسيرفر)
 const specialNameColors = {
@@ -62,6 +56,7 @@ function scrollChatToBottom() {
 function colorizeName(name) {
   const color = specialNameColors[name];
   if (color) {
+    // نستخدم span مع اللون مباشرة
     return `<span style="color: ${color}; font-weight: 700;">${name}</span>`;
   }
   return name;
@@ -112,9 +107,7 @@ function addChatMessage({ name, message, system = false }) {
   scrollChatToBottom();
 }
 
-// تحديث قائمة اللاعبين
 function updatePlayersList(players) {
-  const playersList = document.getElementById('players-list');
   playersList.innerHTML = '';
   players.forEach((p, i) => {
     const li = document.createElement('li');
@@ -127,27 +120,9 @@ function updatePlayersList(players) {
     else color = '#00d1ff';
 
     li.style.color = color;
+
     li.innerHTML = `${i + 1}. ${colorizeName(p.name)} - ${p.score} نقطة`;
     playersList.appendChild(li);
-  });
-}
-
-// تحديث عرض الإشعارات على زر الشات
-function updateChatNotification() {
-  if (unreadMessages > 0 && chatContainer.hidden) {
-    btnChat.classList.add('has-notifications');
-  } else {
-    btnChat.classList.remove('has-notifications');
-  }
-}
-
-// عرض بيانات الإحصائيات في النافذة
-function displayStats(stats) {
-  statsList.innerHTML = '';
-  stats.forEach(player => {
-    const li = document.createElement('li');
-    li.innerHTML = `${colorizeName(player.name)} — النقاط: ${player.score}، مرات الفوز: ${player.wins}، أقل وقت إجابة: ${player.bestTime ? player.bestTime.toFixed(2) : '-'} ثانية`;
-    statsList.appendChild(li);
   });
 }
 
@@ -158,15 +133,11 @@ btnChat.addEventListener('click', () => {
     chatContainer.classList.remove('open');
     btnChat.setAttribute('aria-expanded', 'false');
     chatContainer.hidden = true;
-    unreadMessages = 0;
-    updateChatNotification();
   } else {
     chatContainer.classList.add('open');
     btnChat.setAttribute('aria-expanded', 'true');
     chatContainer.hidden = false;
     chatInput.focus();
-    unreadMessages = 0;
-    updateChatNotification();
   }
 });
 
@@ -174,8 +145,6 @@ btnCloseChat.addEventListener('click', () => {
   chatContainer.classList.remove('open');
   btnChat.setAttribute('aria-expanded', 'false');
   chatContainer.hidden = true;
-  unreadMessages = 0;
-  updateChatNotification();
 });
 
 chatForm.addEventListener('submit', e => {
@@ -219,22 +188,13 @@ btnZizo.addEventListener('click', () => {
   window.open('https://sp-p2.onrender.com', '_blank');
 });
 
-btnStats.addEventListener('click', () => {
-  socket.emit('requestStats');
-  statsDialog.showModal();
-});
-
-closeStatsBtn.addEventListener('click', () => {
-  statsDialog.close();
-});
-
 inputAnswer.addEventListener('keydown', e => {
   if (e.key === 'Enter') {
-    if (!canAnswer) return;
+    if (!canAnswer) return; 
     const answer = inputAnswer.value.trim();
     if (!answer) return;
 
-    canAnswer = false;
+    canAnswer = false; 
     const timeUsed = ((Date.now() - startTime) / 1000).toFixed(2);
     socket.emit('submitAnswer', { answer, timeUsed });
     inputAnswer.value = '';
@@ -264,10 +224,6 @@ socket.on('chatMessage', data => {
     message: data.message,
     system: data.system,
   });
-  if (!chatContainer.classList.contains('open') && !data.system) {
-    unreadMessages++;
-    updateChatNotification();
-  }
 });
 
 socket.on('playerWon', data => {
@@ -300,9 +256,4 @@ socket.on('wrongAnswer', () => {
 
 socket.on('enableAnswer', () => {
   canAnswer = true;
-});
-
-// استقبال بيانات الإحصائيات من السيرفر
-socket.on('statsData', data => {
-  displayStats(data);
 });
