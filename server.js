@@ -15,15 +15,15 @@ const POINTS_PER_CORRECT = 10;
 const words = [
   "تفاحة","برمجة","مكتبة","حاسوب","شجرة","سماء","زهرة","ماء","كرة","كتاب",
   "قلم","نافذة","بحر","مدرسة","مدينة","سيارة","هاتف","طائرة","قهوة","شمس",
-  "قمر","نهر","جبل","مطر","نوم","بطيخ","فشل","صديق","سعادة","ليل",
+  "قمر","نهر","جبل","مطر","نوم","بطيخ","حب","صديق","سعادة","ليل",
   "نهار","بيت","سفينة","صندوق","مفتاح","حديقة","شارع","طاولة","كرسي","باب",
   "نافذة","صورة","لوحة","موسيقى","قلم رصاص","مطبخ","مروحة","ساعة","قطار","مستشفى",
   "مطار","ملعب","بحيرة","نبات","غابة","صحراء","صخرة","سماء","نجمة","بركان",
   "ثلج","رياح","غيمة","صوت","رائحة","لون","طعم","لمس","شعور","ذاكرة",
   "حلم","ذكريات","كتاب","مكتبة","مكتوب","لغة","كهرباء","ضوء","ظل","ظل",
-  "حرارة","سلامييي","برد","حار","رمل","صابون","زيت","سكر","ملح","فلفل",
+  "سلامييي","لولو","برد","حار","رمل","صابون","زيت","سكر","ملح","فلفل",
   "طبيب","مهندس","معلم","طالب","عالم","فنان","موسيقي","كاتب","مصور","مزارع",
-  "طبيب اسنان","ممرضة","شرطي","جندي","طيار","بحار","لولو","طالب جامعي","مدير","عامل",
+  "طبيب اسنان","ممرضة","شرطي","جندي","طيار","بحار","رجل اعمال","طالب جامعي","مدير","عامل",
   "حداد","نجار","ميكانيكي","مبرمج","محامي","قاضي","سياسي","رئيس","وزير","رجل دين",
   "باحث","محقق","طبيب بيطري","صيدلي","مهندس معماري","مصمم","مخرج","ممثل","مغني","راقص",
   "لاعب كرة","عداء","سباح","طيار","سائق","حارس","مزارع","صياد","بائع","عامل بناء",
@@ -51,20 +51,27 @@ function chooseNewWord() {
   io.emit('newWord', currentWord);
 }
 
-// تحديث قائمة اللاعبين مع إرسال اللون الخاص إن وجد
+// إضافة توقيت للرسائل النظامية
+function getTimeString() {
+  return new Date().toLocaleTimeString('ar-EG', { hour12: false });
+}
+
+// تحديث قائمة اللاعبين مع إرسال اللون الخاص إن وجد وعدد مرات الفوز
 function updatePlayersList() {
   players.sort((a, b) => b.score - a.score);
   io.emit('updatePlayers', players.map(p => ({
     id: p.id,
     name: p.name,
     score: p.score,
+    wins: p.wins,
     color: specialNamesColors[p.name] || null
   })));
 }
 
-// إرسال رسالة نظامية للشات
+// إرسال رسالة نظامية للشات مع توقيت
 function sendSystemMessage(message) {
-  io.emit('chatMessage', { system: true, message });
+  const time = getTimeString();
+  io.emit('chatMessage', { system: true, message: `[${time}] ${message}` });
 }
 
 io.on('connection', socket => {
@@ -127,10 +134,7 @@ io.on('connection', socket => {
     if (!player) return;
     if (!data || typeof data.answer !== 'string') return;
 
-    if (!player.canAnswer) {
-      // يمنع الإجابة المتكررة بدون إعادة تفعيل
-      return;
-    }
+    if (!player.canAnswer) return;
 
     const answer = data.answer.trim();
     const timeUsed = parseFloat(data.timeUsed) || 0;
@@ -145,14 +149,14 @@ io.on('connection', socket => {
       socket.emit('correctAnswer', { timeUsed });
       updatePlayersList();
 
-      player.canAnswer = false; // يمنع الإجابة المتكررة حتى كلمة جديدة
+      player.canAnswer = false;
 
       if (player.score >= WINNING_SCORE) {
         player.wins++;
         io.emit('playerWon', { name: player.name, wins: player.wins });
         players.forEach(p => {
           p.score = 0;
-          p.canAnswer = true; // إعادة تفعيل الإجابة للجميع
+          p.canAnswer = true;
         });
         updatePlayersList();
       }
@@ -160,14 +164,12 @@ io.on('connection', socket => {
       if (wordTimer) clearTimeout(wordTimer);
       wordTimer = setTimeout(() => {
         chooseNewWord();
-        players.forEach(p => p.canAnswer = true); // إعادة تفعيل الإجابة مع كلمة جديدة
+        players.forEach(p => p.canAnswer = true);
       }, 2000);
 
     } else {
       socket.emit('chatMessage', { system: true, message: '❌ إجابة خاطئة، حاول مرة أخرى!' });
-      // السماح بالإجابة مرة أخرى فور الخطأ
       player.canAnswer = true;
-      // (يمكنك أيضاً إرسال حدث enableAnswer للعميل إن أردت)
       socket.emit('wrongAnswer');
     }
   });
@@ -203,9 +205,7 @@ io.on('connection', socket => {
   });
 });
 
-// تشغيل السيرفر على البورت المناسب (ريندر يدعم env.PORT)
 const PORT = process.env.PORT || 10000;
-
 server.listen(PORT, () => {
   console.log(`Server running on port ${PORT}`);
 });
