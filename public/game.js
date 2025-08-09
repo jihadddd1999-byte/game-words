@@ -352,3 +352,31 @@ chatContainer.addEventListener('transitionend', () => {
     updateChatNotification();
   }
 });
+// عند دخول اللعبة
+socket.on('welcome', data => {
+  // استرجاع بيانات اللاعب من localStorage إذا وجدت
+  const savedData = localStorage.getItem('playerData');
+  if (savedData) {
+    const playerData = JSON.parse(savedData);
+    socket.emit('setName', playerData.name); // ارسال الاسم للسيرفر
+  }
+});
+
+// عند تحديث اللاعب (مثلاً تغيير الاسم، النقاط، الفوز، أسرع وقت)
+function savePlayerDataLocally(name, score, wins, fastestTime) {
+  const data = { name, score, wins, fastestTime };
+  localStorage.setItem('playerData', JSON.stringify(data));
+}
+
+// عندما يتم تحديث البيانات من السيرفر
+socket.on('updatePlayerData', data => {
+  // data = { name, score, wins, fastestTime }
+  savePlayerDataLocally(data.name, data.score, data.wins, data.fastestTime);
+});
+
+// عند استقبال نتيجة صحيحة
+socket.on('correctAnswer', data => {
+  // تحديث العرض مثلاً في خانة الإجابات
+  // ...
+  savePlayerDataLocally(currentPlayerName, currentScore, currentWins, data.timeUsed);
+});
