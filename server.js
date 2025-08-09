@@ -40,8 +40,7 @@ const specialNamesColors = {
   "كول": "#33ccff"
 };
 
-// للاحتفاظ ببيانات اللاعبين عبر الجلسات (ببساطة داخل الذاكرة هنا)
-const players = new Map(); // key: socket.id, value: player object
+const players = new Map();
 
 let currentWord = '';
 let wordTimer = null;
@@ -53,7 +52,6 @@ function chooseNewWord() {
 }
 
 function updatePlayersList() {
-  // نرتب اللاعبين حسب نقاطهم
   const sortedPlayers = Array.from(players.values())
     .sort((a, b) => b.score - a.score)
     .map(p => ({
@@ -62,7 +60,6 @@ function updatePlayersList() {
       score: p.score,
       color: specialNamesColors[p.name] || null,
     }));
-
   io.emit('updatePlayers', sortedPlayers);
 }
 
@@ -77,34 +74,18 @@ io.on('connection', socket => {
     return;
   }
 
-  // عند دخول اللعبة
-socket.on('welcome', data => {
-  // استرجاع بيانات اللاعب من localStorage إذا وجدت
-  const savedData = localStorage.getItem('playerData');
-  if (savedData) {
-    const playerData = JSON.parse(savedData);
-    socket.emit('setName', playerData.name); // ارسال الاسم للسيرفر
-  }
-});
-
-// عند تحديث اللاعب (مثلاً تغيير الاسم، النقاط، الفوز، أسرع وقت)
-function savePlayerDataLocally(name, score, wins, fastestTime) {
-  const data = { name, score, wins, fastestTime };
-  localStorage.setItem('playerData', JSON.stringify(data));
-}
-
-// عندما يتم تحديث البيانات من السيرفر
-socket.on('updatePlayerData', data => {
-  // data = { name, score, wins, fastestTime }
-  savePlayerDataLocally(data.name, data.score, data.wins, data.fastestTime);
-});
-
-// عند استقبال نتيجة صحيحة
-socket.on('correctAnswer', data => {
-  // تحديث العرض مثلاً في خانة الإجابات
-  // ...
-  savePlayerDataLocally(currentPlayerName, currentScore, currentWins, data.timeUsed);
-});
+  // إنشاء لاعب جديد مع بيانات افتراضية
+  const player = {
+    id: socket.id,
+    name: `لاعب${players.size + 1}`,
+    score: 0,
+    totalScore: 0,
+    wins: 0,
+    bestTime: Number.POSITIVE_INFINITY,
+    canAnswer: true,
+    color: null,
+  };
+  players.set(socket.id, player);
 
   socket.emit('welcome', { id: socket.id });
   sendSystemMessage(`${player.name} دخل اللعبة.`);
@@ -125,6 +106,14 @@ socket.on('correctAnswer', data => {
       p.name = name.trim().substring(0, 20);
       updatePlayersList();
       sendSystemMessage(`${oldName} غير اسمه إلى ${p.name}`);
+
+      // إرسال بيانات اللاعب بعد التحديث
+      socket.emit('updatePlayerData', {
+        name: p.name,
+        score: p.score,
+        wins: p.wins,
+        fastestTime: p.bestTime === Number.POSITIVE_INFINITY ? 0 : p.bestTime,
+      });
     }
   });
 
@@ -164,7 +153,14 @@ socket.on('correctAnswer', data => {
 
       socket.emit('updateScore', p.score);
 
-      // إبلاغ الجميع بالوقت واللاعب (ليس كشات، بل أسفل الإجابات)
+      // إرسال بيانات اللاعب بعد التحديث
+      socket.emit('updatePlayerData', {
+        name: p.name,
+        score: p.score,
+        wins: p.wins,
+        fastestTime: p.bestTime,
+      });
+
       io.emit('showAnswerTime', { name: p.name, time: timeUsed });
       io.emit('clearAnswerTime');
 
@@ -191,13 +187,11 @@ socket.on('correctAnswer', data => {
       }, 2000);
 
     } else {
-      // لا نرسل رسالة شات عند الخطأ أو الصواب حسب طلبك
       p.canAnswer = true;
       socket.emit('wrongAnswer');
     }
   });
 
-  // طلب معلومات لاعب محدد
   socket.on('requestPlayerInfo', playerId => {
     const p = players.get(playerId);
     if (p) {
@@ -242,15 +236,7 @@ socket.on('correctAnswer', data => {
   });
 });
 
-// تشغيل السيرفر على البورت المناسب (ريندر يدعم env.PORT)
 const PORT = process.env.PORT || 10000;
 server.listen(PORT, () => {
   console.log(`Server running on port ${PORT}`);
-});
-// في تحديث قائمة اللاعبين، أرسل لكل لاعب بياناته الشخصية (نقاط، فوز، أسرع وقت)
-socket.emit('updatePlayerData', {
-  name: player.name,
-  score: player.score,
-  wins: player.wins,
-  fastestTime: player.fastestTime || null,
 });
