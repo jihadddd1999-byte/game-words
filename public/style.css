@@ -18,6 +18,7 @@ body {
   padding: 10px;
   -webkit-font-smoothing: antialiased;
   -moz-osx-font-smoothing: grayscale;
+  transition: background 0.4s ease, color 0.4s ease;
 }
 
 #app-container {
@@ -98,13 +99,31 @@ header h1 {
   color: #55ff77;
   font-weight: 700;
   min-height: 1.2em;
+  margin-top: 5px;
 }
 
-.points-display {
-  font-size: 1.4rem;
-  font-weight: 800;
-  color: #00e5ff;
-  text-shadow: 0 0 15px #00aaffbb;
+/* --- مكان عرض زمن الإجابة أسفل خانة الإجابة --- */
+#answers-display {
+  background: rgba(0, 40, 70, 0.8);
+  border-radius: 12px;
+  padding: 10px;
+  width: 100%;
+  max-width: 400px;
+  font-size: 0.95rem;
+  color: #aaffff;
+  margin-top: 10px;
+  box-shadow: 0 0 10px #00cfff88;
+}
+
+/* --- اختيار لون الاسم --- */
+#name-color-picker {
+  margin-top: 8px;
+  cursor: pointer;
+  border: none;
+  background: none;
+  width: 40px;
+  height: 40px;
+  padding: 0;
 }
 
 /* --- أزرار التحكم --- */
@@ -141,6 +160,54 @@ header h1 {
   outline: none;
 }
 
+/* زر الوضع الليلي */
+#dark-mode-toggle {
+  position: fixed;
+  bottom: 20px;
+  left: 20px;
+  background: linear-gradient(135deg, #222, #555);
+  color: white;
+  border-radius: 50%;
+  width: 48px;
+  height: 48px;
+  display: flex;
+  justify-content: center;
+  align-items: center;
+  font-size: 1.4rem;
+  box-shadow: 0 0 12px #00000088;
+  cursor: pointer;
+  transition: background 0.3s ease;
+  z-index: 10000;
+}
+
+#dark-mode-toggle:hover {
+  background: linear-gradient(135deg, #333, #666);
+}
+
+/* الوضع الليلي */
+body.dark-mode {
+  background: linear-gradient(135deg, #000000, #222);
+  color: #ddd;
+}
+
+body.dark-mode #app-container {
+  background: rgba(20, 20, 20, 0.9);
+}
+
+body.dark-mode .word-box {
+  background: linear-gradient(145deg, #111, #222);
+}
+
+body.dark-mode #input-answer {
+  background: #333;
+  color: #fff;
+}
+
+body.dark-mode #answers-display {
+  background: rgba(50, 50, 50, 0.8);
+}
+
+/* باقي الأكواد الأصلية من ملفك */
 /* --- قائمة اللاعبين --- */
 .players-list-container {
   background: #004070cc;
@@ -172,17 +239,9 @@ header h1 {
 }
 
 /* ألوان الترتيب */
-#players-list li:nth-child(1) {
-  color: red;
-}
-
-#players-list li:nth-child(2) {
-  color: green;
-}
-
-#players-list li:nth-child(3) {
-  color: orange;
-}
+#players-list li:nth-child(1) { color: red; }
+#players-list li:nth-child(2) { color: green; }
+#players-list li:nth-child(3) { color: orange; }
 
 /* --- الشات --- */
 .chat-container {
@@ -250,57 +309,19 @@ header h1 {
   user-select: text;
 }
 
-/* نص رسالة في الشات */
-.chat-message {
-  margin-bottom: 8px;
-  word-break: break-word;
-}
+.chat-message { margin-bottom: 8px; word-break: break-word; }
+.chat-system-message { font-style: italic; color: #77ffaa; text-align: center; user-select: none; }
+.chat-name { font-weight: 800; color: #00cfff; margin-left: 6px; user-select: text; }
 
-.chat-system-message {
-  font-style: italic;
-  color: #77ffaa;
-  text-align: center;
-  user-select: none;
-}
+/* كلمات خاصة */
+.special-word { font-weight: 900; user-select: text; }
+.special-word.shake { animation: shake 0.6s ease infinite alternate; }
+.special-word[style*="red"] { color: red; }
+.special-word[style*="blue"] { color: blue; }
+.special-word[style*="pink"] { color: #ff69b4; }
+.special-word[style*="violet"] { color: violet; }
+.special-word[style*="lightgreen"] { color: #90ee90; }
 
-.chat-name {
-  font-weight: 800;
-  color: #00cfff;
-  margin-left: 6px;
-  user-select: text;
-}
-
-/* كلمات خاصة ملونة ومهتزة */
-.special-word {
-  font-weight: 900;
-  user-select: text;
-}
-
-.special-word.shake {
-  animation: shake 0.6s ease infinite alternate;
-}
-
-.special-word[style*="red"] {
-  color: red;
-}
-
-.special-word[style*="blue"] {
-  color: blue;
-}
-
-.special-word[style*="pink"] {
-  color: #ff69b4; /* لون وردي */
-}
-
-.special-word[style*="violet"] {
-  color: violet;
-}
-
-.special-word[style*="lightgreen"] {
-  color: #90ee90;
-}
-
-/* اهتزاز */
 @keyframes shake {
   0% { transform: translateX(0) }
   25% { transform: translateX(-2px) }
@@ -309,7 +330,7 @@ header h1 {
   100% { transform: translateX(0) }
 }
 
-/* مودال تغيير الاسم */
+/* مودالات */
 dialog#change-name-dialog,
 dialog#instructions-dialog {
   width: 90%;
@@ -358,7 +379,6 @@ dialog#change-name-dialog menu {
   gap: 15px;
 }
 
-/* مودال التعليمات */
 #instructions-title {
   margin-top: 0;
   margin-bottom: 15px;
