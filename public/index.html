@@ -3,7 +3,7 @@
 <head>
   <meta charset="UTF-8" />
   <meta name="viewport" content="width=device-width, initial-scale=1, maximum-scale=1" />
-  <title>⚡ لعبة الكلمات السريعة ⚡</title>
+  <title>لعبة الكلمات السريعة</title>
   <link rel="stylesheet" href="style.css" />
   <script src="/socket.io/socket.io.js" defer></script>
   <script src="game.js" defer></script>
@@ -13,120 +13,104 @@
     <header>
       <h1>⚡ لعبة الكلمات السريعة ⚡</h1>
     </header>
-
     <section class="game-section">
-      <div class="word-box" id="current-word">جاري التحميل...</div>
-
-      <input type="text" id="input-answer" placeholder="اكتب الكلمة هنا" autocomplete="off" spellcheck="false" />
-
-      <!-- وقت الإجابة أسفل حقل الإجابة -->
+      <div class="word-box" aria-live="polite" aria-atomic="true" id="current-word">جاري التحميل...</div>
+      <input
+        type="text"
+        id="input-answer"
+        placeholder="اكتب الكلمة هنا"
+        autocomplete="off"
+        spellcheck="false"
+        aria-label="حقل إدخال الإجابة"
+      />
       <div id="answer-time" class="answer-time"></div>
-
-      <div class="points-row">
-        <div id="points-display">النقاط: 0</div>
-        <div id="progress-wrapper">
-          <div id="progress-bar">
-            <span id="progress-text">0%</span>
-          </div>
-        </div>
-      </div>
+      <div id="points-display" class="points-display">النقاط: 0</div>
     </section>
 
     <section class="controls">
-      <button id="btn-chat">💬 الشات <span id="chat-badge" hidden>•</span></button>
-      <button id="btn-change-name">✍️ تغيير الاسم</button>
-      <input type="color" id="name-color-picker" title="اختر لون اسمك" />
-      <button id="btn-instructions">📖 تعليمات اللعبة</button>
-      <button id="btn-zizo">❤️ لعبة زيزو</button>
-      <button id="btn-night" title="الوضع الليلي">🌙 ليلي</button>
-      <button id="btn-stats" title="إحصائيات اللاعب">📊 الإحصائيات</button>
-      <button id="btn-vote" title="التصويت لاختيار نمط اللعب">🗳️ تصويت نمط</button>
-      <button id="btn-powerups" title="الباور-أبز">⚡ قدرات</button>
-      <button id="btn-team" title="تبديل وضع الفرق">👥 فريق</button>
+      <button id="btn-chat" class="btn-main" aria-expanded="false" aria-controls="chat-container">💬 الشات</button>
+      <button id="btn-change-name" class="btn-main">✍️ تغيير الاسم</button>
+      <button id="btn-instructions" class="btn-main">📖 تعليمات اللعبة</button>
+      <button id="btn-zizo" class="btn-main">❤️ لعبة زيزو</button>
     </section>
 
-    <section id="players-list-container">
+    <section id="players-list-container" class="players-list-container" aria-label="قائمة اللاعبين">
       <h2>🏆 المتصدرون</h2>
-      <ul id="players-list"></ul>
+      <ul id="players-list" role="list"></ul>
     </section>
 
     <!-- الشات -->
-    <aside id="chat-container" hidden>
-      <header>
+    <aside id="chat-container" class="chat-container" aria-live="polite" aria-atomic="true" hidden>
+      <header class="chat-header">
         <h3>الشات</h3>
-        <div>
-          <button id="btn-notifications-toggle" title="تشغيل/إيقاف إشعارات الشات">🔔</button>
-          <button id="btn-close-chat">✖️</button>
-        </div>
+        <button id="btn-close-chat" aria-label="إغلاق الشات">✖️</button>
       </header>
-      <section id="chat-messages"></section>
-      <form id="chat-form">
-        <input type="text" id="chat-input" placeholder="اكتب رسالة..." required maxlength="120" />
-        <button type="submit" id="btn-send-chat">إرسال</button>
+      <section id="chat-messages" class="chat-messages" role="log" aria-live="polite"></section>
+      <form id="chat-form" class="chat-form" aria-label="إرسال رسالة شات">
+        <input
+          type="text"
+          id="chat-input"
+          placeholder="اكتب رسالة..."
+          autocomplete="off"
+          spellcheck="false"
+          aria-label="نص الرسالة"
+          required
+          maxlength="120"
+        />
+        <button type="submit" id="btn-send-chat" class="btn-send">إرسال</button>
       </form>
     </aside>
 
-    <!-- الإحصائيات -->
-    <dialog id="stats-dialog">
-      <h3>📊 إحصائيات اللاعبين</h3>
-      <table id="stats-table">
-        <thead>
-          <tr>
-            <th>اللاعب</th>
-            <th>أقل مدة (ث)</th>
-            <th>مجموع النقاط</th>
-            <th>عدد مرات الفوز</th>
-          </tr>
-        </thead>
-        <tbody></tbody>
-      </table>
-      <button id="close-stats">إغلاق</button>
-    </dialog>
-
-    <!-- التصويت -->
-    <dialog id="vote-dialog">
-      <h3>🗳️ اختر نمط اللعب</h3>
-      <form id="vote-form">
-        <label><input type="radio" name="mode" value="missing" checked> كلمات ناقصة الحروف</label><br>
-        <label><input type="radio" name="mode" value="reversed"> كلمات معكوسة</label><br>
-        <label><input type="radio" name="mode" value="flash"> كلمات تظهر وتختفي</label><br>
-        <label><input type="radio" name="mode" value="playerlist"> كل لاعب يضع ٥ كلمات</label>
-        <menu>
-          <button type="button" id="cancel-vote">إلغاء</button>
-          <button type="submit" id="submit-vote">تصويت</button>
+    <!-- نافذة تغيير الاسم -->
+    <dialog id="change-name-dialog" aria-modal="true" aria-labelledby="change-name-title">
+      <form method="dialog" id="change-name-form">
+        <h3 id="change-name-title">تغيير الاسم</h3>
+        <input
+          type="text"
+          id="input-name"
+          placeholder="اكتب اسمك الجديد"
+          autocomplete="off"
+          spellcheck="false"
+          maxlength="20"
+          required
+          aria-label="اسم جديد"
+        />
+        <label for="input-color" style="margin-top: 12px; font-weight: 700; color: #aaffff; display: block;">
+          اختر لون الاسم:
+        </label>
+        <input
+          type="color"
+          id="input-color"
+          value="#00e5ff"
+          aria-label="لون الاسم"
+          style="width: 100%; height: 35px; border-radius: 8px; border: none; cursor: pointer;"
+        />
+        <menu style="margin-top: 20px;">
+          <button id="cancel-name" type="reset">إلغاء</button>
+          <button id="confirm-name" type="submit">تأكيد</button>
         </menu>
       </form>
     </dialog>
 
-    <!-- إشعار رسائل جديد -->
-    <div id="new-message-toast" hidden>
-      لديك رسالة جديدة! <button id="open-chat-from-toast">عرض</button>
-    </div>
-
+    <!-- نافذة التعليمات -->
+    <dialog id="instructions-dialog" aria-modal="true" aria-labelledby="instructions-title">
+      <h3 id="instructions-title">تعليمات اللعبة</h3>
+      <div class="instructions-content">
+        <ol>
+          <li>تظهر كلمة على الشاشة، اكتبها بأسرع وقت ممكن واضغط Enter.</li>
+          <li>كل إجابة صحيحة تمنحك 10 نقاط.</li>
+          <li>اللاعب الذي يصل إلى 100 نقطة يفوز باللعبة.</li>
+          <li>يمكنك التواصل مع اللاعبين الآخرين عبر الشات.</li>
+          <li>استخدم زر "تغيير الاسم" لتعديل اسمك في اللعبة.</li>
+          <li>اضغط زر "لعبة زيزو" للذهاب إلى اللعبة الخارجية.</li>
+          <li>هناك كلمات خاصة تظهر بألوان وتأثير اهتزاز في الشات.</li>
+          <li>لا تكرر الإجابة على نفس الكلمة أكثر من مرة.</li>
+          <li>استمتع باللعب وحاول الوصول إلى القمة!</li>
+          <li>احترم اللاعبين الآخرين والتزم باللعب النظيف.</li>
+        </ol>
+      </div>
+      <button id="close-instructions" type="button">إغلاق</button>
+    </dialog>
   </main>
-
-  <script>
-    // منع السليب باستخدام Wake Lock API
-    let wakeLock = null;
-    async function requestWakeLock() {
-      try {
-        if ('wakeLock' in navigator) {
-          wakeLock = await navigator.wakeLock.request('screen');
-          wakeLock.addEventListener('release', () => {
-            console.log('Wake Lock تم إصداره');
-          });
-          console.log('Wake Lock مفعّل');
-        }
-      } catch (err) {
-        console.error(`${err.name}, ${err.message}`);
-      }
-    }
-    requestWakeLock();
-    document.addEventListener('visibilitychange', () => {
-      if (wakeLock !== null && document.visibilityState === 'visible') {
-        requestWakeLock();
-      }
-    });
-  </script>
 </body>
 </html>
