@@ -225,10 +225,6 @@ closeInstructionsBtn.addEventListener('click', () => {
   instructionsDialog.close();
 });
 
-// فتح رابط لعبة زيزو في تبويب جديد
-btnZizo.addEventListener('click', () => {
-  window.open('https://sp-p2.onrender.com', '_blank');
-});
 
 // إرسال الإجابة عند الضغط على Enter في حقل الإجابة
 inputAnswer.addEventListener('keydown', e => {
