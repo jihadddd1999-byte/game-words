@@ -30,28 +30,25 @@ const words = [
   "مصلح سيارات","موسيقي","رسام","كاتب","مزارع","صيدلي","مهندس شبكات","مطور ويب","مصمم جرافيك","محلل بيانات"
 ];
 
-// أسماء بألوان نيوني خاصة (مطابقة مع العميل)
 const specialNamesColors = {
-  "جهاد": "#00ffe7",    // نيوني أزرق سماوي
-  "زيزو": "#ff3366",    // نيوني أحمر وردي
-  "أسامة": "#cc33ff",   // نيوني بنفسجي
-  "مصطفى": "#33ff99",  // نيوني أخضر فاتح
-  "حلا": "#ff33cc",     // نيوني وردي قوي
-  "نور": "#ffff33",     // نيوني أصفر
+  "جهاد": "#00ffe7",
+  "زيزو": "#ff3366",
+  "أسامة": "#cc33ff",
+  "مصطفى": "#33ff99",
+  "حلا": "#ff33cc",
+  "نور": "#ffff33",
 };
 
 let players = [];
 let currentWord = '';
 let wordTimer = null;
 
-// اختيار كلمة جديدة عشوائية
 function chooseNewWord() {
   const idx = Math.floor(Math.random() * words.length);
   currentWord = words[idx];
   io.emit('newWord', currentWord);
 }
 
-// تحديث قائمة اللاعبين وإرسالها للكل مع اسم + لون
 function updatePlayersList() {
   players.sort((a, b) => b.score - a.score);
   io.emit('updatePlayers', players.map(p => ({
@@ -62,7 +59,6 @@ function updatePlayersList() {
   })));
 }
 
-// إرسال رسالة نظامية للشات
 function sendSystemMessage(message) {
   io.emit('chatMessage', { system: true, message });
 }
@@ -80,7 +76,7 @@ io.on('connection', socket => {
     score: 0,
     wins: 0,
     canAnswer: true,
-    color: '#00e5ff' // لون افتراضي أزرق سماوي
+    color: '#00e5ff'
   };
   players.push(newPlayer);
 
@@ -95,7 +91,6 @@ io.on('connection', socket => {
     socket.emit('updateScore', newPlayer.score);
   }
 
-  // استقبال تعيين الاسم واللون من العميل (العميل يرسل كائن {name, color})
   socket.on('setName', data => {
     if (!data || typeof data.name !== 'string') return;
 
@@ -104,21 +99,27 @@ io.on('connection', socket => {
       const oldName = player.name;
       player.name = data.name.trim().substring(0, 20);
 
-      // لون اللاعب يأتي من العميل، إلا إذا الاسم خاص ونفرض لوننا
       if (specialNamesColors[player.name]) {
         player.color = specialNamesColors[player.name];
       } else if (data.color && /^#([0-9A-F]{3}){1,2}$/i.test(data.color)) {
         player.color = data.color;
       } else {
-        player.color = '#00e5ff'; // افتراضي لو لم يرسل اللون أو غير صحيح
+        player.color = '#00e5ff';
       }
 
       updatePlayersList();
       sendSystemMessage(`${oldName} غير اسمه إلى ${player.name}`);
+
+      // ⭐ ترحيب خاص لكول
+      if (player.name === "كول") {
+        socket.emit('chatMessage', {
+          system: true,
+          message: "🌸 أهلاً كول! نورتِ اللعبة، وجودك يضيف للمكان جمال 🤍"
+        });
+      }
     }
   });
 
-  // استقبال رسالة شات من لاعب وإرسالها للكل مع اسم + لون
   socket.on('sendMessage', msg => {
     const player = players.find(p => p.id === socket.id);
     if (!player) return;
@@ -136,16 +137,12 @@ io.on('connection', socket => {
     });
   });
 
-  // استقبال الإجابة
   socket.on('submitAnswer', data => {
     const player = players.find(p => p.id === socket.id);
     if (!player) return;
     if (!data || typeof data.answer !== 'string') return;
 
-    if (!player.canAnswer) {
-      // يمنع الإجابة المتكررة بدون إعادة تفعيل
-      return;
-    }
+    if (!player.canAnswer) return;
 
     const answer = data.answer.trim();
     const timeUsed = parseFloat(data.timeUsed) || 0;
@@ -160,12 +157,11 @@ io.on('connection', socket => {
       socket.emit('correctAnswer', { timeUsed });
       updatePlayersList();
 
-      player.canAnswer = false; // يمنع الإجابة المتكررة حتى كلمة جديدة
+      player.canAnswer = false;
 
       if (player.score >= WINNING_SCORE) {
         player.wins++;
         io.emit('playerWon', { name: player.name, wins: player.wins });
-        // إعادة تعيين النقاط للجميع بعد الفوز
         players.forEach(p => {
           p.score = 0;
           p.canAnswer = true;
@@ -181,12 +177,11 @@ io.on('connection', socket => {
 
     } else {
       socket.emit('chatMessage', { system: true, message: '❌ إجابة خاطئة، حاول مرة أخرى!' });
-      player.canAnswer = true; // السماح بالإجابة مرة أخرى فور الخطأ
+      player.canAnswer = true;
       socket.emit('wrongAnswer');
     }
   });
 
-  // صلاحية طرد لاعب (الأدمن هو أول لاعب متصل)
   socket.on('kickPlayer', targetId => {
     if (players.length > 0 && socket.id === players[0].id) {
       const index = players.findIndex(p => p.id === targetId);
@@ -200,7 +195,6 @@ io.on('connection', socket => {
     }
   });
 
-  // إزالة لاعب عند انفصاله
   socket.on('disconnect', () => {
     const index = players.findIndex(p => p.id === socket.id);
     if (index !== -1) {
