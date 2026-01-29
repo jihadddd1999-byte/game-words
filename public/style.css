@@ -1,481 +1,483 @@
-/* ===== عام ===== */
+/* عام */
 *,
 *::before,
 *::after {
-  box-sizing: border-box;
+box-sizing: border-box;
 }
 
 body {
-  margin: 0;
-  font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
-  background: linear-gradient(135deg, #0a1426, #1f3a93);
-  color: #e0f7fa;
-  direction: rtl;
-  min-height: 100vh;
-  display: flex;
-  justify-content: center;
-  align-items: flex-start;
-  padding: 10px;
-  -webkit-font-smoothing: antialiased;
-  -moz-osx-font-smoothing: grayscale;
-  transition: background 0.4s ease, color 0.4s ease;
+margin: 0;
+font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
+background: linear-gradient(135deg, #0a1426, #1f3a93);
+color: #e0f7fa;
+direction: rtl;
+min-height: 100vh;
+display: flex;
+justify-content: center;
+align-items: flex-start;
+padding: 10px;
+-webkit-font-smoothing: antialiased;
+-moz-osx-font-smoothing: grayscale;
+transition: background 0.4s ease, color 0.4s ease;
 }
 
 #app-container {
-  background: rgba(8, 23, 43, 0.85);
-  border-radius: 18px;
-  padding: 25px 20px;
-  width: 100%;
-  max-width: 480px;
-  box-shadow:
-    0 0 10px #0077ff88,
-    0 0 30px #00bfff66,
-    0 0 60px #00eaff33;
-  user-select: none;
+background: rgba(8, 23, 43, 0.85);
+border-radius: 18px;
+padding: 25px 20px;
+width: 100%;
+max-width: 480px;
+box-shadow:
+0 0 10px #0077ff88,
+0 0 30px #00bfff66,
+0 0 60px #00eaff33;
+user-select: none;
 }
 
 header h1 {
-  font-weight: 900;
-  font-size: 2.4rem;
-  text-align: center;
-  margin-bottom: 25px;
-  color: #00e5ff;
-  text-shadow:
-    0 0 10px #00e5ffcc,
-    0 0 20px #00c8ffbb,
-    0 0 30px #0099ddcc;
+font-weight: 900;
+font-size: 2.4rem;
+text-align: center;
+margin-bottom: 25px;
+color: #00e5ff;
+text-shadow:
+0 0 10px #00e5ffcc,
+0 0 20px #00c8ffbb,
+0 0 30px #0099ddcc;
 }
 
-/* ===== قسم اللعبة ===== */
+/* --- قسم اللعبة --- */
 .game-section {
-  display: flex;
-  flex-direction: column;
-  align-items: center;
-  gap: 15px;
+display: flex;
+flex-direction: column;
+align-items: center;
+gap: 15px;
 }
 
 .word-box {
-  background: linear-gradient(145deg, #003366, #0059b3);
-  padding: 18px 48px;
-  border-radius: 60px;
-  font-size: 2.5rem;
-  font-weight: 900;
-  letter-spacing: 0.18em;
-  color: #aaffff;
-  text-shadow: 0 0 20px #00ccffaa;
-  user-select: none;
-  width: 100%;
-  max-width: 400px;
-  text-align: center;
-  box-shadow: 0 0 25px #00ccff99;
-  transition: background 0.4s ease;
+background: linear-gradient(145deg, #003366, #0059b3);
+padding: 18px 48px;
+border-radius: 60px;
+font-size: 2.5rem;
+font-weight: 900;
+letter-spacing: 0.18em;
+color: #aaffff;
+text-shadow: 0 0 20px #00ccffaa;
+user-select: none;
+width: 100%;
+max-width: 400px;
+text-align: center;
+box-shadow: 0 0 25px #00ccff99;
+transition: background 0.4s ease;
 }
 
 #input-answer {
-  width: 100%;
-  max-width: 400px;
-  font-size: 1.3rem;
-  padding: 12px 20px;
-  border-radius: 40px;
-  border: none;
-  outline: none;
-  text-align: center;
-  font-weight: 700;
-  color: #003355;
-  background: #aaffff;
-  box-shadow:
-    inset 0 0 12px #00bbff88,
-    0 0 12px #00bbffbb;
-  transition: box-shadow 0.3s ease;
+width: 100%;
+max-width: 400px;
+font-size: 1.3rem;
+padding: 12px 20px;
+border-radius: 40px;
+border: none;
+outline: none;
+text-align: center;
+font-weight: 700;
+color: #003355;
+background: #aaffff;
+box-shadow:
+inset 0 0 12px #00bbff88,
+0 0 12px #00bbffbb;
+transition: box-shadow 0.3s ease;
 }
 
 #input-answer:focus {
-  box-shadow:
-    inset 0 0 18px #00d0ffcc,
-    0 0 18px #00d0ffcc;
+box-shadow:
+inset 0 0 18px #00d0ffcc,
+0 0 18px #00d0ffcc;
 }
 
 .answer-time {
-  color: #55ff77;
-  font-weight: 700;
-  min-height: 1.2em;
-  margin-top: 5px;
+color: #55ff77;
+font-weight: 700;
+min-height: 1.2em;
+margin-top: 5px;
 }
 
+/* --- مكان عرض زمن الإجابة أسفل خانة الإجابة --- */
 #answers-display {
-  background: rgba(0, 40, 70, 0.8);
-  border-radius: 12px;
-  padding: 10px;
-  width: 100%;
-  max-width: 400px;
-  font-size: 0.95rem;
-  color: #aaffff;
-  margin-top: 10px;
-  box-shadow: 0 0 10px #00cfff88;
+background: rgba(0, 40, 70, 0.8);
+border-radius: 12px;
+padding: 10px;
+width: 100%;
+max-width: 400px;
+font-size: 0.95rem;
+color: #aaffff;
+margin-top: 10px;
+box-shadow: 0 0 10px #00cfff88;
 }
 
+/* --- اختيار لون الاسم --- */
 #name-color-picker {
-  margin-top: 8px;
-  cursor: pointer;
-  border: none;
-  background: none;
-  width: 40px;
-  height: 40px;
-  padding: 0;
+margin-top: 8px;
+cursor: pointer;
+border: none;
+background: none;
+width: 40px;
+height: 40px;
+padding: 0;
 }
 
+/* --- أزرار التحكم --- */
 .controls {
-  display: flex;
-  justify-content: center;
-  gap: 14px;
-  margin: 25px 0;
-  flex-wrap: wrap;
+display: flex;
+justify-content: center;
+gap: 14px;
+margin: 25px 0;
+flex-wrap: wrap;
 }
 
 .btn-main {
-  background: linear-gradient(135deg, #0099ff, #00ccff);
-  border: none;
-  padding: 10px 22px;
-  font-weight: 700;
-  font-size: 1.1rem;
-  border-radius: 40px;
-  color: #002233;
-  box-shadow:
-    0 0 15px #00ccffcc,
-    inset 0 -3px 10px #0077ccaa;
-  cursor: pointer;
-  transition: background 0.3s ease, transform 0.15s ease;
-  user-select: none;
-  min-width: 110px;
-  text-align: center;
+background: linear-gradient(135deg, #0099ff, #00ccff);
+border: none;
+padding: 10px 22px;
+font-weight: 700;
+font-size: 1.1rem;
+border-radius: 40px;
+color: #002233;
+box-shadow:
+0 0 15px #00ccffcc,
+inset 0 -3px 10px #0077ccaa;
+cursor: pointer;
+transition: background 0.3s ease, transform 0.15s ease;
+user-select: none;
+min-width: 110px;
+text-align: center;
 }
 
 .btn-main:hover,
 .btn-main:focus {
-  background: linear-gradient(135deg, #00bbff, #00eeff);
-  transform: scale(1.05);
-  outline: none;
+background: linear-gradient(135deg, #00bbff, #00eeff);
+transform: scale(1.05);
+outline: none;
 }
 
+/* زر الوضع الليلي */
 #dark-mode-toggle {
-  background: linear-gradient(135deg, #222, #555);
-  color: white;
-  border-radius: 40px;
-  padding: 10px 16px;
-  font-size: 1.2rem;
-  box-shadow: 0 0 12px #00000088;
-  cursor: pointer;
-  transition: background 0.3s ease;
+background: linear-gradient(135deg, #222, #555);
+color: white;
+border-radius: 40px;
+padding: 10px 16px;
+font-size: 1.2rem;
+box-shadow: 0 0 12px #00000088;
+cursor: pointer;
+transition: background 0.3s ease;
 }
 
 #dark-mode-toggle:hover {
-  background: linear-gradient(135deg, #333, #666);
+background: linear-gradient(135deg, #333, #666);
 }
 
+/* الوضع الليلي */
 body.dark-mode {
-  background: linear-gradient(135deg, #000000, #222);
-  color: #ddd;
+background: linear-gradient(135deg, #000000, #222);
+color: #ddd;
 }
 
 body.dark-mode #app-container {
-  background: rgba(20, 20, 20, 0.9);
+background: rgba(20, 20, 20, 0.9);
 }
 
 body.dark-mode .word-box {
-  background: linear-gradient(145deg, #111, #222);
+background: linear-gradient(145deg, #111, #222);
 }
 
 body.dark-mode #input-answer {
-  background: #333;
-  color: #fff;
+background: #333;
+color: #fff;
 }
 
 body.dark-mode #answers-display {
-  background: rgba(50, 50, 50, 0.8);
+background: rgba(50, 50, 50, 0.8);
 }
 
+/* الوضع الليلي لأزرار التحكم */
 body.dark-mode .controls .btn-main {
-  background: linear-gradient(135deg, #444, #666);
-  color: #ddd;
-  box-shadow:
-    0 0 12px #00ccff66,
-    inset 0 -3px 6px #0077cc66;
+background: linear-gradient(135deg, #444, #666);
+color: #ddd;
+box-shadow:
+0 0 12px #00ccff66,
+inset 0 -3px 6px #0077cc66;
 }
 
 body.dark-mode .controls .btn-main:hover {
-  background: linear-gradient(135deg, #555, #888);
-  transform: scale(1.05);
+background: linear-gradient(135deg, #555, #888);
+transform: scale(1.05);
 }
 
-/* ===== قائمة اللاعبين ===== */
+/* باقي الأكواد الأصلية من ملفك /
+/ --- قائمة اللاعبين --- */
 .players-list-container {
-  background: #004070cc;
-  border-radius: 14px;
-  padding: 12px 18px;
-  box-shadow: 0 0 25px #00bfffcc;
-  max-height: 280px;
-  overflow-y: auto;
+background: #004070cc;
+border-radius: 14px;
+padding: 12px 18px;
+box-shadow: 0 0 25px #00bfffcc;
+max-height: 280px;
+overflow-y: auto;
 }
 
 .players-list-container h2 {
-  margin: 0 0 12px 0;
-  color: #00e5ff;
-  font-weight: 800;
+margin: 0 0 12px 0;
+color: #00e5ff;
+font-weight: 800;
 }
 
 #players-list {
-  list-style: none;
-  margin: 0;
-  padding: 0;
+list-style: none;
+margin: 0;
+padding: 0;
 }
 
 #players-list li {
-  padding: 6px 8px;
-  font-weight: 700;
-  border-bottom: 1px solid #0077cc55;
-  cursor: default;
-  transition: color 0.3s ease;
+padding: 6px 8px;
+font-weight: 700;
+border-bottom: 1px solid #0077cc55;
+cursor: default;
+transition: color 0.3s ease;
 }
 
+/* ألوان الترتيب */
 #players-list li:nth-child(1) { color: red; }
 #players-list li:nth-child(2) { color: green; }
 #players-list li:nth-child(3) { color: orange; }
 
-/* ===== الشات ===== */
+/* --- الشات --- */
 .chat-container {
-  position: fixed;
-  top: 10%;
-  left: 50%;
-  transform: translateX(-50%) translateY(0);
-  width: 100%;
-  max-width: 480px;
-  max-height: 60vh;
-  background: rgba(8, 23, 43, 0.95);
-  border-radius: 14px;
-  box-shadow:
-    0 0 30px #00ccffaa,
-    inset 0 0 40px #00bbff88;
-  display: flex;
-  flex-direction: column;
-  opacity: 0;
-  visibility: hidden;
-  transition: opacity 0.3s ease;
-  z-index: 9999;
+position: fixed;
+top: 10%;
+left: 50%;
+transform: translateX(-50%) translateY(0);
+width: 100%;
+max-width: 480px;
+max-height: 60vh;
+background: rgba(8, 23, 43, 0.95);
+border-radius: 14px;
+box-shadow:
+0 0 30px #00ccffaa,
+inset 0 0 40px #00bbff88;
+display: flex;
+flex-direction: column;
+opacity: 0;
+visibility: hidden;
+transition: opacity 0.3s ease;
+z-index: 9999;
 }
 
 .chat-container.open {
-  opacity: 1;
-  visibility: visible;
-  transform: translateX(-50%) translateY(0);
+opacity: 1;
+visibility: visible;
+transform: translateX(-50%) translateY(0);
 }
 
 .chat-header {
-  display: flex;
-  justify-content: space-between;
-  align-items: center;
-  background: #003366;
-  padding: 10px 15px;
-  border-radius: 14px 14px 0 0;
-  color: #aaffff;
-  font-weight: 700;
-  font-size: 1.25rem;
-  user-select: none;
+display: flex;
+justify-content: space-between;
+align-items: center;
+background: #003366;
+padding: 10px 15px;
+border-radius: 14px 14px 0 0;
+color: #aaffff;
+font-weight: 700;
+font-size: 1.25rem;
+user-select: none;
 }
 
 .chat-header button {
-  background: none;
-  border: none;
-  color: #aaffff;
-  font-size: 1.3rem;
-  cursor: pointer;
-  transition: color 0.2s ease;
+background: none;
+border: none;
+color: #aaffff;
+font-size: 1.3rem;
+cursor: pointer;
+transition: color 0.2s ease;
 }
 
 .chat-header button:hover,
 .chat-header button:focus {
-  color: #00ffff;
-  outline: none;
+color: #00ffff;
+outline: none;
 }
 
 .chat-messages {
-  flex: 1 1 auto;
-  padding: 10px 15px;
-  overflow-y: auto;
-  color: #d0f0ff;
-  font-size: 1rem;
-  line-height: 1.3;
-  user-select: text;
+flex: 1 1 auto;
+padding: 10px 15px;
+overflow-y: auto;
+color: #d0f0ff;
+font-size: 1rem;
+line-height: 1.3;
+user-select: text;
 }
 
 .chat-message { margin-bottom: 8px; word-break: break-word; }
 .chat-system-message { font-style: italic; color: #77ffaa; text-align: center; user-select: none; }
 .chat-name { font-weight: 800; color: #00cfff; margin-left: 6px; user-select: text; }
 
+/* حاوية الكتابة */
 .chat-input-container {
-  display: flex;
-  gap: 8px;
-  padding: 10px;
-  background: rgba(10, 20, 40, 0.85);
-  border-radius: 16px;
-  backdrop-filter: blur(6px);
+display: flex;
+gap: 8px;
+padding: 10px;
+background: rgba(10, 20, 40, 0.85);
+border-radius: 16px;
+backdrop-filter: blur(6px);
 }
 
+/* حقل الكتابة */
 #chat-input {
-  flex: 1;
-  padding: 12px 16px;
-  font-size: 15px;
-  color: #003355;
-  background: #aaffff;
-  border: none;
-  border-radius: 40px;
-  outline: none;
-  font-weight: 700;
-  box-shadow:
-    inset 0 0 12px #00bbff88,
-    0 0 12px #00bbffbb;
-  transition: box-shadow 0.3s ease;
+flex: 1;
+padding: 12px 16px;
+font-size: 15px;
+color: #fff;
+background: rgba(255, 255, 255, 0.08);
+border: 1px solid rgba(0, 180, 255, 0.25);
+border-radius: 14px;
+outline: none;
+transition: 0.25s;
 }
 
 #chat-input::placeholder {
-  color: rgba(0, 51, 85, 0.5);
+color: rgba(255,255,255,0.5);
 }
 
 #chat-input:focus {
-  box-shadow:
-    inset 0 0 18px #00d0ffcc,
-    0 0 18px #00d0ffcc;
+border-color: #00c3ff;
+box-shadow: 0 0 10px rgba(0,195,255,0.4);
 }
 
-/* ===== زر الإرسال متناسق مع حقل الإدخال ===== */
+/* زر الإرسال */
 #send-btn {
-  padding: 12px 20px;
-  font-size: 15px;
-  font-weight: 700;
-  border-radius: 40px;
-  border: none;
-  outline: none;
-  cursor: pointer;
-  color: #003355;
-  background: #aaffff;
-  box-shadow:
-    inset 0 0 12px #00bbff88,
-    0 0 12px #00bbffbb;
-  transition: box-shadow 0.3s ease, transform 0.15s ease;
+padding: 0 18px;
+border-radius: 14px;
+border: none;
+cursor: pointer;
+font-size: 14px;
+font-weight: bold;
+color: #fff;
+background: linear-gradient(135deg, #00c3ff, #0066ff);
+transition: 0.25s;
 }
 
-#send-btn:hover,
-#send-btn:focus {
-  box-shadow:
-    inset 0 0 18px #00d0ffcc,
-    0 0 18px #00d0ffcc;
-  transform: scale(1.05);
-  outline: none;
+#send-btn:hover {
+transform: scale(1.05);
+box-shadow: 0 0 12px rgba(0,195,255,0.6);
 }
 
-/* ===== كلمات خاصة ===== */
+/* كلمات خاصة /
 .special-word { font-weight: 900; user-select: text; }
 .special-word.shake { animation: shake 0.6s ease infinite alternate; }
+.special-word[style="red"] { color: red; }
+.special-word[style*="blue"] { color: blue; }
+.special-word[style*="pink"] { color: #ff69b4; }
+.special-word[style*="violet"] { color: violet; }
+.special-word[style*="lightgreen"] { color: #90ee90; }
 
 @keyframes shake {
-  0% { transform: translateX(0) }
-  25% { transform: translateX(-2px) }
-  50% { transform: translateX(2px) }
-  75% { transform: translateX(-2px) }
-  100% { transform: translateX(0) }
+0% { transform: translateX(0) }
+25% { transform: translateX(-2px) }
+50% { transform: translateX(2px) }
+75% { transform: translateX(-2px) }
+100% { transform: translateX(0) }
 }
 
-/* ===== مودالات ===== */
+/* مودالات */
 dialog#change-name-dialog,
 dialog#instructions-dialog {
-  width: 90%;
-  max-width: 400px;
-  border-radius: 16px;
-  border: none;
-  background: linear-gradient(145deg, #003366, #0059b3);
-  color: #aaffff;
-  box-shadow:
-    0 0 25px #00cfffcc,
-    inset 0 0 40px #0099ccaa;
-  padding: 20px 25px;
-  font-weight: 700;
-  user-select: none;
+width: 90%;
+max-width: 400px;
+border-radius: 16px;
+border: none;
+background: linear-gradient(145deg, #003366, #0059b3);
+color: #aaffff;
+box-shadow:
+0 0 25px #00cfffcc,
+inset 0 0 40px #0099ccaa;
+padding: 20px 25px;
+font-weight: 700;
+user-select: none;
 }
 
 dialog#change-name-dialog input,
 dialog#instructions-dialog button,
 dialog#change-name-dialog button {
-  font-size: 1.1rem;
-  font-weight: 700;
-  border-radius: 10px;
-  border: none;
-  padding: 10px 15px;
-  cursor: pointer;
-  transition: background 0.3s ease;
-  background: linear-gradient(135deg, #00bbff, #00ddff);
-  color: #002233;
-  box-shadow:
-    0 0 12px #00ccffbb,
-    inset 0 -3px 6px #0077ccaa;
-  user-select: none;
+font-size: 1.1rem;
+font-weight: 700;
+border-radius: 10px;
+border: none;
+padding: 10px 15px;
+cursor: pointer;
+transition: background 0.3s ease;
+background: linear-gradient(135deg, #00bbff, #00ddff);
+color: #002233;
+box-shadow:
+0 0 12px #00ccffbb,
+inset 0 -3px 6px #0077ccaa;
+user-select: none;
 }
 
 dialog#change-name-dialog input:focus {
-  outline: none;
-  box-shadow:
-    0 0 20px #00eeffcc,
-    inset 0 0 20px #0099ffcc;
+outline: none;
+box-shadow:
+0 0 20px #00eeffcc,
+inset 0 0 20px #0099ffcc;
 }
 
 dialog#change-name-dialog menu {
-  margin-top: 20px;
-  display: flex;
-  justify-content: space-between;
-  gap: 15px;
+margin-top: 20px;
+display: flex;
+justify-content: space-between;
+gap: 15px;
 }
 
 #instructions-title {
-  margin-top: 0;
-  margin-bottom: 15px;
-  text-align: center;
-  font-size: 1.7rem;
-  font-weight: 900;
-  color: #00e5ff;
-  text-shadow:
-    0 0 10px #00e5ffcc,
-    0 0 20px #00c8ffbb;
+margin-top: 0;
+margin-bottom: 15px;
+text-align: center;
+font-size: 1.7rem;
+font-weight: 900;
+color: #00e5ff;
+text-shadow:
+0 0 10px #00e5ffcc,
+0 0 20px #00c8ffbb;
 }
 
 .instructions-content {
-  font-size: 1.15rem;
-  line-height: 1.5;
-  user-select: text;
+font-size: 1.15rem;
+line-height: 1.5;
+user-select: text;
 }
 
 .instructions-content ol {
-  padding-inline-start: 20px;
-  margin: 0 0 20px 0;
-  color: #aaffff;
+padding-inline-start: 20px;
+margin: 0 0 20px 0;
+color: #aaffff;
 }
 
 #close-instructions {
-  display: block;
-  margin: 0 auto;
-  background: linear-gradient(135deg, #0099ff, #00ccff);
-  border: none;
-  color: #002233;
-  font-weight: 700;
-  padding: 12px 25px;
-  border-radius: 40px;
-  cursor: pointer;
-  box-shadow:
-    0 0 15px #00ccffcc,
-    inset 0 -3px 10px #0077ccaa;
-  transition: background 0.3s ease, transform 0.15s ease;
+display: block;
+margin: 0 auto;
+background: linear-gradient(135deg, #0099ff, #00ccff);
+border: none;
+color: #002233;
+font-weight: 700;
+padding: 12px 25px;
+border-radius: 40px;
+cursor: pointer;
+box-shadow:
+0 0 15px #00ccffcc,
+inset 0 -3px 10px #0077ccaa;
+transition: background 0.3s ease, transform 0.15s ease;
 }
 
 #close-instructions:hover,
 #close-instructions:focus {
-  background: linear-gradient(135deg, #00bbff, #00eeff);
-  transform: scale(1.05);
-  outline: none;
-  }
+background: linear-gradient(135deg, #00bbff, #00eeff);
+transform: scale(1.05);
+outline: none;
+}
