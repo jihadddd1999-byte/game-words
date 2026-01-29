@@ -194,7 +194,11 @@ io.on('connection', socket => {
       }
     }
   });
-
+// ===== Render Keep Alive =====
+app.get("/ping", (req, res) => {
+  res.status(200).send("alive");
+});
+  
   socket.on('disconnect', () => {
     const index = players.findIndex(p => p.id === socket.id);
     if (index !== -1) {
