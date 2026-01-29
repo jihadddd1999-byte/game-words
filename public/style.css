@@ -102,7 +102,6 @@ header h1 {
   margin-top: 5px;
 }
 
-/* --- مكان عرض زمن الإجابة أسفل خانة الإجابة --- */
 #answers-display {
   background: rgba(0, 40, 70, 0.8);
   border-radius: 12px;
@@ -207,7 +206,6 @@ body.dark-mode #answers-display {
   background: rgba(50, 50, 50, 0.8);
 }
 
-/* باقي الأكواد الأصلية من ملفك */
 /* --- قائمة اللاعبين --- */
 .players-list-container {
   background: #004070cc;
@@ -238,7 +236,6 @@ body.dark-mode #answers-display {
   transition: color 0.3s ease;
 }
 
-/* ألوان الترتيب */
 #players-list li:nth-child(1) { color: red; }
 #players-list li:nth-child(2) { color: green; }
 #players-list li:nth-child(3) { color: orange; }
@@ -312,6 +309,56 @@ body.dark-mode #answers-display {
 .chat-message { margin-bottom: 8px; word-break: break-word; }
 .chat-system-message { font-style: italic; color: #77ffaa; text-align: center; user-select: none; }
 .chat-name { font-weight: 800; color: #00cfff; margin-left: 6px; user-select: text; }
+
+/* حاوية الكتابة */
+.chat-input-container {
+  display: flex;
+  gap: 8px;
+  padding: 10px;
+  background: rgba(10, 20, 40, 0.85);
+  border-radius: 16px;
+  backdrop-filter: blur(6px);
+}
+
+/* حقل الكتابة */
+#chat-input {
+  flex: 1;
+  padding: 12px 16px;
+  font-size: 15px;
+  color: #fff;
+  background: rgba(255, 255, 255, 0.08);
+  border: 1px solid rgba(0, 180, 255, 0.25);
+  border-radius: 14px;
+  outline: none;
+  transition: 0.25s;
+}
+
+#chat-input::placeholder {
+  color: rgba(255,255,255,0.5);
+}
+
+#chat-input:focus {
+  border-color: #00c3ff;
+  box-shadow: 0 0 10px rgba(0,195,255,0.4);
+}
+
+/* زر الإرسال */
+#btn-send-chat {
+  padding: 0 18px;
+  border-radius: 14px;
+  border: none;
+  cursor: pointer;
+  font-size: 14px;
+  font-weight: bold;
+  color: #fff;
+  background: linear-gradient(135deg, #00c3ff, #0066ff);
+  transition: 0.25s;
+}
+
+#btn-send-chat:hover {
+  transform: scale(1.05);
+  box-shadow: 0 0 12px rgba(0,195,255,0.6);
+}
 
 /* كلمات خاصة */
 .special-word { font-weight: 900; user-select: text; }
@@ -424,4 +471,4 @@ dialog#change-name-dialog menu {
   background: linear-gradient(135deg, #00bbff, #00eeff);
   transform: scale(1.05);
   outline: none;
-}
+  }
