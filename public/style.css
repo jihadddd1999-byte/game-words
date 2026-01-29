@@ -350,27 +350,25 @@ body.dark-mode .controls .btn-main:hover {
   box-shadow: 0 0 10px rgba(0,195,255,0.4);
 }
 
-/* --- زر الإرسال الجديد --- */
-#send-btn {
-  padding: 12px 20px;
-  border-radius: 14px; /* نفس حواف حقل الكتابة */
-  border: none; /* بدون حواف */
+/* زر الإرسال (معدل) */
+#btn-send-chat {
+  padding: 0 18px;
+  border-radius: 40px;
+  border: none;
   cursor: pointer;
-  font-size: 15px;
+  font-size: 1rem;
   font-weight: 700;
-  color: #003355;
-  background: #aaffff; /* نفس خلفية حقل الكتابة */
+  color: #002233;
+  background: linear-gradient(135deg, #00c3ff, #0066ff);
   box-shadow:
-    inset 0 0 12px #00bbff88,
-    0 0 12px #00bbffbb;
-  transition: box-shadow 0.25s ease, transform 0.2s ease;
+    0 0 15px #00ccffcc,
+    inset 0 -3px 10px #0077ccaa;
+  transition: 0.25s, transform 0.15s ease;
 }
 
-#send-btn:hover {
-  box-shadow:
-    inset 0 0 18px #00d0ffcc,
-    0 0 18px #00d0ffcc;
+#btn-send-chat:hover {
   transform: scale(1.05);
+  box-shadow: 0 0 18px #00c3ffaa;
 }
 
 /* كلمات خاصة */
