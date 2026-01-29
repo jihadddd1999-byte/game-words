@@ -306,3 +306,8 @@ socket.on('wrongAnswer', () => {
 socket.on('enableAnswer', () => {
   canAnswer = true;
 });
+
+// ===== Keep server alive (Render fix) =====
+setInterval(() => {
+  fetch("/ping").catch(() => {});
+}, 4 * 60 * 1000); // كل 4 دقائق
