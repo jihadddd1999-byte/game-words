@@ -29,22 +29,23 @@ const btnInstructions = document.getElementById('btn-instructions');
 const instructionsDialog = document.getElementById('instructions-dialog');
 const closeInstructionsBtn = document.getElementById('close-instructions');
 
+const btnZizo = document.getElementById('btn-zizo');
+
 const playersList = document.getElementById('players-list');
 
 // --- المتغيرات الأساسية ---
 let playerId = null;
-let isAdmin = false; // هل هذا اللاعب هو الأدمن
 let currentWord = '';
 let startTime = 0;
 let myScore = 0;
 let playerName = localStorage.getItem('playerName') || `لاعب${Math.floor(Math.random() * 1000)}`;
 let playerColor = localStorage.getItem('playerColor') || '#00e5ff';
-let canAnswer = true;
+let canAnswer = true; // للتحكم بالسماح بالإجابة
 
 // ألوان خاصة لأسماء محددة (مطابقة للسيرفر)
 const specialNameColors = {
   "جهاد": "#00ffe7",
-  "زيزو": "#ff3366",
+  "ز": "#ff3366",
   "أسامة": "#cc33ff",
   "مصطفى": "#33ff99",
   "حلا": "#ff33cc",
@@ -54,15 +55,20 @@ const specialNameColors = {
 
 // --- دوال مساعدة ---
 
+// تمرير الشات لأسفل تلقائي
 function scrollChatToBottom() {
   chatMessages.scrollTop = chatMessages.scrollHeight;
 }
 
+// تلوين الاسم حسب اللون المخصص أو لون اللاعب
 function colorizeName(name, color = null) {
-  if (!color) color = specialNameColors[name] || '#00e5ff';
+  if (!color) {
+    color = specialNameColors[name] || '#00e5ff'; // اللون الافتراضي لو ما محدد
+  }
   return `<span style="color: ${color}; font-weight: 700;">${name}</span>`;
 }
 
+// تمييز كلمات خاصة في نص الرسائل مع اهتزاز إن لزم الأمر
 function highlightSpecialWords(text) {
   const specialWords = {
     'زيزو': { color: '#ff3366', shake: true },
@@ -77,6 +83,7 @@ function highlightSpecialWords(text) {
   Object.keys(specialWords).forEach(word => {
     const { color, shake } = specialWords[word];
     const shakeClass = shake ? ' shake' : '';
+    // استخدم regex للبحث عن الكلمة فقط كاملة (كلمة منفصلة)
     const regex = new RegExp(`\\b${word}\\b`, 'gu');
     result = result.replace(regex, `<span class="special-word${shakeClass}" style="color:${color}">${word}</span>`);
   });
@@ -84,6 +91,7 @@ function highlightSpecialWords(text) {
   return result;
 }
 
+// إضافة رسالة جديدة للشات
 function addChatMessage({ name, message, system = false, color = null }) {
   const div = document.createElement('div');
   div.classList.add('chat-message');
@@ -108,12 +116,14 @@ function addChatMessage({ name, message, system = false, color = null }) {
   chatMessages.appendChild(div);
   scrollChatToBottom();
 
+  // إشعار صوتي ووميض في زر الشات إذا الشات مغلق والرسالة ليست نظامية
   if (!chatContainer.classList.contains('open') && !system) {
     btnChat.classList.add('notify');
     playNotificationSound();
   }
 }
 
+// دالة تشغيل صوت تنبيه (صوت بسيط قصير)
 function playNotificationSound() {
   try {
     const audioCtx = new (window.AudioContext || window.webkitAudioContext)();
@@ -123,10 +133,12 @@ function playNotificationSound() {
     oscillator.connect(audioCtx.destination);
     oscillator.start();
     oscillator.stop(audioCtx.currentTime + 0.15);
-  } catch (e) {}
+  } catch (e) {
+    // صوت غير مدعوم أو مشكلة، تجاهل
+  }
 }
 
-// تحديث قائمة اللاعبين مع زر الطرد للأدمن
+// تحديث قائمة اللاعبين بالترتيب مع الألوان
 function updatePlayersList(players) {
   playersList.innerHTML = '';
   players.forEach((p, i) => {
@@ -134,47 +146,36 @@ function updatePlayersList(players) {
     li.dataset.id = p.id;
 
     let color = '';
-    if (i === 0) color = 'red';
-    else if (i === 1) color = 'green';
-    else if (i === 2) color = 'orange';
-    else color = '#00d1ff';
+    if (i === 0) color = 'red';       // المركز الأول أحمر
+    else if (i === 1) color = 'green'; // الثاني أخضر
+    else if (i === 2) color = 'orange';// الثالث برتقالي
+    else color = '#00d1ff';            // باقي المراكز أزرق سماوي
 
     li.style.color = color;
     li.innerHTML = `${i + 1}. ${colorizeName(p.name, p.color)} - ${p.score} نقطة`;
-
-    // زر الطرد يظهر فقط للأدمن ولا يظهر للأدمن نفسه
-    if (isAdmin && p.id !== playerId) {
-      const kickBtn = document.createElement('button');
-      kickBtn.textContent = 'طرد';
-      kickBtn.classList.add('btn-kick');
-      kickBtn.addEventListener('click', () => {
-        if (confirm(`هل تريد طرد ${p.name}؟`)) {
-          socket.emit('kickPlayer', p.id);
-        }
-      });
-      li.appendChild(kickBtn);
-    }
-
     playersList.appendChild(li);
   });
 }
 
 // --- الأحداث ---
+
+// فتح/غلق الشات
 btnChat.addEventListener('click', () => {
   if (chatContainer.classList.contains('open')) {
     chatContainer.classList.remove('open');
     btnChat.setAttribute('aria-expanded', 'false');
     chatContainer.hidden = true;
-    btnChat.classList.remove('notify');
+    btnChat.classList.remove('notify'); // إزالة التنبيه عند الفتح
   } else {
     chatContainer.classList.add('open');
     btnChat.setAttribute('aria-expanded', 'true');
     chatContainer.hidden = false;
     chatInput.focus();
-    btnChat.classList.remove('notify');
+    btnChat.classList.remove('notify'); // إزالة التنبيه عند الفتح
   }
 });
 
+// زر إغلاق الشات
 btnCloseChat.addEventListener('click', () => {
   chatContainer.classList.remove('open');
   btnChat.setAttribute('aria-expanded', 'false');
@@ -182,6 +183,7 @@ btnCloseChat.addEventListener('click', () => {
   btnChat.classList.remove('notify');
 });
 
+// إرسال رسالة شات
 chatForm.addEventListener('submit', e => {
   e.preventDefault();
   const msg = chatInput.value.trim();
@@ -191,16 +193,19 @@ chatForm.addEventListener('submit', e => {
   chatInput.value = '';
 });
 
+// فتح مودال تغيير الاسم مع تعبئة القيم الحالية
 btnChangeName.addEventListener('click', () => {
   inputName.value = playerName;
   inputColor.value = playerColor;
   changeNameDialog.showModal();
 });
 
+// إغلاق مودال تغيير الاسم عند إلغاء
 cancelNameBtn.addEventListener('click', () => {
   changeNameDialog.close();
 });
 
+// تأكيد تغيير الاسم واللون وإرسالها للسيرفر وتخزينها محليًا
 changeNameForm.addEventListener('submit', e => {
   e.preventDefault();
   const newName = inputName.value.trim();
@@ -215,9 +220,18 @@ changeNameForm.addEventListener('submit', e => {
   changeNameDialog.close();
 });
 
-btnInstructions.addEventListener('click', () => instructionsDialog.showModal());
-closeInstructionsBtn.addEventListener('click', () => instructionsDialog.close());
+// فتح نافذة التعليمات
+btnInstructions.addEventListener('click', () => {
+  instructionsDialog.showModal();
+});
 
+// إغلاق نافذة التعليمات
+closeInstructionsBtn.addEventListener('click', () => {
+  instructionsDialog.close();
+});
+
+
+// إرسال الإجابة عند الضغط على Enter في حقل الإجابة
 inputAnswer.addEventListener('keydown', e => {
   if (e.key === 'Enter') {
     if (!canAnswer) return;
@@ -231,7 +245,7 @@ inputAnswer.addEventListener('keydown', e => {
   }
 });
 
-// --- استقبال البيانات من السيرفر ---
+// استقبال كلمة جديدة
 socket.on('newWord', word => {
   currentWord = word;
   wordDisplay.textContent = word;
@@ -240,19 +254,18 @@ socket.on('newWord', word => {
   canAnswer = true;
 });
 
+// استقبال تحديث نقاط اللاعب
 socket.on('updateScore', score => {
   myScore = score;
   pointsDisplay.textContent = `النقاط: ${myScore}`;
 });
 
+// تحديث قائمة اللاعبين
 socket.on('updatePlayers', players => {
-  // الأدمن هو أول لاعب يدخل
-  if (!isAdmin && players.length > 0 && players[0].id === playerId) {
-    isAdmin = true;
-  }
   updatePlayersList(players);
 });
 
+// استقبال رسالة شات
 socket.on('chatMessage', data => {
   addChatMessage({
     name: data.system ? '' : data.name,
@@ -262,20 +275,24 @@ socket.on('chatMessage', data => {
   });
 });
 
+// إشعار فوز لاعب
 socket.on('playerWon', data => {
   alert(`🎉 مبروك ${data.name} لقد فزت باللعبة!`);
 });
 
+// تم طرد اللاعب من السيرفر
 socket.on('kicked', () => {
   alert('تم طردك من اللعبة بواسطة الأدمن.');
   window.location.reload();
 });
 
+// استقبال بيانات الترحيب وتعيين معرف اللاعب وإرسال اسمه ولونه للسيرفر
 socket.on('welcome', data => {
   playerId = data.id;
   socket.emit('setName', { name: playerName, color: playerColor });
 });
 
+// استقبال إجابة صحيحة: عرض زمن الإجابة مؤقتًا ومنع الإجابة مؤقتاً
 socket.on('correctAnswer', data => {
   answerTimeDisplay.textContent = `أجبت في: ${data.timeUsed} ثانية`;
   canAnswer = false;
@@ -285,12 +302,27 @@ socket.on('correctAnswer', data => {
   }, 2000);
 });
 
-socket.on('wrongAnswer', () => canAnswer = true);
-socket.on('enableAnswer', () => canAnswer = true);
+// استقبال إجابة خاطئة: إعادة السماح بالإجابة
+socket.on('wrongAnswer', () => {
+  canAnswer = true;
+});
 
-// === Scroll badge للرسائل الجديدة ===
-let newMessageCount = 0;
+// إعادة تمكين الإجابة (إذا لزم الأمر)
+socket.on('enableAnswer', () => {
+  canAnswer = true;
+});
+
 let isUserAtBottom = true;
+
+// === تعديل scrollChatToBottom لمنع النزول عند قراءة رسائل قديمة ===
+function scrollChatToBottom() {
+  if (isUserAtBottom) {
+    chatMessages.scrollTop = chatMessages.scrollHeight;
+  }
+}
+
+// === إضافة badge للرسائل الجديدة ===
+let newMessageCount = 0;
 
 function showNewMessageBadge(count) {
   let badge = document.getElementById('newMessageBadge');
@@ -323,6 +355,7 @@ function hideNewMessageBadge() {
   if (badge) badge.style.display = 'none';
 }
 
+// تعديل addChatMessage لإضافة عداد الرسائل الجديدة
 const originalAddChatMessage = addChatMessage;
 addChatMessage = function(data) {
   originalAddChatMessage(data);
@@ -337,9 +370,11 @@ addChatMessage = function(data) {
   }
 };
 
+// تحقق من scroll المستخدم
 chatMessages.addEventListener('scroll', () => {
   const threshold = 10;
   const position = chatMessages.scrollTop + chatMessages.clientHeight;
   const height = chatMessages.scrollHeight;
+
   isUserAtBottom = position >= height - threshold;
 });
