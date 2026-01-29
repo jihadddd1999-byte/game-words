@@ -1,5 +1,10 @@
 const socket = io();
 
+// ===== Keep server alive (Render fix) =====
+setInterval(() => {
+  fetch("/ping").catch(() => {});
+}, 4 * 60 * 1000); // كل 4 دقائق
+
 // --- عناصر DOM ---
 const wordDisplay = document.getElementById('current-word');
 const inputAnswer = document.getElementById('input-answer');
@@ -306,8 +311,3 @@ socket.on('wrongAnswer', () => {
 socket.on('enableAnswer', () => {
   canAnswer = true;
 });
-
-// ===== Keep server alive (Render fix) =====
-setInterval(() => {
-  fetch("/ping").catch(() => {});
-}, 4 * 60 * 1000); // كل 4 دقائق
