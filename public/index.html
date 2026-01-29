@@ -31,6 +31,8 @@
       <button id="btn-chat" class="btn-main" aria-expanded="false" aria-controls="chat-container">💬 الشات</button>
       <button id="btn-change-name" class="btn-main">✍️ تغيير الاسم</button>
       <button id="btn-instructions" class="btn-main">📖 تعليمات اللعبة</button>
+      <!-- زر الوضع الليلي الجديد -->
+      <button id="dark-mode-toggle" class="btn-main" aria-label="تفعيل الوضع الليلي">🌙 الوضع الليلي</button>
     </section>
 
     <section id="players-list-container" class="players-list-container" aria-label="قائمة اللاعبين">
@@ -110,5 +112,13 @@
       <button id="close-instructions" type="button">إغلاق</button>
     </dialog>
   </main>
+
+  <!-- كود JS للوضع الليلي -->
+  <script>
+    const darkModeBtn = document.getElementById('dark-mode-toggle');
+    darkModeBtn.addEventListener('click', () => {
+      document.body.classList.toggle('dark-mode');
+    });
+  </script>
 </body>
 </html>
