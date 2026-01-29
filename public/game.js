@@ -311,3 +311,65 @@ socket.on('wrongAnswer', () => {
 socket.on('enableAnswer', () => {
   canAnswer = true;
 });
+
+// === إضافة auto-scroll + badge للرسائل الجديدة مدمجة بالكامل ===
+(function() {
+  let newMessageCount = 0;
+
+  // دوال badge للرسائل الجديدة
+  function showNewMessageBadge(count) {
+    let badge = document.getElementById('newMessageBadge');
+    if (!badge) {
+      badge = document.createElement('div');
+      badge.id = 'newMessageBadge';
+      badge.style.position = 'absolute';
+      badge.style.bottom = '80px'; // فوق input الشات
+      badge.style.right = '20px';
+      badge.style.backgroundColor = '#ff3b30';
+      badge.style.color = '#fff';
+      badge.style.padding = '6px 12px';
+      badge.style.borderRadius = '12px';
+      badge.style.cursor = 'pointer';
+      badge.style.zIndex = '1000';
+      badge.style.fontWeight = '700';
+      badge.addEventListener('click', () => {
+        chatMessages.scrollTop = chatMessages.scrollHeight;
+        newMessageCount = 0;
+        hideNewMessageBadge();
+      });
+      document.body.appendChild(badge);
+    }
+    badge.textContent = `↓ ${count} رسالة جديدة`;
+    badge.style.display = 'block';
+  }
+
+  function hideNewMessageBadge() {
+    const badge = document.getElementById('newMessageBadge');
+    if (badge) badge.style.display = 'none';
+  }
+
+  // متابعة scroll المستخدم لتحديث حالة auto-scroll
+  chatMessages.addEventListener('scroll', () => {
+    const atBottom = chatMessages.scrollTop + chatMessages.clientHeight >= chatMessages.scrollHeight - 10;
+    if (atBottom) {
+      newMessageCount = 0;
+      hideNewMessageBadge();
+    }
+  });
+
+  // تعديل دالة addChatMessage الأصلية لإضافة auto-scroll
+  const originalAddChatMessage = addChatMessage;
+  addChatMessage = function(data) {
+    originalAddChatMessage(data); // استدعاء الوظيفة الأصلية
+
+    const atBottom = chatMessages.scrollTop + chatMessages.clientHeight >= chatMessages.scrollHeight - 10;
+    if (atBottom) {
+      chatMessages.scrollTop = chatMessages.scrollHeight;
+      newMessageCount = 0;
+      hideNewMessageBadge();
+    } else {
+      newMessageCount++;
+      showNewMessageBadge(newMessageCount);
+    }
+  };
+})();
