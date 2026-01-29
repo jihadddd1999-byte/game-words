@@ -102,6 +102,7 @@ header h1 {
   margin-top: 5px;
 }
 
+/* --- مكان عرض زمن الإجابة أسفل خانة الإجابة --- */
 #answers-display {
   background: rgba(0, 40, 70, 0.8);
   border-radius: 12px;
@@ -161,22 +162,14 @@ header h1 {
 
 /* زر الوضع الليلي */
 #dark-mode-toggle {
-  position: fixed;
-  bottom: 20px;
-  left: 20px;
   background: linear-gradient(135deg, #222, #555);
   color: white;
-  border-radius: 50%;
-  width: 48px;
-  height: 48px;
-  display: flex;
-  justify-content: center;
-  align-items: center;
-  font-size: 1.4rem;
+  border-radius: 40px;
+  padding: 10px 16px;
+  font-size: 1.2rem;
   box-shadow: 0 0 12px #00000088;
   cursor: pointer;
   transition: background 0.3s ease;
-  z-index: 10000;
 }
 
 #dark-mode-toggle:hover {
@@ -206,6 +199,21 @@ body.dark-mode #answers-display {
   background: rgba(50, 50, 50, 0.8);
 }
 
+/* الوضع الليلي لأزرار التحكم */
+body.dark-mode .controls .btn-main {
+  background: linear-gradient(135deg, #444, #666);
+  color: #ddd;
+  box-shadow:
+    0 0 12px #00ccff66,
+    inset 0 -3px 6px #0077cc66;
+}
+
+body.dark-mode .controls .btn-main:hover {
+  background: linear-gradient(135deg, #555, #888);
+  transform: scale(1.05);
+}
+
+/* باقي الأكواد الأصلية من ملفك */
 /* --- قائمة اللاعبين --- */
 .players-list-container {
   background: #004070cc;
@@ -236,6 +244,7 @@ body.dark-mode #answers-display {
   transition: color 0.3s ease;
 }
 
+/* ألوان الترتيب */
 #players-list li:nth-child(1) { color: red; }
 #players-list li:nth-child(2) { color: green; }
 #players-list li:nth-child(3) { color: orange; }
@@ -343,7 +352,7 @@ body.dark-mode #answers-display {
 }
 
 /* زر الإرسال */
-#btn-send-chat {
+#send-btn {
   padding: 0 18px;
   border-radius: 14px;
   border: none;
@@ -355,7 +364,7 @@ body.dark-mode #answers-display {
   transition: 0.25s;
 }
 
-#btn-send-chat:hover {
+#send-btn:hover {
   transform: scale(1.05);
   box-shadow: 0 0 12px rgba(0,195,255,0.6);
 }
@@ -471,4 +480,4 @@ dialog#change-name-dialog menu {
   background: linear-gradient(135deg, #00bbff, #00eeff);
   transform: scale(1.05);
   outline: none;
-  }
+                      }
