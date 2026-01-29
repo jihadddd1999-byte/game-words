@@ -86,7 +86,7 @@ header h1 {
   box-shadow:
     inset 0 0 12px #00bbff88,
     0 0 12px #00bbffbb;
-  transition: box-shadow 0.3s ease;
+  transition: box-shadow 0.3s ease, background 0.3s ease, color 0.3s ease;
 }
 
 #input-answer:focus {
@@ -102,7 +102,6 @@ header h1 {
   margin-top: 5px;
 }
 
-/* --- مكان عرض زمن الإجابة أسفل خانة الإجابة --- */
 #answers-display {
   background: rgba(0, 40, 70, 0.8);
   border-radius: 12px;
@@ -115,7 +114,6 @@ header h1 {
   box-shadow: 0 0 10px #00cfff88;
 }
 
-/* --- اختيار لون الاسم --- */
 #name-color-picker {
   margin-top: 8px;
   cursor: pointer;
@@ -126,7 +124,6 @@ header h1 {
   padding: 0;
 }
 
-/* --- أزرار التحكم --- */
 .controls {
   display: flex;
   justify-content: center;
@@ -160,7 +157,6 @@ header h1 {
   outline: none;
 }
 
-/* زر الوضع الليلي */
 #dark-mode-toggle {
   background: linear-gradient(135deg, #222, #555);
   color: white;
@@ -188,6 +184,7 @@ body.dark-mode #app-container {
 
 body.dark-mode .word-box {
   background: linear-gradient(145deg, #111, #222);
+  color: #aaffff;
 }
 
 body.dark-mode #input-answer {
@@ -213,7 +210,7 @@ body.dark-mode .controls .btn-main:hover {
   transform: scale(1.05);
 }
 
-/* --- قائمة اللاعبين --- */
+/* قائمة اللاعبين */
 .players-list-container {
   background: #004070cc;
   border-radius: 14px;
@@ -243,12 +240,11 @@ body.dark-mode .controls .btn-main:hover {
   transition: color 0.3s ease;
 }
 
-/* ألوان الترتيب */
 #players-list li:nth-child(1) { color: red; }
 #players-list li:nth-child(2) { color: green; }
 #players-list li:nth-child(3) { color: orange; }
 
-/* --- الشات --- */
+/* الشات */
 .chat-container {
   position: fixed;
   top: 10%;
@@ -350,25 +346,52 @@ body.dark-mode .controls .btn-main:hover {
   box-shadow: 0 0 10px rgba(0,195,255,0.4);
 }
 
-/* زر الإرسال (معدل) */
+/* زر الإرسال */
 #btn-send-chat {
   padding: 0 18px;
-  border-radius: 40px;
+  border-radius: 14px;
   border: none;
   cursor: pointer;
-  font-size: 1rem;
-  font-weight: 700;
-  color: #002233;
+  font-size: 14px;
+  font-weight: bold;
+  color: #fff;
   background: linear-gradient(135deg, #00c3ff, #0066ff);
-  box-shadow:
-    0 0 15px #00ccffcc,
-    inset 0 -3px 10px #0077ccaa;
-  transition: 0.25s, transform 0.15s ease;
+  transition: 0.25s;
 }
 
 #btn-send-chat:hover {
   transform: scale(1.05);
-  box-shadow: 0 0 18px #00c3ffaa;
+  box-shadow: 0 0 12px rgba(0,195,255,0.6);
+}
+
+/* الوضع الليلي للشات */
+body.dark-mode .chat-container {
+  background: rgba(20, 20, 40, 0.95);
+  box-shadow:
+    0 0 30px #0099ffaa,
+    inset 0 0 40px #0066ff66;
+}
+
+body.dark-mode #chat-input {
+  background: rgba(255, 255, 255, 0.05);
+  color: #aaffff;
+  border: 1px solid rgba(0, 170, 255, 0.3);
+}
+
+body.dark-mode #chat-input:focus {
+  border-color: #00e5ff;
+  box-shadow: 0 0 12px rgba(0,229,255,0.5);
+}
+
+body.dark-mode #btn-send-chat {
+  background: linear-gradient(135deg, #0099ff, #00ccff);
+  color: #002233;
+  box-shadow: 0 0 12px #00ccffaa, inset 0 -3px 6px #0077ccaa;
+}
+
+body.dark-mode #btn-send-chat:hover {
+  background: linear-gradient(135deg, #00bbff, #00eeff);
+  transform: scale(1.05);
 }
 
 /* كلمات خاصة */
@@ -482,4 +505,4 @@ dialog#change-name-dialog menu {
   background: linear-gradient(135deg, #00bbff, #00eeff);
   transform: scale(1.05);
   outline: none;
-  }
+}
