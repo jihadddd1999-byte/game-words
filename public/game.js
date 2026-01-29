@@ -312,10 +312,11 @@ socket.on('enableAnswer', () => {
   canAnswer = true;
 });
 
+let isUserAtBottom = true;
+
 // === تعديل scrollChatToBottom لمنع النزول عند قراءة رسائل قديمة ===
 function scrollChatToBottom() {
-  const atBottom = chatMessages.scrollTop + chatMessages.clientHeight >= chatMessages.scrollHeight - 10;
-  if (atBottom) {
+  if (isUserAtBottom) {
     chatMessages.scrollTop = chatMessages.scrollHeight;
   }
 }
@@ -371,9 +372,9 @@ addChatMessage = function(data) {
 
 // تحقق من scroll المستخدم
 chatMessages.addEventListener('scroll', () => {
-  const atBottom = chatMessages.scrollTop + chatMessages.clientHeight >= chatMessages.scrollHeight - 10;
-  if (atBottom) {
-    newMessageCount = 0;
-    hideNewMessageBadge();
-  }
+  const threshold = 10;
+  const position = chatMessages.scrollTop + chatMessages.clientHeight;
+  const height = chatMessages.scrollHeight;
+
+  isUserAtBottom = position >= height - threshold;
 });
