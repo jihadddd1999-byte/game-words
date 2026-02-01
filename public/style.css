@@ -445,3 +445,54 @@ body.dark-mode .chat-container { background: #1c1f28; box-shadow: none; }
 body.dark-mode #chat-input { background: #2a2f3e; color: #d0d0d0; border: 1px solid #444; box-shadow: none; }
 body.dark-mode #btn-send-chat { background: #3a3f50; color: #d0d0d0; box-shadow: none; }
 body.dark-mode #btn-send-chat:hover { background: #4a5060; transform: none; }
+
+/* إطار اسم كول مع ورد متحرك */
+.kol-wrapper {
+  position: relative;
+  display: inline-block;
+  padding: 2px 8px;
+}
+
+/* اسم كول نفسه (طبيعي) */
+.kol-name {
+  color: #ff69b4;
+  font-weight: 800;
+  text-shadow:
+    0 0 6px #ff9acb,
+    0 0 12px #ff69b4;
+  animation: kolGlow 2s ease-in-out infinite;
+}
+
+/* اللمعة */
+@keyframes kolGlow {
+  0%   { text-shadow: 0 0 6px #ff9acb; }
+  50%  { text-shadow: 0 0 14px #ff69b4; }
+  100% { text-shadow: 0 0 6px #ff9acb; }
+}
+
+/* الورد */
+.kol-wrapper::before,
+.kol-wrapper::after {
+  content: "🌸";
+  position: absolute;
+  font-size: 14px;
+  animation: kolFlowers 3s linear infinite;
+  opacity: 0.9;
+}
+
+.kol-wrapper::before {
+  top: -8px;
+  right: -10px;
+}
+
+.kol-wrapper::after {
+  bottom: -8px;
+  left: -10px;
+  animation-delay: 1.5s;
+}
+
+@keyframes kolFlowers {
+  0%   { transform: rotate(0deg) scale(1); opacity: 0.6; }
+  50%  { transform: rotate(180deg) scale(1.2); opacity: 1; }
+  100% { transform: rotate(360deg) scale(1); opacity: 0.6; }
+        }
