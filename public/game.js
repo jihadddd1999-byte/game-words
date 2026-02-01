@@ -60,10 +60,19 @@ function scrollChatToBottom() {
   chatMessages.scrollTop = chatMessages.scrollHeight;
 }
 
-// تلوين الاسم حسب اللون المخصص أو لون اللاعب
 function colorizeName(name, color = null) {
+
+  // تأثير خاص لاسم كول (فقط بالشات)
+  if (name === "كول") {
+    return `
+      <span class="kol-wrapper">
+        <span class="kol-name">كول</span>
+      </span>
+    `;
+  }
+
   if (!color) {
-    color = specialNameColors[name] || '#00e5ff'; // اللون الافتراضي لو ما محدد
+    color = specialNameColors[name] || '#00e5ff';
   }
   return `<span style="color: ${color}; font-weight: 700;">${name}</span>`;
 }
