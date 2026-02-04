@@ -280,7 +280,8 @@ socket.on('chatMessage', data => {
     name: data.system ? '' : data.name,
     message: data.message,
     system: data.system,
-    color: data.color || null
+    color: data.color || null,
+    time: data.time || ''
   });
 });
 
