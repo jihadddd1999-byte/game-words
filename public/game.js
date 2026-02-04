@@ -101,7 +101,7 @@ function highlightSpecialWords(text) {
 }
 
 // إضافة رسالة جديدة للشات
-function addChatMessage({ name, message, system = false, color = null }) {
+function addChatMessage({ name, message, system = false, color = null, time = '' }) {
   const div = document.createElement('div');
   div.classList.add('chat-message');
 
