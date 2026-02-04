@@ -69,7 +69,20 @@ io.on('connection', socket => {
     socket.disconnect(true);
     return;
   }
+socket.on("chatMessage", (data) => {
+  const now = new Date();
+  const time =
+    now.getHours().toString().padStart(2, "0") +
+    ":" +
+    now.getMinutes().toString().padStart(2, "0");
 
+  io.emit("chatMessage", {
+    name: data.name,
+    message: data.message,
+    time: time
+  });
+  
+});
   const newPlayer = {
     id: socket.id,
     name: `لاعب${Math.floor(Math.random() * 1000)}`,
