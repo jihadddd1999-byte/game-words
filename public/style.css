@@ -515,3 +515,11 @@ body.dark-mode #btn-send-chat:hover { background: #4a5060; transform: none; }
 .chat-text {
   color: #fff;
 }
+
+/* السماح بتحديد ونسخ أي نص بالشات */
+.chat-message,
+.chat-system-message,
+.chat-text,
+.chat-name {
+  user-select: text;
+}
