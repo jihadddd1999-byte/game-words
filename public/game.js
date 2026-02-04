@@ -101,13 +101,30 @@ function highlightSpecialWords(text) {
 }
 
 // إضافة رسالة جديدة للشات
+
 function addChatMessage({ name, message, system = false, color = null, time = '' }) {
   const div = document.createElement('div');
   div.classList.add('chat-message');
 
+  // توليد الوقت إذا ما وصل من السيرفر
+  if (!time) {
+    const now = new Date();
+    const hours = now.getHours().toString().padStart(2, '0');
+    const minutes = now.getMinutes().toString().padStart(2, '0');
+    time = `${hours}:${minutes}`;
+  }
+
   if (system) {
     div.classList.add('chat-system-message');
     div.textContent = message;
+
+    // إضافة الوقت في نهاية الرسالة
+    const timeSpan = document.createElement('span');
+    timeSpan.textContent = ` [${time}]`;
+    timeSpan.style.fontSize = '10px';
+    timeSpan.style.color = '#888';
+    div.appendChild(timeSpan);
+
   } else {
     const nameSpan = document.createElement('span');
     nameSpan.classList.add('chat-name');
@@ -120,11 +137,18 @@ function addChatMessage({ name, message, system = false, color = null, time = ''
     div.appendChild(nameSpan);
     div.appendChild(document.createTextNode(' : '));
     div.appendChild(messageSpan);
+
+    // إضافة الوقت في نهاية الرسالة
+    const timeSpan = document.createElement('span');
+    timeSpan.textContent = ` [${time}]`;
+    timeSpan.style.fontSize = '10px';
+    timeSpan.style.color = '#888';
+    div.appendChild(timeSpan);
   }
 
   chatMessages.appendChild(div);
   scrollChatToBottom();
-
+  
   // إشعار صوتي ووميض في زر الشات إذا الشات مغلق والرسالة ليست نظامية
   if (!chatContainer.classList.contains('open') && !system) {
     btnChat.classList.add('notify');
