@@ -51,7 +51,9 @@ const specialNamesColors = {
 let players = [];
 let currentWord = '';
 let wordTimer = null;
+const typingUsers = new Set();
 
+// ======== دوال مساعدة ========
 function chooseNewWord() {
   const idx = Math.floor(Math.random() * words.length);
   currentWord = words[idx];
@@ -72,26 +74,16 @@ function sendSystemMessage(message) {
   io.emit('chatMessage', { system: true, message });
 }
 
+// ======== اتصال اللاعبين ========
 io.on('connection', socket => {
+  // التحقق من الحد الأقصى للاعبين
   if (players.length >= MAX_PLAYERS) {
     socket.emit('chatMessage', { system: true, message: 'عذراً، عدد اللاعبين وصل للحد الأقصى.' });
     socket.disconnect(true);
     return;
   }
-socket.on("chatMessage", (data) => {
-  const now = new Date();
-  const time =
-    now.getHours().toString().padStart(2, "0") +
-    ":" +
-    now.getMinutes().toString().padStart(2, "0");
 
-  io.emit("chatMessage", {
-    name: data.name,
-    message: data.message,
-    time: time
-  });
-  
-});
+  // إضافة اللاعب الجديد
   const newPlayer = {
     id: socket.id,
     name: `لاعب${Math.floor(Math.random() * 1000)}`,
@@ -106,64 +98,83 @@ socket.on("chatMessage", (data) => {
   sendSystemMessage(`${newPlayer.name} دخل اللعبة.`);
   updatePlayersList();
 
-  if (!currentWord) {
-    chooseNewWord();
-  } else {
+  // إرسال الكلمة الحالية
+  if (!currentWord) chooseNewWord();
+  else {
     socket.emit('newWord', currentWord);
     socket.emit('updateScore', newPlayer.score);
   }
 
+  // ======== تغيير الاسم ========
   socket.on('setName', data => {
     if (!data || typeof data.name !== 'string') return;
 
     const player = players.find(p => p.id === socket.id);
-    if (player) {
-      const oldName = player.name;
-      player.name = data.name.trim().substring(0, 20);
+    if (!player) return;
 
-      if (specialNamesColors[player.name]) {
-        player.color = specialNamesColors[player.name];
-      } else if (data.color && /^#([0-9A-F]{3}){1,2}$/i.test(data.color)) {
-        player.color = data.color;
-      } else {
-        player.color = '#00e5ff';
-      }
+    const oldName = player.name;
+    player.name = data.name.trim().substring(0, 20);
 
-      updatePlayersList();
-      sendSystemMessage(`${oldName} غير اسمه إلى ${player.name}`);
+    if (specialNamesColors[player.name]) player.color = specialNamesColors[player.name];
+    else if (data.color && /^#([0-9A-F]{3}){1,2}$/i.test(data.color)) player.color = data.color;
+    else player.color = '#00e5ff';
 
-      // ⭐ ترحيب خاص لكول
-      if (player.name === "كول") {
-        socket.emit('chatMessage', {
-          system: true,
-          message: "🌸 أهلاً كول! نورتِ اللعبة، وجودك يضيف للمكان جمال 🤍"
-        });
-      }
+    updatePlayersList();
+    sendSystemMessage(`${oldName} غير اسمه إلى ${player.name}`);
+
+    // ترحيب خاص بكول
+    if (player.name === "كول") {
+      socket.emit('chatMessage', {
+        system: true,
+        message: "🌸 أهلاً كول! نورتِ اللعبة، وجودك يضيف للمكان جمال 🤍"
+      });
     }
   });
 
+  // ======== الشات و الرسائل ========
   socket.on('sendMessage', msg => {
     const player = players.find(p => p.id === socket.id);
     if (!player) return;
 
-    if (msg.trim() === 'إيرين') {
+    const message = msg.trim();
+    if (!message) return;
+
+    // كلمة سرية
+    if (message === 'إيرين') {
       socket.emit('chatMessage', { system: true, message: 'تم تفعيل تأثير إيرين على اسمك!' });
       return;
     }
 
     io.emit('chatMessage', {
       name: player.name,
-      message: msg,
+      message,
       system: false,
-      color: player.color || (specialNamesColors[player.name] || null)
+      color: player.color
     });
   });
 
-  socket.on('submitAnswer', data => {
+  // ======== جاري الكتابة ========
+  socket.on('typing', () => {
     const player = players.find(p => p.id === socket.id);
     if (!player) return;
-    if (!data || typeof data.answer !== 'string') return;
 
+    socket.username = player.name;
+    typingUsers.add(player.name);
+    io.emit('typing', [...typingUsers]);
+  });
+
+  socket.on('stopTyping', () => {
+    const player = players.find(p => p.id === socket.id);
+    if (!player) return;
+
+    typingUsers.delete(player.name);
+    io.emit('typing', [...typingUsers]);
+  });
+
+  // ======== إرسال الإجابة ========
+  socket.on('submitAnswer', data => {
+    const player = players.find(p => p.id === socket.id);
+    if (!player || !data || typeof data.answer !== 'string') return;
     if (!player.canAnswer) return;
 
     const answer = data.answer.trim();
@@ -172,22 +183,15 @@ socket.on("chatMessage", (data) => {
     if (answer === currentWord) {
       player.score += POINTS_PER_CORRECT;
       socket.emit('updateScore', player.score);
-      io.emit('chatMessage', {
-        system: true,
-        message: `✅ ${player.name} أجاب بشكل صحيح في ${timeUsed} ثانية!`
-      });
+      io.emit('chatMessage', { system: true, message: `✅ ${player.name} أجاب بشكل صحيح في ${timeUsed} ثانية!` });
       socket.emit('correctAnswer', { timeUsed });
       updatePlayersList();
-
       player.canAnswer = false;
 
       if (player.score >= WINNING_SCORE) {
         player.wins++;
         io.emit('playerWon', { name: player.name, wins: player.wins });
-        players.forEach(p => {
-          p.score = 0;
-          p.canAnswer = true;
-        });
+        players.forEach(p => { p.score = 0; p.canAnswer = true; });
         updatePlayersList();
       }
 
@@ -204,43 +208,43 @@ socket.on("chatMessage", (data) => {
     }
   });
 
+  // ======== طرد اللاعبين ========
   socket.on('kickPlayer', targetId => {
-    if (players.length > 0 && socket.id === players[0].id) {
+    if (players.length > 0 && socket.id === players[0].id) { // الادمن هو أول لاعب
       const index = players.findIndex(p => p.id === targetId);
       if (index !== -1) {
-        const kickedPlayer = players.splice(index, 1)[0];
-        io.to(kickedPlayer.id).emit('kicked');
-        io.emit('chatMessage', { system: true, message: `${kickedPlayer.name} تم طرده من اللعبة.` });
+        const kicked = players.splice(index, 1)[0];
+        io.to(kicked.id).emit('kicked');
+        io.emit('chatMessage', { system: true, message: `${kicked.name} تم طرده من اللعبة.` });
         updatePlayersList();
-        io.sockets.sockets.get(kickedPlayer.id)?.disconnect(true);
+        io.sockets.sockets.get(kicked.id)?.disconnect(true);
       }
     }
   });
-// ===== Render Keep Alive =====
-app.get("/ping", (req, res) => {
-  res.status(200).send("alive");
-});
-  
+
+  // ======== قطع الاتصال ========
   socket.on('disconnect', () => {
+    // إزالة من typingUsers
+    if (socket.username) typingUsers.delete(socket.username);
+    io.emit('typing', [...typingUsers]);
+
     const index = players.findIndex(p => p.id === socket.id);
     if (index !== -1) {
-      const leftPlayer = players.splice(index, 1)[0];
-      sendSystemMessage(`${leftPlayer.name} خرج من اللعبة.`);
+      const left = players.splice(index, 1)[0];
+      sendSystemMessage(`${left.name} خرج من اللعبة.`);
       updatePlayersList();
 
       if (players.length === 0) {
         currentWord = '';
-        if (wordTimer) {
-          clearTimeout(wordTimer);
-          wordTimer = null;
-        }
+        if (wordTimer) { clearTimeout(wordTimer); wordTimer = null; }
       }
     }
   });
 });
 
-const PORT = process.env.PORT || 10000;
+// ======== Render Keep Alive ========
+app.get("/ping", (req, res) => res.status(200).send("alive"));
 
-server.listen(PORT, () => {
-  console.log(`Server running on port ${PORT}`);
-});
+// ======== تشغيل السيرفر ========
+const PORT = process.env.PORT || 10000;
+server.listen(PORT, () => console.log(`Server running on port ${PORT}`));
