@@ -29,8 +29,9 @@ const btnInstructions = document.getElementById('btn-instructions');
 const instructionsDialog = document.getElementById('instructions-dialog');
 const closeInstructionsBtn = document.getElementById('close-instructions');
 
+const btnZizo = document.getElementById('btn-zizo');
+
 const playersList = document.getElementById('players-list');
-const typingIndicator = document.getElementById('typingIndicator'); // عنصر جاري الكتابة
 
 // --- المتغيرات الأساسية ---
 let playerId = null;
@@ -40,9 +41,6 @@ let myScore = 0;
 let playerName = localStorage.getItem('playerName') || `لاعب${Math.floor(Math.random() * 1000)}`;
 let playerColor = localStorage.getItem('playerColor') || '#00e5ff';
 let canAnswer = true; // للتحكم بالسماح بالإجابة
-
-// لتخزين اللاعبين الذين يكتبون حالياً
-let typingPlayers = new Set();
 
 // ألوان خاصة لأسماء محددة (مطابقة للسيرفر)
 const specialNameColors = {
@@ -58,28 +56,23 @@ const specialNameColors = {
 // --- دوال مساعدة ---
 
 // تمرير الشات لأسفل تلقائي
+let isUserAtBottom = true;
 function scrollChatToBottom() {
-  chatMessages.scrollTop = chatMessages.scrollHeight;
+  if (isUserAtBottom) {
+    chatMessages.scrollTop = chatMessages.scrollHeight;
+  }
 }
 
+// تمييز الأسماء بالألوان
 function colorizeName(name, color = null) {
-
-  // تأثير خاص لاسم كول (فقط بالشات)
   if (name === "كول") {
-    return `
-      <span class="kol-wrapper">
-        <span class="kol-name">كول</span>
-      </span>
-    `;
+    return `<span class="kol-wrapper"><span class="kol-name">كول</span></span>`;
   }
-
-  if (!color) {
-    color = specialNameColors[name] || '#00e5ff';
-  }
+  if (!color) color = specialNameColors[name] || '#00e5ff';
   return `<span style="color: ${color}; font-weight: 700;">${name}</span>`;
 }
 
-// تمييز كلمات خاصة في نص الرسائل مع اهتزاز إن لزم الأمر
+// تمييز كلمات خاصة
 function highlightSpecialWords(text) {
   const specialWords = {
     'زيزو': { color: '#ff3366', shake: true },
@@ -88,16 +81,13 @@ function highlightSpecialWords(text) {
     'كول': { color: '#33ccff', shake: false },
     'مصطفى': { color: '#33ff99', shake: false },
   };
-
   let result = text;
-
   Object.keys(specialWords).forEach(word => {
     const { color, shake } = specialWords[word];
     const shakeClass = shake ? ' shake' : '';
     const regex = new RegExp(`\\b${word}\\b`, 'gu');
     result = result.replace(regex, `<span class="special-word${shakeClass}" style="color:${color}">${word}</span>`);
   });
-
   return result;
 }
 
@@ -116,11 +106,6 @@ function addChatMessage({ name, message, system = false, color = null, time = ''
   if (system) {
     div.classList.add('chat-system-message');
     div.textContent = message;
-    const timeSpan = document.createElement('span');
-    timeSpan.textContent = ` [${time}]`;
-    timeSpan.style.fontSize = '10px';
-    timeSpan.style.color = '#888';
-    div.appendChild(timeSpan);
   } else {
     const nameSpan = document.createElement('span');
     nameSpan.classList.add('chat-name');
@@ -133,13 +118,13 @@ function addChatMessage({ name, message, system = false, color = null, time = ''
     div.appendChild(nameSpan);
     div.appendChild(document.createTextNode(' : '));
     div.appendChild(messageSpan);
-
-    const timeSpan = document.createElement('span');
-    timeSpan.textContent = ` [${time}]`;
-    timeSpan.style.fontSize = '10px';
-    timeSpan.style.color = '#888';
-    div.appendChild(timeSpan);
   }
+
+  const timeSpan = document.createElement('span');
+  timeSpan.textContent = ` [${time}]`;
+  timeSpan.style.fontSize = '10px';
+  timeSpan.style.color = '#888';
+  div.appendChild(timeSpan);
 
   chatMessages.appendChild(div);
   scrollChatToBottom();
@@ -150,7 +135,7 @@ function addChatMessage({ name, message, system = false, color = null, time = ''
   }
 }
 
-// دالة تشغيل صوت تنبيه
+// تشغيل صوت تنبيه
 function playNotificationSound() {
   try {
     const audioCtx = new (window.AudioContext || window.webkitAudioContext)();
@@ -163,44 +148,92 @@ function playNotificationSound() {
   } catch (e) {}
 }
 
-// تحديث قائمة اللاعبين بالترتيب مع الألوان
+// تحديث قائمة اللاعبين
 function updatePlayersList(players) {
   playersList.innerHTML = '';
   players.forEach((p, i) => {
     const li = document.createElement('li');
     li.dataset.id = p.id;
-
-    let color = '';
-    if (i === 0) color = 'red';
-    else if (i === 1) color = 'green';
-    else if (i === 2) color = 'orange';
-    else color = '#00d1ff';
-
+    let color = i === 0 ? 'red' : i === 1 ? 'green' : i === 2 ? 'orange' : '#00d1ff';
     li.style.color = color;
     li.innerHTML = `${i + 1}. ${colorizeName(p.name, p.color)} - ${p.score} نقطة`;
     playersList.appendChild(li);
   });
 }
 
-// --- أحداث جاري الكتابة ---
-// إرسال إشعار جاري الكتابة عند الكتابة في input الشات
-chatInput.addEventListener('input', () => {
-  if (chatInput.value.trim() === '') {
-    socket.emit('stopTyping');
+// --- أحداث الشات ---
+btnChat.addEventListener('click', () => {
+  if (chatContainer.classList.contains('open')) {
+    chatContainer.classList.remove('open');
+    btnChat.setAttribute('aria-expanded', 'false');
+    chatContainer.hidden = true;
+    btnChat.classList.remove('notify');
   } else {
-    socket.emit('typing');
+    chatContainer.classList.add('open');
+    btnChat.setAttribute('aria-expanded', 'true');
+    chatContainer.hidden = false;
+    chatInput.focus();
+    btnChat.classList.remove('notify');
   }
 });
 
-// تحديث عرض جاري الكتابة
-function updateTypingIndicator() {
-  if (typingPlayers.size === 0) {
-    typingIndicator.textContent = '';
+btnCloseChat.addEventListener('click', () => {
+  chatContainer.classList.remove('open');
+  btnChat.setAttribute('aria-expanded', 'false');
+  chatContainer.hidden = true;
+  btnChat.classList.remove('notify');
+});
+
+// --- جاري الكتابة داخل الشات فقط ---
+const typingMessages = {};
+chatInput.addEventListener('input', () => {
+  if (chatInput.value.trim() !== '') {
+    socket.emit('typing');
   } else {
-    const names = Array.from(typingPlayers).join(', ');
-    typingIndicator.textContent = `${names} يكتب${typingPlayers.size > 1 ? 'ون' : ''} ...`;
+    socket.emit('stopTyping');
   }
-}
+});
+
+socket.on('typing', typingNames => {
+  // إزالة القديم
+  Object.values(typingMessages).forEach(div => div.remove());
+
+  typingNames.forEach(name => {
+    if (!typingMessages[name]) {
+      const div = document.createElement('div');
+      div.classList.add('chat-message', 'chat-typing');
+      div.textContent = `${name} يكتب...`;
+      chatMessages.appendChild(div);
+      scrollChatToBottom();
+      typingMessages[name] = div;
+    }
+  });
+
+  Object.keys(typingMessages).forEach(name => {
+    if (!typingNames.includes(name)) {
+      typingMessages[name].remove();
+      delete typingMessages[name];
+    }
+  });
+});
+
+// عند إرسال رسالة نحذف جاري الكتابة لهذا اللاعب
+chatForm.addEventListener('submit', e => {
+  e.preventDefault();
+  const msg = chatInput.value.trim();
+  if (!msg) return;
+
+  socket.emit('sendMessage', msg);
+
+  const player = playerName;
+  if (typingMessages[player]) {
+    typingMessages[player].remove();
+    delete typingMessages[player];
+  }
+
+  chatInput.value = '';
+  socket.emit('stopTyping');
+});
 
 // --- الأحداث ---
 
