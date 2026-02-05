@@ -57,7 +57,9 @@ const specialNameColors = {
 
 // تمرير الشات لأسفل تلقائي
 function scrollChatToBottom() {
-  chatMessages.scrollTop = chatMessages.scrollHeight;
+  if (isUserAtBottom) {
+    chatMessages.scrollTop = chatMessages.scrollHeight;
+  }
 }
 
 function colorizeName(name, color = null) {
@@ -92,7 +94,6 @@ function highlightSpecialWords(text) {
   Object.keys(specialWords).forEach(word => {
     const { color, shake } = specialWords[word];
     const shakeClass = shake ? ' shake' : '';
-    // استخدم regex للبحث عن الكلمة فقط كاملة (كلمة منفصلة)
     const regex = new RegExp(`\\b${word}\\b`, 'gu');
     result = result.replace(regex, `<span class="special-word${shakeClass}" style="color:${color}">${word}</span>`);
   });
@@ -101,12 +102,10 @@ function highlightSpecialWords(text) {
 }
 
 // إضافة رسالة جديدة للشات
-
 function addChatMessage({ name, message, system = false, color = null, time = '' }) {
   const div = document.createElement('div');
   div.classList.add('chat-message');
 
-  // توليد الوقت إذا ما وصل من السيرفر
   if (!time) {
     const now = new Date();
     const hours = now.getHours().toString().padStart(2, '0');
@@ -118,7 +117,6 @@ function addChatMessage({ name, message, system = false, color = null, time = ''
     div.classList.add('chat-system-message');
     div.textContent = message;
 
-    // إضافة الوقت في نهاية الرسالة
     const timeSpan = document.createElement('span');
     timeSpan.textContent = ` [${time}]`;
     timeSpan.style.fontSize = '10px';
@@ -138,7 +136,6 @@ function addChatMessage({ name, message, system = false, color = null, time = ''
     div.appendChild(document.createTextNode(' : '));
     div.appendChild(messageSpan);
 
-    // إضافة الوقت في نهاية الرسالة
     const timeSpan = document.createElement('span');
     timeSpan.textContent = ` [${time}]`;
     timeSpan.style.fontSize = '10px';
@@ -149,14 +146,13 @@ function addChatMessage({ name, message, system = false, color = null, time = ''
   chatMessages.appendChild(div);
   scrollChatToBottom();
   
-  // إشعار صوتي ووميض في زر الشات إذا الشات مغلق والرسالة ليست نظامية
   if (!chatContainer.classList.contains('open') && !system) {
     btnChat.classList.add('notify');
     playNotificationSound();
   }
 }
 
-// دالة تشغيل صوت تنبيه (صوت بسيط قصير)
+// دالة تشغيل صوت تنبيه
 function playNotificationSound() {
   try {
     const audioCtx = new (window.AudioContext || window.webkitAudioContext)();
@@ -166,12 +162,10 @@ function playNotificationSound() {
     oscillator.connect(audioCtx.destination);
     oscillator.start();
     oscillator.stop(audioCtx.currentTime + 0.15);
-  } catch (e) {
-    // صوت غير مدعوم أو مشكلة، تجاهل
-  }
+  } catch (e) {}
 }
 
-// تحديث قائمة اللاعبين بالترتيب مع الألوان
+// تحديث قائمة اللاعبين
 function updatePlayersList(players) {
   playersList.innerHTML = '';
   players.forEach((p, i) => {
@@ -179,10 +173,10 @@ function updatePlayersList(players) {
     li.dataset.id = p.id;
 
     let color = '';
-    if (i === 0) color = 'red';       // المركز الأول أحمر
-    else if (i === 1) color = 'green'; // الثاني أخضر
-    else if (i === 2) color = 'orange';// الثالث برتقالي
-    else color = '#00d1ff';            // باقي المراكز أزرق سماوي
+    if (i === 0) color = 'red';
+    else if (i === 1) color = 'green';
+    else if (i === 2) color = 'orange';
+    else color = '#00d1ff';
 
     li.style.color = color;
     li.innerHTML = `${i + 1}. ${colorizeName(p.name, p.color)} - ${p.score} نقطة`;
@@ -190,21 +184,24 @@ function updatePlayersList(players) {
   });
 }
 
-// --- الأحداث ---
+// --- الأحداث الأساسية ---
 
-// فتح/غلق الشات
+// فتح/غلق الشات مع إزالة البادجات عند الفتح
 btnChat.addEventListener('click', () => {
-  if (chatContainer.classList.contains('open')) {
-    chatContainer.classList.remove('open');
-    btnChat.setAttribute('aria-expanded', 'false');
-    chatContainer.hidden = true;
-    btnChat.classList.remove('notify'); // إزالة التنبيه عند الفتح
-  } else {
-    chatContainer.classList.add('open');
-    btnChat.setAttribute('aria-expanded', 'true');
-    chatContainer.hidden = false;
+  const isOpen = chatContainer.classList.toggle('open');
+  btnChat.setAttribute('aria-expanded', isOpen ? 'true' : 'false');
+  chatContainer.hidden = !isOpen;
+
+  if (isOpen) {
     chatInput.focus();
-    btnChat.classList.remove('notify'); // إزالة التنبيه عند الفتح
+    newMessageCount = 0;
+    hideChatBadge();
+    hideTopBadge();
+    isUserAtBottom = true;
+    chatMessages.scrollTop = chatMessages.scrollHeight;
+    btnChat.classList.remove('notify');
+  } else {
+    btnChat.classList.remove('notify');
   }
 });
 
@@ -226,7 +223,7 @@ chatForm.addEventListener('submit', e => {
   chatInput.value = '';
 });
 
-// فتح مودال تغيير الاسم مع تعبئة القيم الحالية
+// فتح مودال تغيير الاسم
 btnChangeName.addEventListener('click', () => {
   inputName.value = playerName;
   inputColor.value = playerColor;
@@ -238,7 +235,7 @@ cancelNameBtn.addEventListener('click', () => {
   changeNameDialog.close();
 });
 
-// تأكيد تغيير الاسم واللون وإرسالها للسيرفر وتخزينها محليًا
+// تأكيد تغيير الاسم واللون
 changeNameForm.addEventListener('submit', e => {
   e.preventDefault();
   const newName = inputName.value.trim();
@@ -253,18 +250,11 @@ changeNameForm.addEventListener('submit', e => {
   changeNameDialog.close();
 });
 
-// فتح نافذة التعليمات
-btnInstructions.addEventListener('click', () => {
-  instructionsDialog.showModal();
-});
+// فتح وإغلاق نافذة التعليمات
+btnInstructions.addEventListener('click', () => instructionsDialog.showModal());
+closeInstructionsBtn.addEventListener('click', () => instructionsDialog.close());
 
-// إغلاق نافذة التعليمات
-closeInstructionsBtn.addEventListener('click', () => {
-  instructionsDialog.close();
-});
-
-
-// إرسال الإجابة عند الضغط على Enter في حقل الإجابة
+// إرسال الإجابة عند الضغط على Enter
 inputAnswer.addEventListener('keydown', e => {
   if (e.key === 'Enter') {
     if (!canAnswer) return;
@@ -287,16 +277,12 @@ socket.on('newWord', word => {
   canAnswer = true;
 });
 
-// استقبال تحديث نقاط اللاعب
+// تحديث النقاط وقائمة اللاعبين
 socket.on('updateScore', score => {
   myScore = score;
   pointsDisplay.textContent = `النقاط: ${myScore}`;
 });
-
-// تحديث قائمة اللاعبين
-socket.on('updatePlayers', players => {
-  updatePlayersList(players);
-});
+socket.on('updatePlayers', players => updatePlayersList(players));
 
 // استقبال رسالة شات
 socket.on('chatMessage', data => {
@@ -309,24 +295,20 @@ socket.on('chatMessage', data => {
   });
 });
 
-// إشعار فوز لاعب
-socket.on('playerWon', data => {
-  alert(`🎉 مبروك ${data.name} لقد فزت باللعبة!`);
-});
-
-// تم طرد اللاعب من السيرفر
+// إشعارات الفوز والطرد
+socket.on('playerWon', data => alert(`🎉 مبروك ${data.name} لقد فزت باللعبة!`));
 socket.on('kicked', () => {
   alert('تم طردك من اللعبة بواسطة الأدمن.');
   window.location.reload();
 });
 
-// استقبال بيانات الترحيب وتعيين معرف اللاعب وإرسال اسمه ولونه للسيرفر
+// استقبال بيانات الترحيب
 socket.on('welcome', data => {
   playerId = data.id;
   socket.emit('setName', { name: playerName, color: playerColor });
 });
 
-// استقبال إجابة صحيحة: عرض زمن الإجابة مؤقتًا ومنع الإجابة مؤقتاً
+// الإجابة الصحيحة والخاطئة
 socket.on('correctAnswer', data => {
   answerTimeDisplay.textContent = `أجبت في: ${data.timeUsed} ثانية`;
   canAnswer = false;
@@ -335,37 +317,16 @@ socket.on('correctAnswer', data => {
     canAnswer = true;
   }, 2000);
 });
-
-// استقبال إجابة خاطئة: إعادة السماح بالإجابة
-socket.on('wrongAnswer', () => {
-  canAnswer = true;
-});
-
-// إعادة تمكين الإجابة (إذا لزم الأمر)
-socket.on('enableAnswer', () => {
-  canAnswer = true;
-});
-
-let isUserAtBottom = true;
-
-// === تعديل scrollChatToBottom لمنع النزول عند قراءة رسائل قديمة ===
-function scrollChatToBottom() {
-  if (isUserAtBottom) {
-    chatMessages.scrollTop = chatMessages.scrollHeight;
-  }
-}
+socket.on('wrongAnswer', () => { canAnswer = true; });
+socket.on('enableAnswer', () => { canAnswer = true; });
 
 // =========================
 //      BADGES SYSTEM
 // =========================
-
-// حالة المستخدم: هل هو بالأسفل تقريبًا بالشات؟
 let isUserAtBottom = true;
-
-// عداد الرسائل الجديدة
 let newMessageCount = 0;
 
-// البادج داخل الشات (بالأسفل)
+// البادج داخل الشات
 function showChatBadge(count) {
   let badge = document.getElementById('newMessageBadge');
   if (!badge) {
@@ -400,11 +361,7 @@ function showChatBadge(count) {
   badge.style.transform = 'scale(1.2)';
   setTimeout(() => { badge.style.transform = 'scale(1)'; }, 200);
 }
-
-function hideChatBadge() {
-  const badge = document.getElementById('newMessageBadge');
-  if (badge) badge.style.display = 'none';
-}
+function hideChatBadge() { const badge = document.getElementById('newMessageBadge'); if (badge) badge.style.display = 'none'; }
 
 // البادج فوق زر الشات
 let topBadge = null;
@@ -430,10 +387,7 @@ function showTopBadge(count) {
   topBadge.textContent = count;
   topBadge.style.display = 'block';
 }
-
-function hideTopBadge() {
-  if (topBadge) topBadge.style.display = 'none';
-}
+function hideTopBadge() { if (topBadge) topBadge.style.display = 'none'; }
 
 // تعديل addChatMessage لإظهار البادجين
 const originalAddChatMessage = addChatMessage;
@@ -473,43 +427,19 @@ chatMessages.addEventListener('scroll', () => {
   }
 });
 
-// فتح/غلق الشات مع إزالة البادجات عند الفتح
-btnChat.addEventListener('click', () => {
-  const isOpen = chatContainer.classList.toggle('open');
-
-  if (isOpen) {
-    chatInput.focus();
-    newMessageCount = 0;
-    hideChatBadge();
-    hideTopBadge();
-    isUserAtBottom = true;
-    chatMessages.scrollTop = chatMessages.scrollHeight;
-  }
-});
-
 // =========================
 //      TYPING SYSTEM
 // =========================
-
-// نخزن رسائل جاري الكتابة لكل لاعب
 const typingMessages = {};
 
-// لما اللاعب يكتب
 chatInput.addEventListener('input', () => {
   const text = chatInput.value.trim();
 
-  if (text.length > 0) {
-    // إرسال جاري الكتابة للسيرفر
-    socket.emit('typing', playerName);
-  } else {
-    // حذف جاري الكتابة لو النص صار فارغ
-    socket.emit('stopTyping', playerName);
-  }
+  if (text.length > 0) socket.emit('typing', playerName);
+  else socket.emit('stopTyping', playerName);
 });
 
-// استقبال اللاعبين الذين يكتبون
 socket.on('typing', typingNames => {
-  // إزالة أي مؤشرات قديمة لم تعد موجودة
   Object.keys(typingMessages).forEach(name => {
     if (!typingNames.includes(name)) {
       typingMessages[name].remove();
@@ -518,7 +448,6 @@ socket.on('typing', typingNames => {
   });
 
   typingNames.forEach(name => {
-    // لا تظهر لنفسك
     if (name === playerName) return;
 
     if (!typingMessages[name]) {
