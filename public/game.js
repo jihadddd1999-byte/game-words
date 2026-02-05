@@ -366,7 +366,7 @@ function showChatBadge(count) {
     badge.style.position = 'absolute';
     badge.style.left = '10px';
     badge.style.bottom = '10px';
-    badge.style.backgroundColor = '#ff3b30';
+    badge.style.backgroundColor = '#FFFF00';
     badge.style.color = '#fff';
     badge.style.padding = '4px 8px';
     badge.style.borderRadius = '12px';
