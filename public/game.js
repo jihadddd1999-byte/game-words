@@ -412,3 +412,78 @@ chatMessages.addEventListener('scroll', () => {
 
   isUserAtBottom = position >= height - threshold;
 });
+// =========================
+//      TYPING SYSTEM
+// =========================
+
+// نخزن رسائل جاري الكتابة لكل لاعب
+const typingMessages = {};
+let typingTimeout = null;
+
+// لما اللاعب يكتب
+chatInput.addEventListener('input', () => {
+
+  if (chatInput.value.trim().length > 0) {
+
+    socket.emit('typing', playerName);
+
+    // كل ما يكتب نعيد المؤقت
+    clearTimeout(typingTimeout);
+    typingTimeout = setTimeout(() => {
+      socket.emit('stopTyping', playerName);
+    }, 1500);
+
+  } else {
+    socket.emit('stopTyping', playerName);
+  }
+
+});
+
+
+// استقبال اللاعبين الذين يكتبون
+socket.on('typing', typingNames => {
+
+  // حذف القديم
+  Object.values(typingMessages).forEach(div => div.remove());
+
+  typingNames.forEach(name => {
+
+    // لا تظهر لنفسك
+    if (name === playerName) return;
+
+    if (!typingMessages[name]) {
+
+      const div = document.createElement('div');
+      div.className = 'chat-message chat-typing';
+      div.dataset.typing = name;
+      div.textContent = name + " يكتب...";
+
+      chatMessages.appendChild(div);
+      scrollChatToBottom();
+
+      typingMessages[name] = div;
+    }
+  });
+
+  // حذف من توقف عن الكتابة
+  Object.keys(typingMessages).forEach(name => {
+    if (!typingNames.includes(name)) {
+      typingMessages[name].remove();
+      delete typingMessages[name];
+    }
+  });
+
+});
+
+
+// عند إرسال رسالة
+chatForm.addEventListener('submit', () => {
+
+  socket.emit('stopTyping', playerName);
+
+  if (typingMessages[playerName]) {
+    typingMessages[playerName].remove();
+    delete typingMessages[playerName];
+  }
+
+});
