@@ -307,7 +307,6 @@ socket.on('chatMessage', data => {
     color: data.color || null,
     time: data.time || ''
   });
-  onNewMessage();
 });
 
 // إشعار فوز لاعب
@@ -459,38 +458,4 @@ socket.on('typing', typingNames => {
       typingMessages[name] = div;
     }
   });
-});
-let unreadCount = 0;
-let chatOpen = false;
-
-// زر الشات
-const chatBtn =
-    document.querySelector('#chatToggle') ||
-    document.querySelector('.chat-btn') ||
-    document.querySelector('.chat-button');
-
-// إنشاء البادج
-const badge = document.createElement('div');
-badge.className = 'chat-badge';
-badge.style.display = 'none';
-chatBtn.style.position = 'relative';
-chatBtn.appendChild(badge);
-
-// استدعِ هذا عند وصول رسالة جديدة
-function onNewMessage() {
-    if (chatOpen) return;
-
-    unreadCount++;
-    badge.textContent = unreadCount;
-    badge.style.display = 'block';
-}
-
-// فتح / إغلاق الشات
-chatBtn.addEventListener('click', () => {
-    chatOpen = !chatOpen;
-
-    if (chatOpen) {
-        unreadCount = 0;
-        badge.style.display = 'none';
-    }
 });
