@@ -459,61 +459,35 @@ socket.on('typing', typingNames => {
     }
   });
 });
+// تثبيت اشعار الرسائل فوق زر الارسال دائما
+function attachBadgeToSend() {
 
-// عند إرسال رسالة
-chatForm.addEventListener('submit', () => {
-  // إرسال أمر لإخفاء جاري الكتابة
-  socket.emit('stopTyping', playerName);
-
-  if (typingMessages[playerName]) {
-    typingMessages[playerName].remove();
-    delete typingMessages[playerName];
-  }
-});
-// نقل إشعار الرسائل الجديدة قرب زر الإرسال
-function moveUnreadBadge() {
-
-    // زر الإرسال
     const sendBtn =
         document.querySelector('#sendBtn') ||
         document.querySelector('.send-btn') ||
         document.querySelector('.send-button') ||
         document.querySelector('button[type="submit"]');
 
-    if (!sendBtn) return;
-
-    // نحاول نلاقي أي إشعار unread
     const badge =
         document.querySelector('.new-messages') ||
         document.querySelector('.unread-badge') ||
         document.querySelector('.notification') ||
         document.querySelector('.notification-button');
 
-    if (!badge) return;
+    if (!sendBtn || !badge) return;
 
-    // نحطه داخل نفس حاوية زر الإرسال
-    const parent = sendBtn.parentElement;
-    parent.style.position = "relative";
+    const rect = sendBtn.getBoundingClientRect();
 
-    badge.style.position = "absolute";
-    badge.style.bottom = "45px";   // فوق الزر
-    badge.style.right = "70px";    // يسار الزر
+    badge.style.position = "fixed";
+    badge.style.left = (rect.left - 55) + "px";   // يسار الزر
+    badge.style.top = (rect.top - 28) + "px";     // فوق الزر
     badge.style.background = "#ffd400";
     badge.style.color = "#000";
     badge.style.padding = "4px 9px";
     badge.style.borderRadius = "8px";
     badge.style.fontWeight = "bold";
-    badge.style.zIndex = "99999";
-
-    parent.appendChild(badge);
+    badge.style.zIndex = "999999";
 }
 
-// يراقب ظهور الإشعار تلقائياً
-const observer = new MutationObserver(() => {
-    moveUnreadBadge();
-});
-
-observer.observe(document.body, { childList: true, subtree: true });
-
-// تشغيل أولي
-setTimeout(moveUnreadBadge, 1000);
+// يراقب الصفحة 60 مرة بالثانية (حتى لو انعاد رسمه)
+setInterval(attachBadgeToSend, 16);
