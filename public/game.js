@@ -307,6 +307,7 @@ socket.on('chatMessage', data => {
     color: data.color || null,
     time: data.time || ''
   });
+  onNewMessage();
 });
 
 // إشعار فوز لاعب
@@ -459,35 +460,37 @@ socket.on('typing', typingNames => {
     }
   });
 });
-// تثبيت اشعار الرسائل فوق زر الارسال دائما
-function attachBadgeToSend() {
+let unreadCount = 0;
+let chatOpen = false;
 
-    const sendBtn =
-        document.querySelector('#sendBtn') ||
-        document.querySelector('.send-btn') ||
-        document.querySelector('.send-button') ||
-        document.querySelector('button[type="submit"]');
+// زر الشات
+const chatBtn =
+    document.querySelector('#chatToggle') ||
+    document.querySelector('.chat-btn') ||
+    document.querySelector('.chat-button');
 
-    const badge =
-        document.querySelector('.new-messages') ||
-        document.querySelector('.unread-badge') ||
-        document.querySelector('.notification') ||
-        document.querySelector('.notification-button');
+// إنشاء البادج
+const badge = document.createElement('div');
+badge.className = 'chat-badge';
+badge.style.display = 'none';
+chatBtn.style.position = 'relative';
+chatBtn.appendChild(badge);
 
-    if (!sendBtn || !badge) return;
+// استدعِ هذا عند وصول رسالة جديدة
+function onNewMessage() {
+    if (chatOpen) return;
 
-    const rect = sendBtn.getBoundingClientRect();
-
-    badge.style.position = "fixed";
-    badge.style.left = (rect.left - 55) + "px";   // يسار الزر
-    badge.style.top = (rect.top - 28) + "px";     // فوق الزر
-    badge.style.background = "#ffd400";
-    badge.style.color = "#000";
-    badge.style.padding = "4px 9px";
-    badge.style.borderRadius = "8px";
-    badge.style.fontWeight = "bold";
-    badge.style.zIndex = "999999";
+    unreadCount++;
+    badge.textContent = unreadCount;
+    badge.style.display = 'block';
 }
 
-// يراقب الصفحة 60 مرة بالثانية (حتى لو انعاد رسمه)
-setInterval(attachBadgeToSend, 16);
+// فتح / إغلاق الشات
+chatBtn.addEventListener('click', () => {
+    chatOpen = !chatOpen;
+
+    if (chatOpen) {
+        unreadCount = 0;
+        badge.style.display = 'none';
+    }
+});
