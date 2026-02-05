@@ -418,54 +418,23 @@ chatMessages.addEventListener('scroll', () => {
 
 // نخزن رسائل جاري الكتابة لكل لاعب
 const typingMessages = {};
-let typingTimeout = null;
 
 // لما اللاعب يكتب
 chatInput.addEventListener('input', () => {
+  const text = chatInput.value.trim();
 
-  if (chatInput.value.trim().length > 0) {
-
+  if (text.length > 0) {
+    // إرسال جاري الكتابة للسيرفر
     socket.emit('typing', playerName);
-
-    // كل ما يكتب نعيد المؤقت
-    clearTimeout(typingTimeout);
-    typingTimeout = setTimeout(() => {
-      socket.emit('stopTyping', playerName);
-    }, 1500);
-
   } else {
+    // حذف جاري الكتابة لو النص صار فارغ
     socket.emit('stopTyping', playerName);
   }
-
 });
-
 
 // استقبال اللاعبين الذين يكتبون
 socket.on('typing', typingNames => {
-
-  // حذف القديم
-  Object.values(typingMessages).forEach(div => div.remove());
-
-  typingNames.forEach(name => {
-
-    // لا تظهر لنفسك
-    if (name === playerName) return;
-
-    if (!typingMessages[name]) {
-
-      const div = document.createElement('div');
-      div.className = 'chat-message chat-typing';
-      div.dataset.typing = name;
-      div.textContent = name + " يكتب...";
-
-      chatMessages.appendChild(div);
-      scrollChatToBottom();
-
-      typingMessages[name] = div;
-    }
-  });
-
-  // حذف من توقف عن الكتابة
+  // إزالة أي مؤشرات قديمة لم تعد موجودة
   Object.keys(typingMessages).forEach(name => {
     if (!typingNames.includes(name)) {
       typingMessages[name].remove();
@@ -473,17 +442,31 @@ socket.on('typing', typingNames => {
     }
   });
 
-});
+  typingNames.forEach(name => {
+    // لا تظهر لنفسك
+    if (name === playerName) return;
 
+    if (!typingMessages[name]) {
+      const div = document.createElement('div');
+      div.className = 'chat-message chat-typing';
+      div.dataset.typing = name;
+      div.textContent = `${name} يكتب...`;
+
+      chatMessages.appendChild(div);
+      scrollChatToBottom();
+
+      typingMessages[name] = div;
+    }
+  });
+});
 
 // عند إرسال رسالة
 chatForm.addEventListener('submit', () => {
-
+  // إرسال أمر لإخفاء جاري الكتابة
   socket.emit('stopTyping', playerName);
 
   if (typingMessages[playerName]) {
     typingMessages[playerName].remove();
     delete typingMessages[playerName];
   }
-
 });
