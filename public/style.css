@@ -529,15 +529,19 @@ body.dark-mode #btn-send-chat:hover { background: #4a5060; transform: none; }
   margin-top: 4px;
   font-style: italic;
 }
-#newMessagesBadge {
-    background-color: yellow !important;
-    color: black !important;
-    position: absolute !important;
-    top: -10px !important;
-    left: -20px !important;
-    font-weight: bold !important;
-    border-radius: 50% !important;
-    padding: 3px 7px !important;
-    font-size: 12px !important;
-    z-index: 1000 !important;
+/* إشعار الرسائل الجديد - أصفر فوق زر الإرسال وعلى يساره */
+.notification-button {
+    position: fixed;          /* يظل ثابت بالنسبة للشاشة */
+    bottom: 90px;             /* فوق زر الإرسال مباشرة - عدّل تلقائي حسب التصميم */
+    right: 120px;             /* على يسار زر الإرسال */
+    background-color: yellow;  /* لون الإشعار أصفر */
+    color: black;             /* نص الإشعار أسود */
+    padding: 4px 10px;        /* مساحة داخلية للإشعار */
+    border-radius: 6px;       /* شكل الإشعار مستدير قليلًا */
+    font-weight: bold;        /* خط عريض */
+    box-shadow: 0 2px 6px rgba(0,0,0,0.3); /* ظل خفيف للإشعار */
+    cursor: pointer;          /* أيقونة اليد عند المرور */
+    z-index: 9999;            /* يضمن ظهوره فوق كل العناصر */
+    text-align: center;
+    min-width: 40px;
 }
