@@ -354,124 +354,64 @@ function scrollChatToBottom() {
     chatMessages.scrollTop = chatMessages.scrollHeight;
   }
 }
-// --- عداد الرسائل الجديدة ---
+
+// === إضافة badge للرسائل الجديدة ===
 let newMessageCount = 0;
 
-// البادج داخل الشات (جنب زر الإرسال)
-function showChatBadge(count) {
+function showNewMessageBadge(count) {
   let badge = document.getElementById('newMessageBadge');
   if (!badge) {
     badge = document.createElement('div');
     badge.id = 'newMessageBadge';
     badge.style.position = 'absolute';
-    badge.style.left = '10px';
-    badge.style.bottom = '10px';
+    badge.style.bottom = '80px';
+    badge.style.right = '20px';
     badge.style.backgroundColor = '#ff3b30';
     badge.style.color = '#fff';
-    badge.style.padding = '4px 8px';
+    badge.style.padding = '6px 12px';
     badge.style.borderRadius = '12px';
-    badge.style.fontWeight = '700';
-    badge.style.fontSize = '12px';
     badge.style.cursor = 'pointer';
-    badge.style.transition = 'transform 0.2s ease';
+    badge.style.zIndex = '1000';
+    badge.style.fontWeight = '700';
     badge.addEventListener('click', () => {
       chatMessages.scrollTop = chatMessages.scrollHeight;
       newMessageCount = 0;
-      hideChatBadge();
+      hideNewMessageBadge();
     });
-
-    chatContainer.style.position = 'relative';
-    chatContainer.appendChild(badge);
+    document.body.appendChild(badge);
   }
-
   badge.textContent = `↓ ${count} رسالة جديدة`;
   badge.style.display = 'block';
-  badge.style.transform = 'scale(1.2)';
-  setTimeout(() => { badge.style.transform = 'scale(1)'; }, 200);
 }
 
-function hideChatBadge() {
+function hideNewMessageBadge() {
   const badge = document.getElementById('newMessageBadge');
   if (badge) badge.style.display = 'none';
 }
 
-// البادج فوق زر الشات نفسه
-let topBadge = null;
-function showTopBadge(count) {
-  if (!topBadge) {
-    topBadge = document.createElement('div');
-    topBadge.id = 'topChatBadge';
-    topBadge.style.position = 'absolute';
-    topBadge.style.top = '0px';
-    topBadge.style.right = '0px';
-    topBadge.style.transform = 'translate(50%,-50%)';
-    topBadge.style.backgroundColor = '#ff3b30';
-    topBadge.style.color = '#fff';
-    topBadge.style.padding = '2px 6px';
-    topBadge.style.borderRadius = '50%';
-    topBadge.style.fontWeight = '700';
-    topBadge.style.fontSize = '12px';
-    topBadge.style.cursor = 'pointer';
-    topBadge.style.zIndex = '1000';
-    btnChat.style.position = 'relative';
-    btnChat.appendChild(topBadge);
-  }
-  topBadge.textContent = count;
-  topBadge.style.display = 'block';
-}
-
-function hideTopBadge() {
-  if (topBadge) topBadge.style.display = 'none';
-}
-
-// --- تعديل addChatMessage لإظهار البادجين ---
+// تعديل addChatMessage لإضافة عداد الرسائل الجديدة
 const originalAddChatMessage = addChatMessage;
 addChatMessage = function(data) {
   originalAddChatMessage(data);
 
   const atBottom = chatMessages.scrollTop + chatMessages.clientHeight >= chatMessages.scrollHeight - 10;
-
   if (atBottom) {
     newMessageCount = 0;
-    hideChatBadge();
-    hideTopBadge();
+    hideNewMessageBadge();
   } else {
     newMessageCount++;
-    showChatBadge(newMessageCount);
-
-    if (!chatContainer.classList.contains('open')) {
-      showTopBadge(newMessageCount);
-    }
+    showNewMessageBadge(newMessageCount);
   }
 };
 
-// --- التحقق من فتح/إغلاق الشات ---
-btnChat.addEventListener('click', () => {
-  const isOpen = chatContainer.classList.toggle('open');
-
-  if (isOpen) {
-    chatInput.focus();
-    newMessageCount = 0;
-    hideChatBadge();
-    hideTopBadge();
-  }
-});
-
-// التحقق من scroll المستخدم داخل الشات
+// تحقق من scroll المستخدم
 chatMessages.addEventListener('scroll', () => {
   const threshold = 10;
   const position = chatMessages.scrollTop + chatMessages.clientHeight;
   const height = chatMessages.scrollHeight;
 
   isUserAtBottom = position >= height - threshold;
-
-  if (isUserAtBottom) {
-    newMessageCount = 0;
-    hideChatBadge();
-    hideTopBadge();
-  }
 });
-
 // =========================
 //      TYPING SYSTEM
 // =========================
@@ -518,4 +458,15 @@ socket.on('typing', typingNames => {
       typingMessages[name] = div;
     }
   });
+});
+
+// عند إرسال رسالة
+chatForm.addEventListener('submit', () => {
+  // إرسال أمر لإخفاء جاري الكتابة
+  socket.emit('stopTyping', playerName);
+
+  if (typingMessages[playerName]) {
+    typingMessages[playerName].remove();
+    delete typingMessages[playerName];
+  }
 });
