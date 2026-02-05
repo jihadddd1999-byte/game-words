@@ -523,3 +523,9 @@ body.dark-mode #btn-send-chat:hover { background: #4a5060; transform: none; }
 .chat-name {
   user-select: text;
 }
+#typingIndicator {
+  font-size: 12px;
+  color: #888;
+  margin-top: 4px;
+  font-style: italic;
+}
