@@ -55,18 +55,29 @@ const specialNameColors = {
 
 // --- دوال مساعدة ---
 
+// تمرير الشات لأسفل تلقائي
 function scrollChatToBottom() {
   chatMessages.scrollTop = chatMessages.scrollHeight;
 }
 
 function colorizeName(name, color = null) {
+
+  // تأثير خاص لاسم كول (فقط بالشات)
   if (name === "كول") {
-    return `<span class="kol-wrapper"><span class="kol-name">كول</span></span>`;
+    return `
+      <span class="kol-wrapper">
+        <span class="kol-name">كول</span>
+      </span>
+    `;
   }
-  if (!color) color = specialNameColors[name] || '#00e5ff';
+
+  if (!color) {
+    color = specialNameColors[name] || '#00e5ff';
+  }
   return `<span style="color: ${color}; font-weight: 700;">${name}</span>`;
 }
 
+// تمييز كلمات خاصة في نص الرسائل مع اهتزاز إن لزم الأمر
 function highlightSpecialWords(text) {
   const specialWords = {
     'زيزو': { color: '#ff3366', shake: true },
@@ -77,9 +88,11 @@ function highlightSpecialWords(text) {
   };
 
   let result = text;
+
   Object.keys(specialWords).forEach(word => {
     const { color, shake } = specialWords[word];
     const shakeClass = shake ? ' shake' : '';
+    // استخدم regex للبحث عن الكلمة فقط كاملة (كلمة منفصلة)
     const regex = new RegExp(`\\b${word}\\b`, 'gu');
     result = result.replace(regex, `<span class="special-word${shakeClass}" style="color:${color}">${word}</span>`);
   });
@@ -87,10 +100,13 @@ function highlightSpecialWords(text) {
   return result;
 }
 
+// إضافة رسالة جديدة للشات
+
 function addChatMessage({ name, message, system = false, color = null, time = '' }) {
   const div = document.createElement('div');
   div.classList.add('chat-message');
 
+  // توليد الوقت إذا ما وصل من السيرفر
   if (!time) {
     const now = new Date();
     const hours = now.getHours().toString().padStart(2, '0');
@@ -101,11 +117,14 @@ function addChatMessage({ name, message, system = false, color = null, time = ''
   if (system) {
     div.classList.add('chat-system-message');
     div.textContent = message;
+
+    // إضافة الوقت في نهاية الرسالة
     const timeSpan = document.createElement('span');
     timeSpan.textContent = ` [${time}]`;
     timeSpan.style.fontSize = '10px';
     timeSpan.style.color = '#888';
     div.appendChild(timeSpan);
+
   } else {
     const nameSpan = document.createElement('span');
     nameSpan.classList.add('chat-name');
@@ -119,6 +138,7 @@ function addChatMessage({ name, message, system = false, color = null, time = ''
     div.appendChild(document.createTextNode(' : '));
     div.appendChild(messageSpan);
 
+    // إضافة الوقت في نهاية الرسالة
     const timeSpan = document.createElement('span');
     timeSpan.textContent = ` [${time}]`;
     timeSpan.style.fontSize = '10px';
@@ -128,13 +148,15 @@ function addChatMessage({ name, message, system = false, color = null, time = ''
 
   chatMessages.appendChild(div);
   scrollChatToBottom();
-
+  
+  // إشعار صوتي ووميض في زر الشات إذا الشات مغلق والرسالة ليست نظامية
   if (!chatContainer.classList.contains('open') && !system) {
     btnChat.classList.add('notify');
     playNotificationSound();
   }
 }
 
+// دالة تشغيل صوت تنبيه (صوت بسيط قصير)
 function playNotificationSound() {
   try {
     const audioCtx = new (window.AudioContext || window.webkitAudioContext)();
@@ -144,9 +166,12 @@ function playNotificationSound() {
     oscillator.connect(audioCtx.destination);
     oscillator.start();
     oscillator.stop(audioCtx.currentTime + 0.15);
-  } catch (e) {}
+  } catch (e) {
+    // صوت غير مدعوم أو مشكلة، تجاهل
+  }
 }
 
+// تحديث قائمة اللاعبين بالترتيب مع الألوان
 function updatePlayersList(players) {
   playersList.innerHTML = '';
   players.forEach((p, i) => {
@@ -154,10 +179,10 @@ function updatePlayersList(players) {
     li.dataset.id = p.id;
 
     let color = '';
-    if (i === 0) color = 'red';
-    else if (i === 1) color = 'green';
-    else if (i === 2) color = 'orange';
-    else color = '#00d1ff';
+    if (i === 0) color = 'gold';       // المركز الأول ذهبي
+    else if (i === 1) color = 'silver'; // الثاني سلفر
+    else if (i === 2) color = 'bronze';// الثالث برونزي 
+    else color = '#00d1ff';            // باقي المراكز أزرق سماوي
 
     li.style.color = color;
     li.innerHTML = `${i + 1}. ${colorizeName(p.name, p.color)} - ${p.score} نقطة`;
@@ -167,42 +192,53 @@ function updatePlayersList(players) {
 
 // --- الأحداث ---
 
+// فتح/غلق الشات
 btnChat.addEventListener('click', () => {
-  const isOpen = chatContainer.classList.toggle('open');
-  chatContainer.hidden = !isOpen;
-
-  if (isOpen) {
+  if (chatContainer.classList.contains('open')) {
+    chatContainer.classList.remove('open');
+    btnChat.setAttribute('aria-expanded', 'false');
+    chatContainer.hidden = true;
+    btnChat.classList.remove('notify'); // إزالة التنبيه عند الفتح
+  } else {
+    chatContainer.classList.add('open');
+    btnChat.setAttribute('aria-expanded', 'true');
+    chatContainer.hidden = false;
     chatInput.focus();
-    newMessageCount = 0;
-    hideChatBadge();
-    hideTopBadge();
-    isUserAtBottom = true;
-    chatMessages.scrollTop = chatMessages.scrollHeight;
+    btnChat.classList.remove('notify'); // إزالة التنبيه عند الفتح
   }
 });
 
+// زر إغلاق الشات
 btnCloseChat.addEventListener('click', () => {
   chatContainer.classList.remove('open');
+  btnChat.setAttribute('aria-expanded', 'false');
   chatContainer.hidden = true;
   btnChat.classList.remove('notify');
 });
 
+// إرسال رسالة شات
 chatForm.addEventListener('submit', e => {
   e.preventDefault();
   const msg = chatInput.value.trim();
   if (!msg) return;
+
   socket.emit('sendMessage', msg);
   chatInput.value = '';
 });
 
+// فتح مودال تغيير الاسم مع تعبئة القيم الحالية
 btnChangeName.addEventListener('click', () => {
   inputName.value = playerName;
   inputColor.value = playerColor;
   changeNameDialog.showModal();
 });
 
-cancelNameBtn.addEventListener('click', () => changeNameDialog.close());
+// إغلاق مودال تغيير الاسم عند إلغاء
+cancelNameBtn.addEventListener('click', () => {
+  changeNameDialog.close();
+});
 
+// تأكيد تغيير الاسم واللون وإرسالها للسيرفر وتخزينها محليًا
 changeNameForm.addEventListener('submit', e => {
   e.preventDefault();
   const newName = inputName.value.trim();
@@ -217,9 +253,18 @@ changeNameForm.addEventListener('submit', e => {
   changeNameDialog.close();
 });
 
-btnInstructions.addEventListener('click', () => instructionsDialog.showModal());
-closeInstructionsBtn.addEventListener('click', () => instructionsDialog.close());
+// فتح نافذة التعليمات
+btnInstructions.addEventListener('click', () => {
+  instructionsDialog.showModal();
+});
 
+// إغلاق نافذة التعليمات
+closeInstructionsBtn.addEventListener('click', () => {
+  instructionsDialog.close();
+});
+
+
+// إرسال الإجابة عند الضغط على Enter في حقل الإجابة
 inputAnswer.addEventListener('keydown', e => {
   if (e.key === 'Enter') {
     if (!canAnswer) return;
@@ -233,7 +278,7 @@ inputAnswer.addEventListener('keydown', e => {
   }
 });
 
-// --- استقبال بيانات السيرفر ---
+// استقبال كلمة جديدة
 socket.on('newWord', word => {
   currentWord = word;
   wordDisplay.textContent = word;
@@ -242,13 +287,18 @@ socket.on('newWord', word => {
   canAnswer = true;
 });
 
+// استقبال تحديث نقاط اللاعب
 socket.on('updateScore', score => {
   myScore = score;
   pointsDisplay.textContent = `النقاط: ${myScore}`;
 });
 
-socket.on('updatePlayers', players => updatePlayersList(players));
+// تحديث قائمة اللاعبين
+socket.on('updatePlayers', players => {
+  updatePlayersList(players);
+});
 
+// استقبال رسالة شات
 socket.on('chatMessage', data => {
   addChatMessage({
     name: data.system ? '' : data.name,
@@ -259,14 +309,24 @@ socket.on('chatMessage', data => {
   });
 });
 
-socket.on('playerWon', data => alert(`🎉 مبروك ${data.name} لقد فزت باللعبة!`));
-socket.on('kicked', () => { alert('تم طردك من اللعبة بواسطة الأدمن.'); window.location.reload(); });
+// إشعار فوز لاعب
+socket.on('playerWon', data => {
+  alert(`🎉 مبروك ${data.name} لقد فزت باللعبة!`);
+});
 
+// تم طرد اللاعب من السيرفر
+socket.on('kicked', () => {
+  alert('تم طردك من اللعبة بواسطة الأدمن.');
+  window.location.reload();
+});
+
+// استقبال بيانات الترحيب وتعيين معرف اللاعب وإرسال اسمه ولونه للسيرفر
 socket.on('welcome', data => {
   playerId = data.id;
   socket.emit('setName', { name: playerName, color: playerColor });
 });
 
+// استقبال إجابة صحيحة: عرض زمن الإجابة مؤقتًا ومنع الإجابة مؤقتاً
 socket.on('correctAnswer', data => {
   answerTimeDisplay.textContent = `أجبت في: ${data.timeUsed} ثانية`;
   canAnswer = false;
@@ -276,118 +336,82 @@ socket.on('correctAnswer', data => {
   }, 2000);
 });
 
-socket.on('wrongAnswer', () => canAnswer = true);
-socket.on('enableAnswer', () => canAnswer = true);
+// استقبال إجابة خاطئة: إعادة السماح بالإجابة
+socket.on('wrongAnswer', () => {
+  canAnswer = true;
+});
 
-// =========================
-//      BADGES SYSTEM
-// =========================
+// إعادة تمكين الإجابة (إذا لزم الأمر)
+socket.on('enableAnswer', () => {
+  canAnswer = true;
+});
+
 let isUserAtBottom = true;
+
+// === تعديل scrollChatToBottom لمنع النزول عند قراءة رسائل قديمة ===
+function scrollChatToBottom() {
+  if (isUserAtBottom) {
+    chatMessages.scrollTop = chatMessages.scrollHeight;
+  }
+}
+
+// === إضافة badge للرسائل الجديدة ===
 let newMessageCount = 0;
 
-function showChatBadge(count) {
+function showNewMessageBadge(count) {
   let badge = document.getElementById('newMessageBadge');
   if (!badge) {
     badge = document.createElement('div');
     badge.id = 'newMessageBadge';
     badge.style.position = 'absolute';
-    badge.style.left = '10px';
-    badge.style.bottom = '10px';
-    badge.style.backgroundColor = '#ffff00';
-    badge.style.color = '#000';
-    badge.style.padding = '4px 8px';
+    badge.style.bottom = '80px';
+    badge.style.right = '20px';
+    badge.style.backgroundColor = '#ff3b30';
+    badge.style.color = '#fff';
+    badge.style.padding = '6px 12px';
     badge.style.borderRadius = '12px';
-    badge.style.fontWeight = '700';
-    badge.style.fontSize = '12px';
     badge.style.cursor = 'pointer';
-    badge.style.transition = 'transform 0.2s ease';
+    badge.style.zIndex = '1000';
+    badge.style.fontWeight = '700';
     badge.addEventListener('click', () => {
-      chatMessages.scrollTo({ top: chatMessages.scrollHeight, behavior: 'smooth' });
+      chatMessages.scrollTop = chatMessages.scrollHeight;
       newMessageCount = 0;
-      hideChatBadge();
-      hideTopBadge();
-      isUserAtBottom = true;
+      hideNewMessageBadge();
     });
-    chatContainer.style.position = 'relative';
-    chatContainer.appendChild(badge);
+    document.body.appendChild(badge);
   }
   badge.textContent = `↓ ${count} رسالة جديدة`;
   badge.style.display = 'block';
-  badge.style.transform = 'scale(1.2)';
-  setTimeout(() => { badge.style.transform = 'scale(1)'; }, 200);
 }
 
-function hideChatBadge() {
+function hideNewMessageBadge() {
   const badge = document.getElementById('newMessageBadge');
   if (badge) badge.style.display = 'none';
 }
 
-let topBadge = null;
-function showTopBadge(count) {
-  if (!topBadge) {
-    topBadge = document.createElement('div');
-    topBadge.id = 'topChatBadge';
-    topBadge.style.position = 'absolute';
-    topBadge.style.top = '0px';
-    topBadge.style.right = '0px';
-    topBadge.style.transform = 'translate(50%,-50%)';
-    topBadge.style.backgroundColor = '#FFFF00';
-    topBadge.style.color = '#fff';
-    topBadge.style.padding = '2px 6px';
-    topBadge.style.borderRadius = '50%';
-    topBadge.style.fontWeight = '700';
-    topBadge.style.fontSize = '12px';
-    topBadge.style.cursor = 'pointer';
-    topBadge.style.zIndex = '1000';
-    btnChat.style.position = 'relative';
-    btnChat.appendChild(topBadge);
-  }
-  topBadge.textContent = count;
-  topBadge.style.display = 'block';
-}
-
-function hideTopBadge() {
-  if (topBadge) topBadge.style.display = 'none';
-}
-
-// تعديل addChatMessage لإظهار البادجين
+// تعديل addChatMessage لإضافة عداد الرسائل الجديدة
 const originalAddChatMessage = addChatMessage;
 addChatMessage = function(data) {
   originalAddChatMessage(data);
 
   const atBottom = chatMessages.scrollTop + chatMessages.clientHeight >= chatMessages.scrollHeight - 10;
-
   if (atBottom) {
     newMessageCount = 0;
-    hideChatBadge();
-    hideTopBadge();
-    isUserAtBottom = true;
+    hideNewMessageBadge();
   } else {
     newMessageCount++;
-    showChatBadge(newMessageCount);
-
-    if (!chatContainer.classList.contains('open')) {
-      showTopBadge(newMessageCount);
-    }
-    isUserAtBottom = false;
+    showNewMessageBadge(newMessageCount);
   }
 };
 
-// التحقق من scroll المستخدم داخل الشات
+// تحقق من scroll المستخدم
 chatMessages.addEventListener('scroll', () => {
   const threshold = 10;
   const position = chatMessages.scrollTop + chatMessages.clientHeight;
   const height = chatMessages.scrollHeight;
 
   isUserAtBottom = position >= height - threshold;
-
-  if (isUserAtBottom) {
-    newMessageCount = 0;
-    hideChatBadge();
-    hideTopBadge();
-  }
 });
-
 // =========================
 //      TYPING SYSTEM
 // =========================
