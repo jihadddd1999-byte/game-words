@@ -529,19 +529,27 @@ body.dark-mode #btn-send-chat:hover { background: #4a5060; transform: none; }
   margin-top: 4px;
   font-style: italic;
 }
-/* إشعار الرسائل الجديد - أصفر فوق زر الإرسال وعلى يساره */
+/* خلي حاوية ادخال الرسالة مرجع للموقع */
+.chat-input-area,
+.chat-input,
+.message-input-wrapper {
+    position: relative !important;
+}
+
+/* نقل إشعار الرسائل الجديدة */
+.new-messages,
+.new-message,
+.unread-badge,
+.notification,
 .notification-button {
-    position: fixed;          /* يظل ثابت بالنسبة للشاشة */
-    bottom: 90px;             /* فوق زر الإرسال مباشرة - عدّل تلقائي حسب التصميم */
-    right: 120px;             /* على يسار زر الإرسال */
-    background-color: yellow;  /* لون الإشعار أصفر */
-    color: black;             /* نص الإشعار أسود */
-    padding: 4px 10px;        /* مساحة داخلية للإشعار */
-    border-radius: 6px;       /* شكل الإشعار مستدير قليلًا */
-    font-weight: bold;        /* خط عريض */
-    box-shadow: 0 2px 6px rgba(0,0,0,0.3); /* ظل خفيف للإشعار */
-    cursor: pointer;          /* أيقونة اليد عند المرور */
-    z-index: 9999;            /* يضمن ظهوره فوق كل العناصر */
-    text-align: center;
-    min-width: 40px;
+    position: absolute !important;
+    bottom: 55px !important;   /* فوق زر الارسال */
+    right: 70px !important;    /* يسار زر الارسال */
+    background: #ffd400 !important; /* اصفر */
+    color: #000 !important;
+    border-radius: 8px !important;
+    padding: 4px 9px !important;
+    font-weight: bold !important;
+    z-index: 99999 !important;
+    box-shadow: 0 2px 8px rgba(0,0,0,.35) !important;
 }
