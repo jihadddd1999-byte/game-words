@@ -9,8 +9,8 @@ const io = new Server(server);
 app.use(express.static('public'));
 
 const MAX_PLAYERS = 30;
-const WINNING_SCORE = 100;
-const POINTS_PER_CORRECT = 10;
+const WINNING_SCORE = 1000;
+const POINTS_PER_CORRECT = 1;
 
 const words = [
 "قلب","رمح","عشب","صندوق","حبل","اشارة مرور","ثعلب","يضحك","قنفذ","علم","بقرة","كلب","شبح","قنبلة","نعامة","سجق","ديك","قطايف","روبوت","بطة",
