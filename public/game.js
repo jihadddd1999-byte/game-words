@@ -354,10 +354,18 @@ function scrollChatToBottom() {
     chatMessages.scrollTop = chatMessages.scrollHeight;
   }
 }
-// --- عداد الرسائل الجديدة ---
+
+// =========================
+//      BADGES SYSTEM
+// =========================
+
+// حالة المستخدم: هل هو بالأسفل تقريبًا بالشات؟
+let isUserAtBottom = true;
+
+// عداد الرسائل الجديدة
 let newMessageCount = 0;
 
-// البادج داخل الشات (جنب زر الإرسال)
+// البادج داخل الشات (بالأسفل)
 function showChatBadge(count) {
   let badge = document.getElementById('newMessageBadge');
   if (!badge) {
@@ -366,18 +374,21 @@ function showChatBadge(count) {
     badge.style.position = 'absolute';
     badge.style.left = '10px';
     badge.style.bottom = '10px';
-    badge.style.backgroundColor = '#ff3b30';
-    badge.style.color = '#fff';
+    badge.style.backgroundColor = '#ffff00';
+    badge.style.color = '#000';
     badge.style.padding = '4px 8px';
     badge.style.borderRadius = '12px';
     badge.style.fontWeight = '700';
     badge.style.fontSize = '12px';
     badge.style.cursor = 'pointer';
     badge.style.transition = 'transform 0.2s ease';
+
     badge.addEventListener('click', () => {
       chatMessages.scrollTop = chatMessages.scrollHeight;
       newMessageCount = 0;
       hideChatBadge();
+      hideTopBadge();
+      isUserAtBottom = true;
     });
 
     chatContainer.style.position = 'relative';
@@ -395,7 +406,7 @@ function hideChatBadge() {
   if (badge) badge.style.display = 'none';
 }
 
-// البادج فوق زر الشات نفسه
+// البادج فوق زر الشات
 let topBadge = null;
 function showTopBadge(count) {
   if (!topBadge) {
@@ -405,7 +416,7 @@ function showTopBadge(count) {
     topBadge.style.top = '0px';
     topBadge.style.right = '0px';
     topBadge.style.transform = 'translate(50%,-50%)';
-    topBadge.style.backgroundColor = '#ff3b30';
+    topBadge.style.backgroundColor = '#FFFF00';
     topBadge.style.color = '#fff';
     topBadge.style.padding = '2px 6px';
     topBadge.style.borderRadius = '50%';
@@ -424,7 +435,7 @@ function hideTopBadge() {
   if (topBadge) topBadge.style.display = 'none';
 }
 
-// --- تعديل addChatMessage لإظهار البادجين ---
+// تعديل addChatMessage لإظهار البادجين
 const originalAddChatMessage = addChatMessage;
 addChatMessage = function(data) {
   originalAddChatMessage(data);
@@ -435,6 +446,7 @@ addChatMessage = function(data) {
     newMessageCount = 0;
     hideChatBadge();
     hideTopBadge();
+    isUserAtBottom = true;
   } else {
     newMessageCount++;
     showChatBadge(newMessageCount);
@@ -442,20 +454,9 @@ addChatMessage = function(data) {
     if (!chatContainer.classList.contains('open')) {
       showTopBadge(newMessageCount);
     }
+    isUserAtBottom = false;
   }
 };
-
-// --- التحقق من فتح/إغلاق الشات ---
-btnChat.addEventListener('click', () => {
-  const isOpen = chatContainer.classList.toggle('open');
-
-  if (isOpen) {
-    chatInput.focus();
-    newMessageCount = 0;
-    hideChatBadge();
-    hideTopBadge();
-  }
-});
 
 // التحقق من scroll المستخدم داخل الشات
 chatMessages.addEventListener('scroll', () => {
@@ -469,6 +470,20 @@ chatMessages.addEventListener('scroll', () => {
     newMessageCount = 0;
     hideChatBadge();
     hideTopBadge();
+  }
+});
+
+// فتح/غلق الشات مع إزالة البادجات عند الفتح
+btnChat.addEventListener('click', () => {
+  const isOpen = chatContainer.classList.toggle('open');
+
+  if (isOpen) {
+    chatInput.focus();
+    newMessageCount = 0;
+    hideChatBadge();
+    hideTopBadge();
+    isUserAtBottom = true;
+    chatMessages.scrollTop = chatMessages.scrollHeight;
   }
 });
 
