@@ -470,3 +470,50 @@ chatForm.addEventListener('submit', () => {
     delete typingMessages[playerName];
   }
 });
+// نقل إشعار الرسائل الجديدة قرب زر الإرسال
+function moveUnreadBadge() {
+
+    // زر الإرسال
+    const sendBtn =
+        document.querySelector('#sendBtn') ||
+        document.querySelector('.send-btn') ||
+        document.querySelector('.send-button') ||
+        document.querySelector('button[type="submit"]');
+
+    if (!sendBtn) return;
+
+    // نحاول نلاقي أي إشعار unread
+    const badge =
+        document.querySelector('.new-messages') ||
+        document.querySelector('.unread-badge') ||
+        document.querySelector('.notification') ||
+        document.querySelector('.notification-button');
+
+    if (!badge) return;
+
+    // نحطه داخل نفس حاوية زر الإرسال
+    const parent = sendBtn.parentElement;
+    parent.style.position = "relative";
+
+    badge.style.position = "absolute";
+    badge.style.bottom = "45px";   // فوق الزر
+    badge.style.right = "70px";    // يسار الزر
+    badge.style.background = "#ffd400";
+    badge.style.color = "#000";
+    badge.style.padding = "4px 9px";
+    badge.style.borderRadius = "8px";
+    badge.style.fontWeight = "bold";
+    badge.style.zIndex = "99999";
+
+    parent.appendChild(badge);
+}
+
+// يراقب ظهور الإشعار تلقائياً
+const observer = new MutationObserver(() => {
+    moveUnreadBadge();
+});
+
+observer.observe(document.body, { childList: true, subtree: true });
+
+// تشغيل أولي
+setTimeout(moveUnreadBadge, 1000);
