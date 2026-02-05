@@ -31,7 +31,7 @@ const words = [
 "عظم","فطيرة","دفتر","ببغاء","جمل","برتقال","حمار وحشي","زبالة","الماس","غرفة","ستيك","حلاوة","نقانق","دودة","ملعب","ممثل","زيت",
 "مدرسة","الكعبة","مكياج","بسكوت","سمبوسة","شاحن","جبن","شمام","مذيع","صحراء","فرشاة","حمام","بومة","موز","صبار","وحش","جاكيت",
 "جوافة","بطارية","شمعة","ليمون","جوهرة","معدة","شاطئ","باندا","دونات","فراشة","ارنب","اسد","سفينة","عصير","ولاعة","مكرونة","ثوب",
-"قدر","تبولة","بطيخ","سوشي","صاروخ","جالس","سماعة","شرطي","مكيف","قطة مقلوبة","مقص","دجاج مشوي","فرس النهر","طبل","يركض",
+"قدر","تبولة","بطيخ","سوشي","صاروخ","جالس","سماعة","شرطي","مكيف","قطة","مقلوبة","مقص","دجاج مشوي","فرس النهر","طبل","يركض",
 "مكنسة","حاجب","اعصار","كوخ","مطر","فهد","قبعة","ثعبان","رسام","حمص","يد","عنكبوت","برياني","سحلية","لحم","وردة","مطعم","جرس",
 "سبورة","بطن","قارورة","سينما","مهندس","عطر","ورق عنب","معلم","ممرضة","كريب","قطار","كباب","طفل","شلال","سلطة","مشط","خلاط",
 "نوم","شتاء","ثلاجة","كهربائي","كأس","جامعة","برج","تفاح","جمجمة","كرسي","بطاطس","كيك","صابون","هرم","ساعة يد","كوكب","لابتوب",
@@ -51,6 +51,7 @@ const specialNamesColors = {
 let players = [];
 let currentWord = '';
 let wordTimer = null;
+let typingUsers = new Set();
 
 function chooseNewWord() {
   const idx = Math.floor(Math.random() * words.length);
@@ -72,12 +73,74 @@ function sendSystemMessage(message) {
   io.emit('chatMessage', { system: true, message });
 }
 
+const typingUsers = new Set();
+
 io.on('connection', socket => {
+
+  // التحقق من الحد الأقصى للاعبين
   if (players.length >= MAX_PLAYERS) {
     socket.emit('chatMessage', { system: true, message: 'عذراً، عدد اللاعبين وصل للحد الأقصى.' });
     socket.disconnect(true);
     return;
   }
+
+  // إضافة اللاعب الجديد
+  const newPlayer = {
+    id: socket.id,
+    name: `لاعب${Math.floor(Math.random() * 1000)}`,
+    score: 0,
+    wins: 0,
+    canAnswer: true,
+    color: '#00e5ff'
+  };
+  players.push(newPlayer);
+
+  socket.emit('welcome', { id: socket.id });
+  sendSystemMessage(`${newPlayer.name} دخل اللعبة.`);
+  updatePlayersList();
+
+  if (!currentWord) {
+    chooseNewWord();
+  } else {
+    socket.emit('newWord', currentWord);
+    socket.emit('updateScore', newPlayer.score);
+  }
+
+  // ================== جاري الكتابة ==================
+  socket.on("typing", name => {
+    socket.username = name;
+    typingUsers.add(name);
+    io.emit("typing", [...typingUsers]);
+  });
+
+  socket.on("stopTyping", name => {
+    typingUsers.delete(name);
+    io.emit("typing", [...typingUsers]);
+  });
+
+  // ================== قطع الاتصال ==================
+  socket.on("disconnect", () => {
+    if (socket.username) typingUsers.delete(socket.username);
+    io.emit("typing", [...typingUsers]);
+
+    const index = players.findIndex(p => p.id === socket.id);
+    if (index !== -1) {
+      const leftPlayer = players.splice(index, 1)[0];
+      sendSystemMessage(`${leftPlayer.name} خرج من اللعبة.`);
+      updatePlayersList();
+
+      if (players.length === 0) {
+        currentWord = '';
+        if (wordTimer) {
+          clearTimeout(wordTimer);
+          wordTimer = null;
+        }
+      }
+    }
+  });
+
+});
+
 socket.on("chatMessage", (data) => {
   const now = new Date();
   const time =
