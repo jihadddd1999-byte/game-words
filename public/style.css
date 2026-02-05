@@ -529,16 +529,15 @@ body.dark-mode #btn-send-chat:hover { background: #4a5060; transform: none; }
   margin-top: 4px;
   font-style: italic;
 }
-/* تحريك الإشعار الأصفر فوق خانة الاسم */
-.notification-button { /* غيّر هذا حسب كلاس الزر عندك */
-    position: absolute; /* يسمح بتحريك الإشعار فوق أي عنصر */
-    top: -25px;        /* ضبط المسافة فوق مربع الاسم */
-    left: 10px;        /* ضبط المسافة من اليسار حسب التصميم */
-    background-color: yellow; /* تغيير اللون لأصفر */
-    color: black;      /* لون النص أسود عشان يكون واضح */
-    padding: 2px 6px;  /* مسافة داخل الإشعار */
-    border-radius: 5px; /* شكل الإشعار مستدير قليلًا */
-    font-weight: bold;
-    cursor: pointer;   /* يظهر علامة اليد عند المرور */
-    z-index: 1000;     /* يضمن ظهوره فوق العناصر الأخرى */
-  }
+#newMessagesBadge {
+    background-color: yellow !important;
+    color: black !important;
+    position: absolute !important;
+    top: -10px !important;
+    left: -20px !important;
+    font-weight: bold !important;
+    border-radius: 50% !important;
+    padding: 3px 7px !important;
+    font-size: 12px !important;
+    z-index: 1000 !important;
+}
