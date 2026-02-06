@@ -370,7 +370,7 @@ function showNewMessageBadge(count) {
     badge.style.padding = '6px 12px';
     badge.style.borderRadius = '12px';
     badge.style.cursor = 'pointer';
-    badge.style.zIndex = '2000';
+    badge.style.zIndex = '10000';
     badge.style.fontWeight = '700';
     badge.addEventListener('click', () => {
       chatMessages.scrollTop = chatMessages.scrollHeight;
