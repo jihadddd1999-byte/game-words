@@ -554,88 +554,59 @@ body.dark-mode #btn-send-chat:hover { background: #4a5060; transform: none; }
     box-shadow: 0 2px 8px rgba(0,0,0,.35) !important;
 }
 /* ===== REDO ENERGY EFFECT ===== */
-
-.redo-wrapper{
+.redo-wrapper {
   position: relative;
   display: inline-block;
-  font-weight: 900;
+  font-weight: bold;
+  font-size: 22px;
+  color: #5b2cff; /* بنفسجي غامق */
+  text-transform: uppercase;
   letter-spacing: 2px;
+  animation: redo-glow 4s infinite;
 }
 
-/* النص نفسه */
-.redo-text{
+.redo-text {
   position: relative;
   z-index: 2;
-  color: #bff6ff;
-  animation: redoGlow 3s infinite alternate;
-  text-shadow:
-    0 0 6px #6fe6ff,
-    0 0 14px #46d9ff;
 }
 
-/* هالة الطاقة */
-.redo-energy{
+.redo-text span.o-letter {
+  position: relative;
+  display: inline-block;
+  animation: redo-o-glow 4s infinite;
+}
+
+/* Aura حول الاسم */
+.redo-energy {
   position: absolute;
-  inset: -4px -8px;
-  border-radius: 6px;
+  top: -10%;
+  left: -10%;
+  width: 120%;
+  height: 120%;
+  background: radial-gradient(circle, rgba(91,44,255,0.3) 0%, rgba(91,44,255,0) 70%);
+  border-radius: 50%;
   z-index: 1;
-  filter: blur(6px);
-  opacity: .7;
-  background: linear-gradient(
-      120deg,
-      transparent 0%,
-      #6fe6ff 20%,
-      transparent 40%,
-      #00f0ff 60%,
-      transparent 80%
-  );
-  animation: energyMove 2.4s linear infinite;
+  pointer-events: none;
+  animation: redo-energy-glow 4s infinite;
 }
 
-/* حركة الطاقة حول الاسم */
-@keyframes energyMove{
-  0%{
-    background-position: -200px 0;
-    opacity:.2;
-  }
-  25%{
-    opacity:.8;
-  }
-  50%{
-    background-position: 200px 0;
-    opacity:.4;
-  }
-  75%{
-    opacity:1;
-  }
-  100%{
-    background-position: 400px 0;
-    opacity:.3;
-  }
+/* تأثير وميض الاسم */
+@keyframes redo-glow {
+  0%, 60%, 100% { color: #5b2cff; text-shadow: 0 0 5px #5b2cff; }
+  70% { color: #ffffff; text-shadow: 0 0 15px #5b2cff, 0 0 30px #8c44ff; }
+  80% { color: #5b2cff; text-shadow: 0 0 5px #5b2cff; }
 }
 
-/* نبض الإضاءة */
-@keyframes redoGlow{
-  0%{
-    color:#4fdcff;
-    text-shadow:none;
-  }
-  20%{
-    color:#cfffff;
-    text-shadow:
-      0 0 12px #7af2ff,
-      0 0 28px #46d9ff;
-  }
-  40%{
-    color:#7eeeff;
-  }
-  60%{
-    color:#ffffff;
-    text-shadow:
-      0 0 20px #9af6ff,
-      0 0 50px #00eaff;
-  }
-  100%{
-    color:#a6f3ff;
-  }
+/* تأثير وميض الـ Aura */
+@keyframes redo-energy-glow {
+  0%, 60%, 100% { transform: scale(1); opacity: 0.3; }
+  70% { transform: scale(1.2); opacity: 0.8; }
+  80% { transform: scale(1); opacity: 0.3; }
+}
+
+/* تأثير خاص لحرف الـ O */
+@keyframes redo-o-glow {
+  0%, 60%, 100% { text-shadow: 0 0 5px #5b2cff; }
+  70% { text-shadow: 0 0 20px #ffffff, 0 0 40px #8c44ff; }
+  80% { text-shadow: 0 0 5px #5b2cff; }
 }
