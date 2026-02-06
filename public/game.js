@@ -363,9 +363,9 @@ function showNewMessageBadge(count) {
     badge = document.createElement('div');
     badge.id = 'newMessageBadge';
     badge.style.position = 'absolute';
-    badge.style.bottom = '80px';
+    badge.style.bottom = '120px';
     badge.style.right = '20px';
-    badge.style.backgroundColor = '#ff3b30';
+    badge.style.backgroundColor = '#ffff00';
     badge.style.color = '#fff';
     badge.style.padding = '6px 12px';
     badge.style.borderRadius = '12px';
