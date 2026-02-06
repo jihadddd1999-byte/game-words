@@ -553,3 +553,89 @@ body.dark-mode #btn-send-chat:hover { background: #4a5060; transform: none; }
     z-index: 99999 !important;
     box-shadow: 0 2px 8px rgba(0,0,0,.35) !important;
 }
+/* ===== REDO ENERGY EFFECT ===== */
+
+.redo-wrapper{
+  position: relative;
+  display: inline-block;
+  font-weight: 900;
+  letter-spacing: 2px;
+}
+
+/* النص نفسه */
+.redo-text{
+  position: relative;
+  z-index: 2;
+  color: #bff6ff;
+  animation: redoGlow 3s infinite alternate;
+  text-shadow:
+    0 0 6px #6fe6ff,
+    0 0 14px #46d9ff;
+}
+
+/* هالة الطاقة */
+.redo-energy{
+  position: absolute;
+  inset: -4px -8px;
+  border-radius: 6px;
+  z-index: 1;
+  filter: blur(6px);
+  opacity: .7;
+  background: linear-gradient(
+      120deg,
+      transparent 0%,
+      #6fe6ff 20%,
+      transparent 40%,
+      #00f0ff 60%,
+      transparent 80%
+  );
+  animation: energyMove 2.4s linear infinite;
+}
+
+/* حركة الطاقة حول الاسم */
+@keyframes energyMove{
+  0%{
+    background-position: -200px 0;
+    opacity:.2;
+  }
+  25%{
+    opacity:.8;
+  }
+  50%{
+    background-position: 200px 0;
+    opacity:.4;
+  }
+  75%{
+    opacity:1;
+  }
+  100%{
+    background-position: 400px 0;
+    opacity:.3;
+  }
+}
+
+/* نبض الإضاءة */
+@keyframes redoGlow{
+  0%{
+    color:#4fdcff;
+    text-shadow:none;
+  }
+  20%{
+    color:#cfffff;
+    text-shadow:
+      0 0 12px #7af2ff,
+      0 0 28px #46d9ff;
+  }
+  40%{
+    color:#7eeeff;
+  }
+  60%{
+    color:#ffffff;
+    text-shadow:
+      0 0 20px #9af6ff,
+      0 0 50px #00eaff;
+  }
+  100%{
+    color:#a6f3ff;
+  }
+}
