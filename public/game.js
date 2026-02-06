@@ -70,19 +70,6 @@ function colorizeName(name, color = null) {
       </span>
     `;
   }
-  
-  // تأثير REDO //
-  if (name === "REDO") {
-    return `
-      <span class="redo-wrapper">
-        <span class="redo-energy"></span>
-        <span class="redo-text">
-          R E D <span class="o-letter">O</span>
-        </span>
-      </span>
-    `;
-  }
-  
   if (!color) {
     color = specialNameColors[name] || '#00e5ff';
   }
