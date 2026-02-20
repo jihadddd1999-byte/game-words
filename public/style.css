@@ -5,11 +5,16 @@
   box-sizing: border-box;
 }
 
+html, body {
+  height: 100%;
+  position: relative;
+}
+
 body {
   margin: 0;
   font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
-  background: linear-gradient(135deg, #0a1426, #1f3a93);
-  color: #e0f7fa;
+  background: linear-gradient(135deg, #3e2f1c, #6b4e1c); /* بني رمضاني */
+  color: #fff2c2; /* ذهبي فاتح */
   direction: rtl;
   min-height: 100vh;
   display: flex;
@@ -22,15 +27,15 @@ body {
 }
 
 #app-container {
-  background: rgba(8, 23, 43, 0.85);
+  background: rgba(75, 50, 20, 0.85);
   border-radius: 18px;
   padding: 25px 20px;
   width: 100%;
   max-width: 480px;
   box-shadow:
-    0 0 10px #0077ff88,
-    0 0 30px #00bfff66,
-    0 0 60px #00eaff33;
+    0 0 10px #d4af3788,
+    0 0 30px #ffd70066,
+    0 0 60px #ffea0033;
   user-select: none;
 }
 
@@ -39,11 +44,11 @@ header h1 {
   font-size: 2.4rem;
   text-align: center;
   margin-bottom: 25px;
-  color: #00e5ff;
+  color: #ffd700;
   text-shadow:
-    0 0 10px #00e5ffcc,
-    0 0 20px #00c8ffbb,
-    0 0 30px #0099ddcc;
+    0 0 10px #ffd700cc,
+    0 0 20px #ffdd00bb,
+    0 0 30px #ffaa00cc;
 }
 
 /* --- قسم اللعبة --- */
@@ -55,19 +60,19 @@ header h1 {
 }
 
 .word-box {
-  background: linear-gradient(145deg, #003366, #0059b3);
+  background: linear-gradient(145deg, #4b2f1c, #7a4f1c);
   padding: 18px 48px;
   border-radius: 60px;
   font-size: 2.5rem;
   font-weight: 900;
   letter-spacing: 0.18em;
-  color: #aaffff;
-  text-shadow: 0 0 20px #00ccffaa;
+  color: #ffdd88;
+  text-shadow: 0 0 20px #ffd700aa;
   user-select: none;
   width: 100%;
   max-width: 400px;
   text-align: center;
-  box-shadow: 0 0 25px #00ccff99;
+  box-shadow: 0 0 25px #ffd70099;
   transition: background 0.4s ease, color 0.4s ease, box-shadow 0.4s ease;
 }
 
@@ -81,48 +86,37 @@ header h1 {
   outline: none;
   text-align: center;
   font-weight: 700;
-  color: #003355;
-  background: #aaffff;
+  color: #5a3b1a;
+  background: #ffd700;
   box-shadow:
-    inset 0 0 12px #00bbff88,
-    0 0 12px #00bbffbb;
+    inset 0 0 12px #d4af3788,
+    0 0 12px #ffd700bb;
   transition: box-shadow 0.3s ease;
 }
 
 #input-answer:focus {
   box-shadow:
-    inset 0 0 18px #00d0ffcc,
-    0 0 18px #00d0ffcc;
+    inset 0 0 18px #ffd700cc,
+    0 0 18px #ffd700cc;
 }
 
 .answer-time {
-  color: #55ff77;
+  color: #fff2c2;
   font-weight: 700;
   min-height: 1.2em;
   margin-top: 5px;
 }
 
 #answers-display {
-  background: rgba(0, 40, 70, 0.8);
+  background: rgba(60, 40, 20, 0.8);
   border-radius: 12px;
   padding: 10px;
   width: 100%;
   max-width: 400px;
   font-size: 0.95rem;
-  color: #aaffff;
+  color: #ffdd88;
   margin-top: 10px;
-  box-shadow: 0 0 10px #00cfff88;
-}
-
-/* --- اختيار لون الاسم --- */
-#name-color-picker {
-  margin-top: 8px;
-  cursor: pointer;
-  border: none;
-  background: none;
-  width: 40px;
-  height: 40px;
-  padding: 0;
+  box-shadow: 0 0 10px #ffd70088;
 }
 
 /* --- أزرار التحكم --- */
@@ -135,16 +129,16 @@ header h1 {
 }
 
 .btn-main {
-  background: linear-gradient(135deg, #0099ff, #00ccff);
+  background: linear-gradient(135deg, #b8860b, #ffd700);
   border: none;
   padding: 10px 22px;
   font-weight: 700;
   font-size: 1.1rem;
   border-radius: 40px;
-  color: #002233;
+  color: #3e2f1c;
   box-shadow:
-    0 0 15px #00ccffcc,
-    inset 0 -3px 10px #0077ccaa;
+    0 0 15px #ffd700cc,
+    inset 0 -3px 10px #b8860baa;
   cursor: pointer;
   transition: background 0.3s ease, transform 0.15s ease;
   user-select: none;
@@ -154,14 +148,14 @@ header h1 {
 
 .btn-main:hover,
 .btn-main:focus {
-  background: linear-gradient(135deg, #00bbff, #00eeff);
+  background: linear-gradient(135deg, #ffd700, #ffea00);
   transform: scale(1.05);
   outline: none;
 }
 
 #dark-mode-toggle {
-  background: linear-gradient(135deg, #222, #555);
-  color: white;
+  background: linear-gradient(135deg, #7a4f1c, #b8860b);
+  color: #fff2c2;
   border-radius: 40px;
   padding: 10px 16px;
   font-size: 1.2rem;
@@ -171,22 +165,22 @@ header h1 {
 }
 
 #dark-mode-toggle:hover {
-  background: linear-gradient(135deg, #333, #666);
+  background: linear-gradient(135deg, #b8860b, #ffd700);
 }
 
 /* --- قائمة اللاعبين --- */
 .players-list-container {
-  background: #004070cc;
+  background: rgba(60, 40, 20, 0.85);
   border-radius: 14px;
   padding: 12px 18px;
-  box-shadow: 0 0 25px #00bfffcc;
+  box-shadow: 0 0 25px #ffd700cc;
   max-height: 280px;
   overflow-y: auto;
 }
 
 .players-list-container h2 {
   margin: 0 0 12px 0;
-  color: #00e5ff;
+  color: #ffd700;
   font-weight: 800;
 }
 
@@ -199,14 +193,14 @@ header h1 {
 #players-list li {
   padding: 6px 8px;
   font-weight: 700;
-  border-bottom: 1px solid #0077cc55;
+  border-bottom: 1px solid #b8860b55;
   cursor: default;
   transition: color 0.3s ease;
 }
 
-#players-list li:nth-child(1) { color: red; }
-#players-list li:nth-child(2) { color: green; }
-#players-list li:nth-child(3) { color: orange; }
+#players-list li:nth-child(1) { color: #ff4500; }
+#players-list li:nth-child(2) { color: #32cd32; }
+#players-list li:nth-child(3) { color: #ffa500; }
 
 /* --- الشات --- */
 .chat-container {
@@ -217,7 +211,7 @@ header h1 {
   width: 100%;
   max-width: 480px;
   max-height: 60vh;
-  background: rgba(8, 23, 43, 0.95);
+  background: rgba(60, 40, 20, 0.95);
   border-radius: 14px;
   display: flex;
   flex-direction: column;
@@ -236,10 +230,10 @@ header h1 {
   display: flex;
   justify-content: space-between;
   align-items: center;
-  background: #003366;
+  background: #4b2f1c;
   padding: 10px 15px;
   border-radius: 14px 14px 0 0;
-  color: #aaffff;
+  color: #ffd700;
   font-weight: 700;
   font-size: 1.25rem;
 }
@@ -247,7 +241,7 @@ header h1 {
 .chat-header button {
   background: none;
   border: none;
-  color: #aaffff;
+  color: #ffd700;
   font-size: 1.3rem;
   cursor: pointer;
 }
@@ -256,37 +250,29 @@ header h1 {
   flex: 1 1 auto;
   padding: 10px 15px;
   overflow-y: auto;
-  color: #d0f0ff;
+  color: #fff2c2;
   font-size: 1rem;
   line-height: 1.3;
 }
 
 .chat-message { margin-bottom: 8px; word-break: break-word; }
-.chat-system-message { font-style: italic; color: #77ffaa; text-align: center; }
-.chat-name { font-weight: 800; color: #00cfff; margin-left: 6px; }
-
-.chat-input-container {
-  display: flex;
-  gap: 8px;
-  padding: 10px;
-  border-radius: 16px;
-  backdrop-filter: blur(6px);
-}
+.chat-system-message { font-style: italic; color: #ffd700; text-align: center; }
+.chat-name { font-weight: 800; color: #b8860b; margin-left: 6px; }
 
 #chat-input {
   flex: 1;
   padding: 12px 16px;
   font-size: 15px;
-  color: #fff;
-  background: rgba(255, 255, 255, 0.08);
-  border: 1px solid rgba(0, 180, 255, 0.25);
+  color: #3e2f1c;
+  background: rgba(255, 215, 0, 0.2);
+  border: 1px solid #b8860b44;
   border-radius: 14px;
   outline: none;
   transition: 0.25s;
 }
 
 #chat-input::placeholder {
-  color: rgba(255,255,255,0.5);
+  color: #ffd700aa;
 }
 
 #btn-send-chat {
@@ -296,24 +282,19 @@ header h1 {
   cursor: pointer;
   font-size: 14px;
   font-weight: bold;
-  color: #fff;
-  background: linear-gradient(135deg, #00c3ff, #0066ff);
+  color: #3e2f1c;
+  background: linear-gradient(135deg, #b8860b, #ffd700);
   transition: 0.25s;
 }
 
 #btn-send-chat:hover {
   transform: scale(1.05);
-  box-shadow: 0 0 12px rgba(0,195,255,0.6);
+  box-shadow: 0 0 12px #ffd700aa;
 }
 
 /* --- كلمات خاصة --- */
 .special-word { font-weight: 900; user-select: text; }
 .special-word.shake { animation: shake 0.6s ease infinite alternate; }
-.special-word[style*="red"] { color: red; }
-.special-word[style*="blue"] { color: blue; }
-.special-word[style*="pink"] { color: #ff69b4; }
-.special-word[style*="violet"] { color: violet; }
-.special-word[style*="lightgreen"] { color: #90ee90; }
 
 @keyframes shake {
   0% { transform: translateX(0) }
@@ -330,11 +311,11 @@ dialog#instructions-dialog {
   max-width: 400px;
   border-radius: 16px;
   border: none;
-  background: linear-gradient(145deg, #003366, #0059b3);
-  color: #aaffff;
+  background: linear-gradient(145deg, #4b2f1c, #7a4f1c);
+  color: #ffd700;
   box-shadow:
-    0 0 25px #00cfffcc,
-    inset 0 0 40px #0099ccaa;
+    0 0 25px #ffd700cc,
+    inset 0 0 40px #b8860baa;
   padding: 20px 25px;
   font-weight: 700;
   user-select: none;
@@ -350,19 +331,19 @@ dialog#change-name-dialog button {
   padding: 10px 15px;
   cursor: pointer;
   transition: background 0.3s ease;
-  background: linear-gradient(135deg, #00bbff, #00ddff);
-  color: #002233;
+  background: linear-gradient(135deg, #b8860b, #ffd700);
+  color: #3e2f1c;
   box-shadow:
-    0 0 12px #00ccffbb,
-    inset 0 -3px 6px #0077ccaa;
+    0 0 12px #ffd700bb,
+    inset 0 -3px 6px #b8860baa;
   user-select: none;
 }
 
 dialog#change-name-dialog input:focus {
   outline: none;
   box-shadow:
-    0 0 20px #00eeffcc,
-    inset 0 0 20px #0099ffcc;
+    0 0 20px #ffd700cc,
+    inset 0 0 20px #b8860baa;
 }
 
 dialog#change-name-dialog menu {
@@ -378,10 +359,10 @@ dialog#change-name-dialog menu {
   text-align: center;
   font-size: 1.7rem;
   font-weight: 900;
-  color: #00e5ff;
+  color: #ffd700;
   text-shadow:
-    0 0 10px #00e5ffcc,
-    0 0 20px #00c8ffbb;
+    0 0 10px #ffd700cc,
+    0 0 20px #b8860baa;
 }
 
 .instructions-content {
@@ -393,67 +374,63 @@ dialog#change-name-dialog menu {
 .instructions-content ol {
   padding-inline-start: 20px;
   margin: 0 0 20px 0;
-  color: #aaffff;
+  color: #ffd700;
 }
 
 #close-instructions {
   display: block;
   margin: 0 auto;
-  background: linear-gradient(135deg, #0099ff, #00ccff);
+  background: linear-gradient(135deg, #b8860b, #ffd700);
   border: none;
-  color: #002233;
+  color: #3e2f1c;
   font-weight: 700;
   padding: 12px 25px;
   border-radius: 40px;
   cursor: pointer;
   box-shadow:
-    0 0 15px #00ccffcc,
-    inset 0 -3px 10px #0077ccaa;
+    0 0 15px #ffd700cc,
+    inset 0 -3px 10px #b8860baa;
   transition: background 0.3s ease, transform 0.15s ease;
 }
 
 #close-instructions:hover,
 #close-instructions:focus {
-  background: linear-gradient(135deg, #00bbff, #00eeff);
+  background: linear-gradient(135deg, #ffd700, #ffea00);
   transform: scale(1.05);
   outline: none;
 }
 
-/* --- الوضع الليلي المريح للعين النهائي --- */
+/* --- الوضع الليلي --- */
 body.dark-mode {
-  background: #0b0d12;
-  color: #d0d0d0;
+  background: #3e2f1c;
+  color: #fff2c2;
 }
 
-body.dark-mode #app-container { background: #111422; box-shadow: none; }
-body.dark-mode .word-box { background: #1a1e2b; color: #c0c0c0; text-shadow: none; box-shadow: none; }
-body.dark-mode #input-answer { background: #2a2f3e; color: #d0d0d0; box-shadow: none; }
-body.dark-mode #answers-display { background: #1c1f28; color: #c0c0c0; box-shadow: none; }
+body.dark-mode #app-container { background: #5a3b20; box-shadow: none; }
+body.dark-mode .word-box { background: #5a3b20; color: #ffea88; text-shadow: none; box-shadow: none; }
+body.dark-mode #input-answer { background: #7a4f1c; color: #ffd700; box-shadow: none; }
+body.dark-mode #answers-display { background: #5a3b20; color: #ffd700; box-shadow: none; }
 
-/* الأزرار */
 body.dark-mode .controls .btn-main,
-body.dark-mode #dark-mode-toggle { background: #2a2f3e; color: #d0d0d0; box-shadow: none; }
+body.dark-mode #dark-mode-toggle { background: #7a4f1c; color: #ffd700; box-shadow: none; }
 body.dark-mode .controls .btn-main:hover,
-body.dark-mode #dark-mode-toggle:hover { background: #3a3f50; transform: none; }
+body.dark-mode #dark-mode-toggle:hover { background: #b8860b; transform: none; }
 
-/* لوحة المتصدرين */
-body.dark-mode .players-list-container { background: #1c1f28; color: #d0d0d0; box-shadow: none; }
-body.dark-mode .players-list-container h2 { color: #c0c0c0; }
+body.dark-mode .players-list-container { background: #5a3b20; color: #ffd700; box-shadow: none; }
+body.dark-mode .players-list-container h2 { color: #ffd700; }
 
-/* الشات */
-body.dark-mode .chat-container { background: #1c1f28; box-shadow: none; }
-body.dark-mode #chat-input { background: #2a2f3e; color: #d0d0d0; border: 1px solid #444; box-shadow: none; }
-body.dark-mode #btn-send-chat { background: #3a3f50; color: #d0d0d0; box-shadow: none; }
-body.dark-mode #btn-send-chat:hover { background: #4a5060; transform: none; }
+body.dark-mode .chat-container { background: #5a3b20; box-shadow: none; }
+body.dark-mode #chat-input { background: #7a4f1c; color: #ffd700; border: 1px solid #b8860b; box-shadow: none; }
+body.dark-mode #btn-send-chat { background: #b8860b; color: #3e2f1c; box-shadow: none; }
+body.dark-mode #btn-send-chat:hover { background: #ffd700; transform: none; }
 
-/* إطار اسم كول مع ورد متحرك */
+/* --- إطار اسم كول --- */
 .kol-wrapper {
   position: relative;
   display: inline-block;
   padding: 2px 8px;
 }
 
-/* اسم كول نفسه (طبيعي) */
 .kol-name {
   color: #ff69b4;
   font-weight: 800;
@@ -463,14 +440,12 @@ body.dark-mode #btn-send-chat:hover { background: #4a5060; transform: none; }
   animation: kolGlow 2s ease-in-out infinite;
 }
 
-/* اللمعة */
 @keyframes kolGlow {
   0%   { text-shadow: 0 0 6px #ff9acb; }
   50%  { text-shadow: 0 0 14px #ff69b4; }
   100% { text-shadow: 0 0 6px #ff9acb; }
 }
 
-/* الورد */
 .kol-wrapper::before,
 .kol-wrapper::after {
   content: "🌸";
@@ -495,7 +470,42 @@ body.dark-mode #btn-send-chat:hover { background: #4a5060; transform: none; }
   0%   { transform: rotate(0deg) scale(1); opacity: 0.6; }
   50%  { transform: rotate(180deg) scale(1.2); opacity: 1; }
   100% { transform: rotate(360deg) scale(1); opacity: 0.6; }
-        }
+}
+
+/* --- فوانيس رمضانية --- */
+.firefly-wrapper {
+  position: absolute;
+  width: 100%;
+  height: 100%;
+  top: 0;
+  left: 0;
+  pointer-events: none;
+  z-index: 9999;
+}
+
+.firefly {
+  position: absolute;
+  width: 10px;
+  height: 10px;
+  background: radial-gradient(circle, #ffd700 0%, #b8860b 70%);
+  border-radius: 50%;
+  animation: fireflyMove 10s linear infinite, fireflyGlow 2s ease-in-out infinite;
+}
+
+@keyframes fireflyMove {
+  0% { transform: translate(0,0) rotate(0deg); }
+  25% { transform: translate(50px, 80px) rotate(45deg); }
+  50% { transform: translate(-50px, 160px) rotate(-30deg); }
+  75% { transform: translate(40px, 240px) rotate(30deg); }
+  100% { transform: translate(0, 0) rotate(0deg); }
+}
+
+@keyframes fireflyGlow {
+  0%, 100% { opacity: 0.5; }
+  50% { opacity: 1; }
+}
+
+/* --- نص إضافي --- */
 .chat-msg {
   margin-bottom: 6px;
   line-height: 1.4;
@@ -509,47 +519,53 @@ body.dark-mode #btn-send-chat:hover { background: #4a5060; transform: none; }
 
 .chat-name {
   font-weight: bold;
-  color: #6cf;
+  color: #ffd700;
 }
 
 .chat-text {
-  color: #fff;
+  color: #fff2c2;
+  word-wrap: break-word;
 }
 
-/* السماح بتحديد ونسخ أي نص بالشات */
-.chat-message,
-.chat-system-message,
-.chat-text,
-.chat-name {
-  user-select: text;
-}
-#typingIndicator {
-  font-size: 12px;
-  color: #888;
-  margin-top: 4px;
-  font-style: italic;
-}
-/* خلي حاوية ادخال الرسالة مرجع للموقع */
-.chat-input-area,
-.chat-input,
-.message-input-wrapper {
-    position: relative !important;
+
+/* --- تأثير عند الفوز --- */
+.winner-animation {
+  animation: glowWinner 1s ease-in-out infinite alternate;
+  color: #ffd700;
+  text-shadow:
+    0 0 8px #ffd700aa,
+    0 0 16px #ffea00aa,
+    0 0 24px #ffdd00aa;
 }
 
-/* نقل إشعار الرسائل الجديدة */
-.new-messages,
-.new-message,
-.unread-badge,
-.notification,
-.notification-button {
-    position: absolute !important;
-    bottom: 55px !important;   /* فوق زر الارسال */
-    right: 70px !important;    /* يسار زر الارسال */
-    background: #ffd400 !important; /* اصفر */
-    color: #000 !important;
-    border-radius: 8px !important;
-    padding: 4px 9px !important;
-    font-weight: bold !important;
-    z-index: 99999 !important;
-    box-shadow: 0 2px 8px rgba(0,0,0,.35) !important;
+@keyframes glowWinner {
+  0% { text-shadow: 0 0 8px #ffd700aa; }
+  50% { text-shadow: 0 0 20px #ffd700cc, 0 0 40px #ffea00cc; }
+  100% { text-shadow: 0 0 8px #ffd700aa; }
 }
+
+/* --- تاج الفائزين --- */
+.crown {
+  font-size: 1.2rem;
+  margin-left: 4px;
+  color: #ffd700;
+  text-shadow: 0 0 8px #ffd700aa;
+}
+
+/* --- ألوان خاصة لبعض الأسماء --- */
+.player-special-1 { color: #ff4500; text-shadow: 0 0 8px #ff4500aa; }
+.player-special-2 { color: #32cd32; text-shadow: 0 0 8px #32cd32aa; }
+.player-special-3 { color: #ffa500; text-shadow: 0 0 8px #ffa500aa; }
+
+/* --- اهتزاز الكلمات في الشات --- */
+.shake-word {
+  display: inline-block;
+  animation: shake 0.6s ease infinite alternate;
+}
+
+/* --- خطوط عربية جمالية --- */
+@import url('https://fonts.googleapis.com/css2?family=Cairo:wght@400;700;900&display=swap');
+
+body {
+  font-family: 'Cairo', sans-serif;
+                       }
