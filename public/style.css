@@ -400,29 +400,34 @@ dialog#change-name-dialog menu {
   outline: none;
 }
 
-/* --- الوضع الليلي --- */
+
+/* --- الوضع الليلي المريح للعين النهائي --- */
 body.dark-mode {
-  background: #3e2f1c;
-  color: #fff2c2;
+  background: #0b0d12;
+  color: #d0d0d0;
 }
 
-body.dark-mode #app-container { background: #5a3b20; box-shadow: none; }
-body.dark-mode .word-box { background: #5a3b20; color: #ffea88; text-shadow: none; box-shadow: none; }
-body.dark-mode #input-answer { background: #7a4f1c; color: #ffd700; box-shadow: none; }
-body.dark-mode #answers-display { background: #5a3b20; color: #ffd700; box-shadow: none; }
+body.dark-mode #app-container { background: #111422; box-shadow: none; }
+body.dark-mode .word-box { background: #1a1e2b; color: #c0c0c0; text-shadow: none; box-shadow: none; }
+body.dark-mode #input-answer { background: #2a2f3e; color: #d0d0d0; box-shadow: none; }
+body.dark-mode #answers-display { background: #1c1f28; color: #c0c0c0; box-shadow: none; }
 
+/* الأزرار */
 body.dark-mode .controls .btn-main,
-body.dark-mode #dark-mode-toggle { background: #7a4f1c; color: #ffd700; box-shadow: none; }
+body.dark-mode #dark-mode-toggle { background: #2a2f3e; color: #d0d0d0; box-shadow: none; }
 body.dark-mode .controls .btn-main:hover,
-body.dark-mode #dark-mode-toggle:hover { background: #b8860b; transform: none; }
+body.dark-mode #dark-mode-toggle:hover { background: #3a3f50; transform: none; }
 
-body.dark-mode .players-list-container { background: #5a3b20; color: #ffd700; box-shadow: none; }
-body.dark-mode .players-list-container h2 { color: #ffd700; }
+/* لوحة المتصدرين */
+body.dark-mode .players-list-container { background: #1c1f28; color: #d0d0d0; box-shadow: none; }
+body.dark-mode .players-list-container h2 { color: #c0c0c0; }
 
-body.dark-mode .chat-container { background: #5a3b20; box-shadow: none; }
-body.dark-mode #chat-input { background: #7a4f1c; color: #ffd700; border: 1px solid #b8860b; box-shadow: none; }
-body.dark-mode #btn-send-chat { background: #b8860b; color: #3e2f1c; box-shadow: none; }
-body.dark-mode #btn-send-chat:hover { background: #ffd700; transform: none; }
+/* الشات */
+body.dark-mode .chat-container { background: #1c1f28; box-shadow: none; }
+body.dark-mode #chat-input { background: #2a2f3e; color: #d0d0d0; border: 1px solid #444; box-shadow: none; }
+body.dark-mode #btn-send-chat { background: #3a3f50; color: #d0d0d0; box-shadow: none; }
+body.dark-mode #btn-send-chat:hover { background: #4a5060; transform: none; }
+
 
 /* --- إطار اسم كول --- */
 .kol-wrapper {
