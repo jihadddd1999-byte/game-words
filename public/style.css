@@ -788,17 +788,50 @@ button {
     /* منع الوميض أثناء التحديث */
     backface-visibility: hidden;
 }
-/* تنسيق لوحة الرسم ليتناسب مع كل الشاشات */
+/* تنسيق النافذة لتكون في المنتصف تماماً على الجوال والايباد */
 .studio-popup {
-    width: 95vw !important; /* يأخذ 95% من عرض الشاشة */
-    max-width: 600px !important;
-    height: auto;
-    max-height: 90vh !important; /* لا يتجاوز طول الشاشة */
-    padding: 15px !important;
-    border-radius: 15px;
-    overflow-x: hidden; /* يمنع الخروج يميناً ويساراً */
+    position: fixed !important;
+    top: 50% !important;
+    left: 50% !important;
+    transform: translate(-50%, -50%) !important; /* هذا السطر هو اللي بوسطنها */
+    width: 92vw !important;
+    max-width: 500px;
+    max-height: 85vh;
+    margin: 0 !important;
+    padding: 15px;
+    border: 2px solid #ffd700;
+    border-radius: 20px;
+    background: #2d1e0f;
+    box-shadow: 0 0 30px rgba(0,0,0,0.8);
     overflow-y: auto;
+    z-index: 10001;
 }
+
+/* تعديل منطقة الرسم لتكون مرنة */
+.canvas-wrapper {
+    width: 100%;
+    background: #1a140a;
+    border-radius: 10px;
+    margin-bottom: 10px;
+    touch-action: none; /* ضروري لمنع اهتزاز الصفحة أثناء الرسم */
+}
+
+#main-canvas {
+    width: 100% !important;
+    height: 300px !important; /* ارتفاع ثابت ومناسب للجوال */
+    display: block;
+    touch-action: none;
+}
+
+/* ترتيب الأزرار داخل اللوحة لتناسب الشاشات الصغيرة */
+.control-group {
+    display: flex;
+    flex-wrap: wrap;
+    gap: 8px;
+    justify-content: space-between;
+    margin-bottom: 10px;
+}
+
 
 /* منطقة الكانفاس المرنة */
 .canvas-wrapper {
@@ -813,22 +846,4 @@ button {
     width: 100% !important;
     height: 100% !important;
     display: block;
-}
-
-/* تصغير الأزرار في الموبايل */
-@media (max-width: 480px) {
-    .control-group {
-        flex-direction: row !important;
-        flex-wrap: wrap;
-        gap: 5px !important;
-    }
-    
-    .item label {
-        font-size: 10px;
-    }
-    
-    .studio-controls button {
-        padding: 5px;
-        font-size: 12px;
-    }
 }
