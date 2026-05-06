@@ -715,4 +715,3 @@ document.getElementById('share-to-all').addEventListener('click', () => {
   socket.emit('syncFullCanvas', dataURL);
   alert("تمت مشاركة رسمتك مع جميع اللاعبين!");
 });
-  
