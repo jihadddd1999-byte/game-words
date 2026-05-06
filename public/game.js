@@ -662,36 +662,3 @@ document.addEventListener('DOMContentLoaded', () => {
         if (typeof socket !== 'undefined') socket.emit('canvasBgChange', bgColor.value);
     };
 });
-// أضف هذا في نهاية ملف game.js
-document.addEventListener('DOMContentLoaded', () => {
-    const boardDialog = document.getElementById('board-dialog');
-    const btnOpenBoard = document.getElementById('btn-open-board');
-    const canvas = document.getElementById('main-canvas');
-    const ctx = canvas.getContext('2d', { willReadFrequently: true }); // تحسين أداء إضافي
-
-    if (btnOpenBoard && boardDialog) {
-        btnOpenBoard.onclick = () => {
-            boardDialog.showModal();
-            
-            // طلب إطار الرسم من المتصفح لضمان جهوزية الشاشة
-            requestAnimationFrame(() => {
-                if (canvas) {
-                    const rect = canvas.getBoundingClientRect();
-                    // نضع أبعاد الكانفاس بناءً على الحجم الفعلي في المتصفح
-                    canvas.width = rect.width || 400; 
-                    canvas.height = 350;
-                    
-                    // رسم الخلفية فوراً لمنع الشفافية
-                    const bgCol = document.getElementById('bg-color')?.value || '#1a140a';
-                    ctx.fillStyle = bgCol;
-                    ctx.fillRect(0, 0, canvas.width, canvas.height);
-                }
-            });
-        };
-    }
-
-    const btnClose = document.getElementById('btn-close-board');
-    if (btnClose) {
-        btnClose.onclick = () => boardDialog.close();
-    }
-});
