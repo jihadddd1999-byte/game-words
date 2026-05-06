@@ -716,33 +716,3 @@ document.getElementById('share-to-all').addEventListener('click', () => {
   alert("تمت مشاركة رسمتك مع جميع اللاعبين!");
 });
   
-// 1. استقبال مسح اللوحة من السيرفر
-socket.on('clearArt', () => {
-    ctx.clearRect(0, 0, canvas.width, canvas.height);
-});
-
-// 2. استقبال صورة كاملة (لما حد يشارك رسمة من المعرض أو الوضع المنفرد)
-socket.on('loadFullCanvas', (imgData) => {
-    const img = new Image();
-    img.src = imgData;
-    img.onload = () => {
-        ctx.globalAlpha = 1;
-        ctx.globalCompositeOperation = 'source-over';
-        ctx.clearRect(0, 0, canvas.width, canvas.height);
-        ctx.drawImage(img, 0, 0, canvas.width, canvas.height);
-    };
-});
-
-// 3. استقبال تغيير لون الخلفية
-socket.on('updateCanvasBg', (color) => {
-    canvas.style.backgroundColor = color;
-    document.getElementById('bg-color').value = color;
-});
-
-// 4. استقبال حالة القفل (مين مسموح له يرسم)
-socket.on('lockStatus', (locked) => {
-    isLocked = locked;
-    document.getElementById('toggle-lock').textContent = isLocked ? '🔒' : '🔓';
-    // تنبيه بسيط للشات
-    console.log(isLocked ? "الرسم مقفل الآن" : "الرسم متاح للجميع");
-});
