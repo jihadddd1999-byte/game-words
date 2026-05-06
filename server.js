@@ -248,3 +248,18 @@ app.get("/ping", (req, res) => res.status(200).send("alive"));
 // ======== تشغيل السيرفر ========
 const PORT = process.env.PORT || 10000;
 server.listen(PORT, () => console.log(`Server running on port ${PORT}`));
+
+  // مزامنة الرسم التفصيلي
+  socket.on('artStream', (data) => {
+    socket.broadcast.emit('artStream', data);
+  });
+
+  // مزامنة مسح اللوحة
+  socket.on('clearArt', () => {
+    io.emit('clearArt');
+  });
+
+  // مزامنة تحميل لوحة كاملة من المعرض
+  socket.on('syncFullCanvas', (imgData) => {
+    socket.broadcast.emit('loadFullCanvas', imgData);
+  });
