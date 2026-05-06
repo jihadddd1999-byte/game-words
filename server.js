@@ -121,7 +121,37 @@ io.on('connection', socket => {
 
     updatePlayersList();
     sendSystemMessage(`${oldName} غير اسمه إلى ${player.name}`);
+  // ==========================================
+  // --- وسيط مرسم الإبداعي المتكامل ---
+  // ==========================================
 
+  // 1. بث الرسم المباشر (للبخاخ والريشة والممحاة)
+  socket.on('artStream', (data) => {
+    // إرسال البيانات لكل اللاعبين ما عدا الرسام نفسه
+    socket.broadcast.emit('artStream', data);
+  });
+
+  // 2. مسح اللوحة عند الجميع
+  socket.on('clearArt', () => {
+    io.emit('clearArt');
+  });
+
+  // 3. مزامنة الصورة كاملة (من المعرض أو زر المشاركة)
+  socket.on('syncFullCanvas', (imgData) => {
+    // إرسال الصورة كاملة لكل الموجودين
+    io.emit('loadFullCanvas', imgData);
+  });
+
+  // 4. تغيير لون الخلفية وتوحيده عند الكل
+  socket.on('canvasBgChange', (color) => {
+    socket.broadcast.emit('updateCanvasBg', color);
+  });
+
+  // 5. حالة قفل اللوحة (اختياري إذا فعلت ميزة القفل)
+  socket.on('lockStatus', (locked) => {
+    socket.broadcast.emit('lockStatus', locked);
+  });
+    
     // ترحيب خاص بكول
     if (player.name === "كول") {
       socket.emit('chatMessage', {
