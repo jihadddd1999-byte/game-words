@@ -37,7 +37,70 @@
   <h2>🏆 المتصدرون</h2>  
   <ul id="players-list" role="list"></ul>  
 </section>  
+    
+<button id="btn-open-board" class="btn-main-nav">🎨 لوحة الرسم</button>
 
+<dialog id="board-dialog" class="studio-popup">
+    <div class="studio-header">
+        <div class="header-left">
+            <h3>🎨 لوحة الرسم</h3>
+            <span id="drawing-mode-indicator" class="badge">وضع مباشر</span>
+        </div>
+        <div class="header-actions">
+            <button id="btn-undo" title="تراجع">↩️</button>
+            <button id="btn-close-board">✖️</button>
+        </div>
+    </div>
+
+    <div class="canvas-wrapper">
+        <canvas id="main-canvas"></canvas>
+    </div>
+
+    <div class="studio-controls">
+        <div class="control-group">
+            <div class="item">
+                <label>اللون</label>
+                <input type="color" id="brush-color" value="#ffd700">
+            </div>
+            <div class="item">
+                <label>الخلفية</label>
+                <input type="color" id="bg-color" value="#1a140a">
+            </div>
+            <select id="brush-type">
+                <option value="round">🖌️ ريشة دائرية</option>
+                <option value="spray">💨 بخاخ (Spray)</option>
+                <option value="eraser">🧽 ممحاة</option>
+            </select>
+        </div>
+
+        <div class="control-group">
+            <div class="range-box">
+                <span>الحجم</span>
+                <input type="range" id="brush-size" min="1" max="60" value="5">
+            </div>
+            <div class="range-box">
+                <span>الشفافية</span>
+                <input type="range" id="brush-opacity" min="0.1" max="1" step="0.1" value="1">
+            </div>
+        </div>
+
+        <div class="control-group buttons">
+            <button id="btn-solo-mode" class="btn-toggle">🔐 وضع منفرد: OFF</button>
+            <button id="btn-clear-canvas" class="btn-danger">🗑️ مسح الكل</button>
+            <button id="btn-share-all" class="btn-gold">📢 مشاركة الآن</button>
+        </div>
+
+        <hr class="divider">
+
+        <div class="gallery-header">
+            <h4>📸 المعرض (0/30)</h4>
+            <button id="btn-save-to-gallery" class="btn-save">📸 حفظ الرسمة باسم</button>
+        </div>
+        <div id="mini-gallery" class="gallery-grid">
+            </div>
+    </div>
+</dialog>
+    
 <!-- الشات -->  
 <aside id="chat-container" class="chat-container" aria-live="polite" aria-atomic="true" hidden>  
   <header class="chat-header">  
