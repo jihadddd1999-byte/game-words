@@ -469,3 +469,250 @@ chatForm.addEventListener('submit', () => {
     delete typingMessages[playerName];
   }
 });
+// --- إعدادات المرسم الذكي ---
+const canvas = document.getElementById('main-canvas');
+const ctx = canvas.getContext('2d');
+const galleryGrid = document.getElementById('gallery-grid');
+const galleryDialog = document.getElementById('gallery-dialog');
+let isDrawing = false;
+let canOthersDraw = true;
+
+// ضبط الحجم
+function setupCanvas() {
+  canvas.width = canvas.offsetWidth;
+  canvas.height = canvas.offsetHeight;
+}
+window.addEventListener('load', setupCanvas);
+
+// --- وظائف الرسم ---
+function getCoordinates(e) {
+  const rect = canvas.getBoundingClientRect();
+  const x = (e.clientX || e.touches[0].clientX) - rect.left;
+  const y = (e.clientY || e.touches[0].clientY) - rect.top;
+  return { x, y };
+}
+
+const start = (e) => {
+  isDrawing = true;
+  const { x, y } = getCoordinates(e);
+  ctx.beginPath();
+  ctx.moveTo(x, y);
+  emitArt(x, y, 'start');
+};
+
+const move = (e) => {
+  if (!isDrawing) return;
+  const { x, y } = getCoordinates(e);
+  
+  const color = document.getElementById('brush-color').value;
+  const size = document.getElementById('brush-size').value;
+  const opacity = document.getElementById('brush-opacity').value;
+
+  ctx.globalAlpha = opacity;
+  ctx.strokeStyle = color;
+  ctx.lineWidth = size;
+  ctx.lineCap = 'round';
+  ctx.lineTo(x, y);
+  ctx.stroke();
+  
+  emitArt(x, y, 'draw', color, size, opacity);
+};
+
+// التزامن عبر Socket
+function emitArt(x, y, type, color, size, opacity) {
+  if (!canOthersDraw && type !== 'start' && type !== 'draw') return;
+  socket.emit('artStream', { x, y, type, color, size, opacity, senderId: socket.id });
+}
+
+socket.on('artStream', (data) => {
+  if (!canOthersDraw && data.senderId !== socket.id) return;
+  
+  ctx.globalAlpha = data.opacity;
+  ctx.strokeStyle = data.color;
+  ctx.lineWidth = data.size;
+  if (data.type === 'start') {
+    ctx.beginPath();
+    ctx.moveTo(data.x, data.y);
+  } else {
+    ctx.lineTo(data.x, data.y);
+    ctx.stroke();
+  }
+});
+
+// --- إدارة المعرض (30 رسمة) ---
+let myGallery = JSON.parse(localStorage.getItem('artGallery') || '[]');
+
+function saveToGallery() {
+  if (myGallery.length >= 30) return alert("المعرض ممتلئ! احذف بعض الرسومات.");
+  const dataURL = canvas.toDataURL();
+  myGallery.push(dataURL);
+  localStorage.setItem('artGallery', JSON.stringify(myGallery));
+  updateGalleryUI();
+}
+
+function updateGalleryUI() {
+  document.getElementById('gallery-count').textContent = myGallery.length;
+  galleryGrid.innerHTML = '';
+  myGallery.forEach((imgData, index) => {
+    const div = document.createElement('div');
+    div.className = 'gallery-item';
+    div.innerHTML = `
+      <img src="${imgData}" onclick="loadArt(${index})">
+      <button class="delete-art" onclick="deleteArt(${index})">×</button>
+    `;
+    galleryGrid.appendChild(div);
+  });
+}
+
+window.loadArt = (index) => {
+  const img = new Image();
+  img.src = myGallery[index];
+  img.onload = () => {
+    ctx.clearRect(0, 0, canvas.width, canvas.height);
+    ctx.globalAlpha = 1;
+    ctx.drawImage(img, 0, 0, canvas.width, canvas.height);
+    galleryDialog.close();
+    // إرسال اللوحة المحملة للجميع
+    socket.emit('syncFullCanvas', canvas.toDataURL());
+  };
+};
+
+// قفل المشاركة
+document.getElementById('toggle-lock').addEventListener('click', (e) => {
+  canOthersDraw = !canOthersDraw;
+  e.target.textContent = canOthersDraw ? '🔓' : '🔒';
+  socket.emit('lockStatus', canOthersDraw);
+});
+
+// الأحداث
+canvas.addEventListener('mousedown', start);
+canvas.addEventListener('mousemove', move);
+window.addEventListener('mouseup', () => isDrawing = false);
+document.getElementById('save-to-gallery').addEventListener('click', saveToGallery);
+document.getElementById('open-gallery').addEventListener('click', () => {
+    updateGalleryUI();
+    galleryDialog.showModal();
+});
+document.getElementById('close-gallery').addEventListener('click', () => galleryDialog.close());
+document.getElementById('clear-canvas').addEventListener('click', () => {
+    ctx.clearRect(0, 0, canvas.width, canvas.height);
+    socket.emit('clearArt');
+});
+let undoStack = [];
+let currentShape = 'free'; // free, circle, rect, eraser
+let isSoloMode = false;
+let isLocked = false;
+let startX, startY;
+let snapshot; // لحفظ حالة اللوحة عند بدء رسم شكل هندسي
+
+// وظيفة التراجع (Undo)
+function saveState() {
+  if (undoStack.length > 20) undoStack.shift();
+  undoStack.push(canvas.toDataURL());
+}
+
+document.getElementById('undo-btn').addEventListener('click', () => {
+  if (undoStack.length > 0) {
+    let previousState = undoStack.pop();
+    let img = new Image();
+    img.src = previousState;
+    img.onload = () => {
+      ctx.clearRect(0, 0, canvas.width, canvas.height);
+      ctx.drawImage(img, 0, 0);
+      if (!isSoloMode) socket.emit('syncFullCanvas', previousState);
+    };
+  }
+});
+
+// تغيير لون الخلفية
+document.getElementById('bg-color').addEventListener('input', (e) => {
+  canvas.style.backgroundColor = e.target.value;
+  if (!isSoloMode) socket.emit('canvasBgChange', e.target.value);
+});
+
+// تبديل الوضع المنفرد
+document.getElementById('toggle-solo').addEventListener('click', (e) => {
+  isSoloMode = !isSoloMode;
+  document.getElementById('solo-badge').classList.toggle('hidden');
+  document.getElementById('share-to-all').classList.toggle('hidden');
+  e.target.style.background = isSoloMode ? '#ff3366' : '';
+});
+
+// رسم الأشكال
+canvas.addEventListener('mousedown', (e) => {
+  saveState();
+  const pos = getCoordinates(e);
+  startX = pos.x;
+  startY = pos.y;
+  isDrawing = true;
+  
+  if (currentShape !== 'free') {
+    snapshot = ctx.getImageData(0, 0, canvas.width, canvas.height);
+  }
+});
+
+canvas.addEventListener('mousemove', (e) => {
+  if (!isDrawing) return;
+  const pos = getCoordinates(e);
+  
+  if (currentShape === 'free' || currentShape === 'eraser') {
+    drawFree(pos.x, pos.y);
+  } else {
+    // رسم الأشكال الهندسية يحتاج مسح اللوحة وإعادة رسمها لتظهر الحركة
+    ctx.putImageData(snapshot, 0, 0);
+    drawShape(pos.x, pos.y);
+  }
+});
+
+function drawShape(endX, endY) {
+  ctx.beginPath();
+  ctx.lineWidth = document.getElementById('brush-size').value;
+  ctx.strokeStyle = document.getElementById('brush-color').value;
+  
+  if (currentShape === 'circle') {
+    let radius = Math.sqrt(Math.pow(endX - startX, 2) + Math.pow(endY - startY, 2));
+    ctx.arc(startX, startY, radius, 0, 2 * Math.PI);
+  } else if (currentShape === 'rect') {
+    ctx.rect(startX, startY, endX - startX, endY - startY);
+  }
+  ctx.stroke();
+}
+
+function drawFree(x, y) {
+  ctx.lineWidth = document.getElementById('brush-size').value;
+  ctx.lineCap = 'round';
+  ctx.globalAlpha = document.getElementById('brush-opacity').value;
+  
+  if (currentShape === 'eraser') {
+    ctx.globalCompositeOperation = 'destination-out'; // تفعيل الممحاة
+  } else {
+    ctx.globalCompositeOperation = 'source-over';
+    ctx.strokeStyle = document.getElementById('brush-color').value;
+  }
+  
+  ctx.lineTo(x, y);
+  ctx.stroke();
+  ctx.beginPath();
+  ctx.moveTo(x, y);
+  
+  if (!isSoloMode && !isLocked) {
+     emitArt(x, y, 'draw', ctx.strokeStyle, ctx.lineWidth, ctx.globalAlpha);
+  }
+}
+
+// أزرار الأشكال
+document.querySelectorAll('.shape-btn').forEach(btn => {
+  btn.addEventListener('click', () => {
+    document.querySelector('.shape-btn.active')?.classList.remove('active');
+    btn.classList.add('active');
+    currentShape = btn.dataset.shape;
+  });
+});
+
+// مشاركة الرسمة المنفردة مع الجميع
+document.getElementById('share-to-all').addEventListener('click', () => {
+  const dataURL = canvas.toDataURL();
+  socket.emit('syncFullCanvas', dataURL);
+  alert("تمت مشاركة رسمتك مع جميع اللاعبين!");
+});
+  
