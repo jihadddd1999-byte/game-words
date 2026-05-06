@@ -1,4 +1,4 @@
-Const socket = io();
+const socket = io();
 
 // ===== Keep server alive (Render fix) =====
 setInterval(() => {
