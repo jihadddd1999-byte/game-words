@@ -847,3 +847,48 @@ button {
     height: 100% !important;
     display: block;
 }
+/* تنسيق لوحة الرسم ليتناسب مع كل الشاشات */
+.studio-popup {
+    width: 95vw !important; /* يأخذ 95% من عرض الشاشة */
+    max-width: 600px !important;
+    height: auto;
+    max-height: 90vh !important; /* لا يتجاوز طول الشاشة */
+    padding: 15px !important;
+    border-radius: 15px;
+    overflow-x: hidden; /* يمنع الخروج يميناً ويساراً */
+    overflow-y: auto;
+}
+
+/* منطقة الكانفاس المرنة */
+.canvas-wrapper {
+    width: 100%;
+    aspect-ratio: 4 / 3; /* يحافظ على نسبة الطول للعرض */
+    background: #000;
+    margin-bottom: 10px;
+    touch-action: none; /* يمنع الشاشة من التحرك أثناء الرسم */
+}
+
+#main-canvas {
+    width: 100% !important;
+    height: 100% !important;
+    display: block;
+}
+
+/* تصغير الأزرار في الموبايل */
+@media (max-width: 480px) {
+    .control-group {
+        flex-direction: row !important;
+        flex-wrap: wrap;
+        gap: 5px !important;
+    }
+    
+    .item label {
+        font-size: 10px;
+    }
+    
+    .studio-controls button {
+        padding: 5px;
+        font-size: 12px;
+    }
+}
+
