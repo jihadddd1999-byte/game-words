@@ -673,45 +673,4 @@ function drawShape(endX, endY) {
     let radius = Math.sqrt(Math.pow(endX - startX, 2) + Math.pow(endY - startY, 2));
     ctx.arc(startX, startY, radius, 0, 2 * Math.PI);
   } else if (currentShape === 'rect') {
-    ctx.rect(startX, startY, endX - startX, endY - startY);
-  }
-  ctx.stroke();
-}
-
-function drawFree(x, y) {
-  ctx.lineWidth = document.getElementById('brush-size').value;
-  ctx.lineCap = 'round';
-  ctx.globalAlpha = document.getElementById('brush-opacity').value;
-  
-  if (currentShape === 'eraser') {
-    ctx.globalCompositeOperation = 'destination-out'; // تفعيل الممحاة
-  } else {
-    ctx.globalCompositeOperation = 'source-over';
-    ctx.strokeStyle = document.getElementById('brush-color').value;
-  }
-  
-  ctx.lineTo(x, y);
-  ctx.stroke();
-  ctx.beginPath();
-  ctx.moveTo(x, y);
-  
-  if (!isSoloMode && !isLocked) {
-     emitArt(x, y, 'draw', ctx.strokeStyle, ctx.lineWidth, ctx.globalAlpha);
-  }
-}
-
-// أزرار الأشكال
-document.querySelectorAll('.shape-btn').forEach(btn => {
-  btn.addEventListener('click', () => {
-    document.querySelector('.shape-btn.active')?.classList.remove('active');
-    btn.classList.add('active');
-    currentShape = btn.dataset.shape;
-  });
-});
-
-// مشاركة الرسمة المنفردة مع الجميع
-document.getElementById('share-to-all').addEventListener('click', () => {
-  const dataURL = canvas.toDataURL();
-  socket.emit('syncFullCanvas', dataURL);
-  alert("تمت مشاركة رسمتك مع جميع اللاعبين!");
-});
+    ctx.rect(startX, startY, endX - startX, endY - 
