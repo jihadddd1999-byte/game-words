@@ -469,209 +469,154 @@ chatForm.addEventListener('submit', () => {
     delete typingMessages[playerName];
   }
 });
-// ==========================================
-// 1. تعريف العناصر الأساسية
-// ==========================================
-const canvas = document.getElementById('main-canvas');
-const ctx = canvas.getContext('2d');
-const boardDialog = document.getElementById('board-dialog');
-
-// أدوات التحكم
-const brushColor = document.getElementById('brush-color');
-const bgColor = document.getElementById('bg-color');
-const brushSize = document.getElementById('brush-size');
-const brushOpacity = document.getElementById('brush-opacity');
-const brushType = document.getElementById('brush-type');
-const btnSolo = document.getElementById('btn-solo-mode');
-const btnUndo = document.getElementById('btn-undo');
-const btnSaveGallery = document.getElementById('btn-save-gallery');
-const miniGallery = document.getElementById('mini-gallery');
-
-let drawing = false;
-let isSolo = false;
-let undoStack = []; // لتخزين خطوات التراجع
-
-// ==========================================
-// 2. إعدادات فتح وإغلاق اللوحة
-// ==========================================
-document.getElementById('btn-open-board').onclick = () => {
-    boardDialog.showModal();
-    // تضبيط أبعاد الكانفاس لتناسب حجم النافذة
-    canvas.width = canvas.offsetWidth;
-    canvas.height = canvas.offsetHeight;
-    // إعادة رسم الخلفية إذا كانت متغيرة
-    ctx.fillStyle = bgColor.value;
-    ctx.fillRect(0, 0, canvas.width, canvas.height);
-};
-
-document.getElementById('btn-close-board').onclick = () => boardDialog.close();
-
-// ==========================================
-// 3. وظيفة البخاخ (Spray Brush)
-// ==========================================
-function drawSpray(x, y) {
-    const size = parseInt(brushSize.value);
-    ctx.fillStyle = brushColor.value;
-    ctx.globalAlpha = brushOpacity.value;
+document.addEventListener('DOMContentLoaded', () => {
+    // 1. تعريف العناصر (تأكد أن الـ IDs مطابقة للـ HTML عندك)
+    const boardDialog = document.getElementById('board-dialog');
+    const canvas = document.getElementById('main-canvas');
+    const ctx = canvas.getContext('2d');
     
-    for (let i = 0; i < 20; i++) {
-        const offset = size * 1.5;
-        const subX = x + (Math.random() * offset - size);
-        const subY = y + (Math.random() * offset - size);
-        ctx.fillRect(subX, subY, 1, 1);
-    }
-}
+    // الأزرار الأساسية
+    const btnOpenBoard = document.getElementById('btn-open-board');
+    const btnCloseBoard = document.getElementById('btn-close-board');
+    const btnClear = document.getElementById('btn-clear-canvas');
+    const btnUndo = document.getElementById('btn-undo');
+    const btnSolo = document.getElementById('btn-solo-mode');
+    const btnSaveGallery = document.getElementById('btn-save-gallery');
+    
+    // المدخلات
+    const brushColor = document.getElementById('brush-color');
+    const bgColor = document.getElementById('bg-color');
+    const brushSize = document.getElementById('brush-size');
+    const brushOpacity = document.getElementById('brush-opacity');
+    const brushType = document.getElementById('brush-type');
+    const miniGallery = document.getElementById('mini-gallery');
 
-// ==========================================
-// 4. منطق الرسم الأساسي والتراجع
-// ==========================================
-function saveState() {
-    if (undoStack.length >= 20) undoStack.shift(); // حد أقصى 20 خطوة تراجع
-    undoStack.push(canvas.toDataURL());
-}
+    let drawing = false;
+    let isSolo = false;
+    let undoStack = [];
 
-btnUndo.onclick = () => {
-    if (undoStack.length > 0) {
-        const img = new Image();
-        img.src = undoStack.pop();
-        img.onload = () => {
-            ctx.clearRect(0, 0, canvas.width, canvas.height);
-            ctx.drawImage(img, 0, 0);
+    // ==========================================
+    // تشغيل الأزرار (فتح وإغلاق)
+    // ==========================================
+    if (btnOpenBoard) {
+        btnOpenBoard.onclick = () => {
+            boardDialog.showModal();
+            // تضبيط أبعاد الكانفاس فور الفتح
+            canvas.width = canvas.offsetWidth;
+            canvas.height = canvas.offsetHeight;
+            // تعبئة الخلفية باللون المختار
+            ctx.fillStyle = bgColor.value;
+            ctx.fillRect(0, 0, canvas.width, canvas.height);
         };
     }
-};
 
-canvas.onmousedown = (e) => {
-    saveState();
-    drawing = true;
-    draw(e);
-};
+    if (btnCloseBoard) {
+        btnCloseBoard.onclick = () => boardDialog.close();
+    }
 
-canvas.onmouseup = () => {
-    drawing = false;
-    ctx.beginPath();
-};
+    // ==========================================
+    // منطق الرسم
+    // ==========================================
+    function getMousePos(e) {
+        const rect = canvas.getBoundingClientRect();
+        return {
+            x: e.clientX - rect.left,
+            y: e.clientY - rect.top
+        };
+    }
 
-canvas.onmousemove = (e) => {
-    if (!drawing) return;
-    draw(e);
-};
+    canvas.onmousedown = (e) => {
+        saveState();
+        drawing = true;
+        const pos = getMousePos(e);
+        ctx.beginPath();
+        ctx.moveTo(pos.x, pos.y);
+    };
 
-function draw(e) {
-    const rect = canvas.getBoundingClientRect();
-    const x = e.clientX - rect.left;
-    const y = e.clientY - rect.top;
+    canvas.onmousemove = (e) => {
+        if (!drawing) return;
+        const pos = getMousePos(e);
+        draw(pos.x, pos.y);
+    };
 
-    const type = brushType.value;
-    const color = brushColor.value;
-    const size = brushSize.value;
-    const opacity = brushOpacity.value;
+    canvas.onmouseup = () => {
+        drawing = false;
+    };
 
-    if (type === 'spray') {
-        drawSpray(x, y);
-    } else {
-        ctx.lineWidth = size;
+    function draw(x, y) {
+        ctx.globalAlpha = brushOpacity.value;
+        ctx.lineWidth = brushSize.value;
         ctx.lineCap = 'round';
-        ctx.globalAlpha = opacity;
         
-        if (type === 'eraser') {
-            ctx.globalCompositeOperation = 'destination-out';
+        if (brushType.value === 'spray') {
+            ctx.fillStyle = brushColor.value;
+            for (let i = 0; i < 20; i++) {
+                const off = brushSize.value * 1.5;
+                ctx.fillRect(x + (Math.random()*off - off/2), y + (Math.random()*off - off/2), 1, 1);
+            }
         } else {
-            ctx.globalCompositeOperation = 'source-over';
-            ctx.strokeStyle = color;
+            if (brushType.value === 'eraser') {
+                ctx.globalCompositeOperation = 'destination-out';
+            } else {
+                ctx.globalCompositeOperation = 'source-over';
+                ctx.strokeStyle = brushColor.value;
+            }
+            ctx.lineTo(x, y);
+            ctx.stroke();
         }
 
-        ctx.lineTo(x, y);
-        ctx.stroke();
-        ctx.beginPath();
-        ctx.moveTo(x, y);
-    }
-
-    // إرسال الرسم للسيرفر إذا لم يكن الوضع منفرداً
-    if (!isSolo) {
-        socket.emit('artStream', { x, y, color, size, type, opacity });
-    }
-}
-
-// ==========================================
-// 5. الوضع المنفرد (Solo Mode)
-// ==========================================
-btnSolo.onclick = () => {
-    isSolo = !isSolo;
-    btnSolo.innerText = isSolo ? "🔐 وضع منفرد: ON" : "🔐 وضع منفرد: OFF";
-    btnSolo.style.background = isSolo ? "#ffd700" : "#3e2f1c";
-    btnSolo.style.color = isSolo ? "#000" : "gold";
-};
-
-// ==========================================
-// 6. معرض الرسومات (Gallery)
-// ==========================================
-btnSaveGallery.onclick = () => {
-    const dataURL = canvas.toDataURL();
-    const img = document.createElement('img');
-    img.src = dataURL;
-    img.className = 'gallery-item';
-    
-    // عند الضغط على صورة في المعرض، يتم عرضها للكل
-    img.onclick = () => {
-        const confirmShare = confirm("هل تريد عرض هذه الرسمة للجميع؟");
-        if (confirmShare) {
-            socket.emit('syncFullCanvas', dataURL);
+        if (!isSolo && typeof socket !== 'undefined') {
+            socket.emit('artStream', { x, y, color: brushColor.value, size: brushSize.value, type: brushType.value, opacity: brushOpacity.value });
         }
-    };
-    
-    // الحفاظ على آخر 30 صورة فقط
-    if (miniGallery.children.length >= 30) miniGallery.removeChild(miniGallery.firstChild);
-    miniGallery.appendChild(img);
-};
+    }
 
-// ==========================================
-// 7. استقبال البيانات من السيرفر
-// ==========================================
-socket.on('artStream', (d) => {
-    ctx.globalAlpha = d.opacity;
-    if (d.type === 'spray') {
-        ctx.fillStyle = d.color;
-        // رسم بخاخ تقريبي للمستلم
-        for (let i = 0; i < 15; i++) {
-            const off = d.size * 1.5;
-            ctx.fillRect(d.x + (Math.random()*off - d.size), d.y + (Math.random()*off - d.size), 1, 1);
-        }
-    } else {
-        ctx.lineWidth = d.size;
-        ctx.lineCap = 'round';
-        ctx.globalCompositeOperation = (d.type === 'eraser') ? 'destination-out' : 'source-over';
-        ctx.strokeStyle = d.color;
-        ctx.lineTo(d.x, d.y);
-        ctx.stroke();
-        ctx.beginPath();
-        ctx.moveTo(d.x, d.y);
+    // ==========================================
+    // وظائف الأزرار الأخرى
+    // ==========================================
+    function saveState() {
+        if (undoStack.length >= 20) undoStack.shift();
+        undoStack.push(canvas.toDataURL());
+    }
+
+    if (btnUndo) {
+        btnUndo.onclick = () => {
+            if (undoStack.length > 0) {
+                const img = new Image();
+                img.src = undoStack.pop();
+                img.onload = () => {
+                    ctx.globalCompositeOperation = 'source-over';
+                    ctx.clearRect(0, 0, canvas.width, canvas.height);
+                    ctx.drawImage(img, 0, 0);
+                };
+            }
+        };
+    }
+
+    if (btnClear) {
+        btnClear.onclick = () => {
+            ctx.clearRect(0, 0, canvas.width, canvas.height);
+            if (typeof socket !== 'undefined') socket.emit('clearArt');
+        };
+    }
+
+    if (btnSolo) {
+        btnSolo.onclick = () => {
+            isSolo = !isSolo;
+            btnSolo.innerText = isSolo ? "🔐 وضع منفرد: ON" : "🔐 وضع منفرد: OFF";
+            btnSolo.style.background = isSolo ? "gold" : "#3e2f1c";
+        };
+    }
+
+    if (btnSaveGallery) {
+        btnSaveGallery.onclick = () => {
+            const img = document.createElement('img');
+            img.src = canvas.toDataURL();
+            img.className = 'gallery-item';
+            img.onclick = () => {
+                if(confirm("مشاركة هذه الرسمة؟")) socket.emit('syncFullCanvas', img.src);
+            };
+            miniGallery.appendChild(img);
+        };
     }
 });
-
-socket.on('loadFullCanvas', (imgData) => {
-    const img = new Image();
-    img.src = imgData;
-    img.onload = () => {
-        ctx.globalCompositeOperation = 'source-over';
-        ctx.clearRect(0, 0, canvas.width, canvas.height);
-        ctx.drawImage(img, 0, 0);
-    };
-});
-
-// مسح الكل وتغيير الخلفية
-document.getElementById('btn-clear-canvas').onclick = () => {
-    ctx.clearRect(0, 0, canvas.width, canvas.height);
-    socket.emit('clearArt');
-};
-socket.on('clearArt', () => ctx.clearRect(0, 0, canvas.width, canvas.height));
-
-bgColor.oninput = () => {
-    ctx.fillStyle = bgColor.value;
-    ctx.fillRect(0, 0, canvas.width, canvas.height);
-    socket.emit('canvasBgChange', bgColor.value);
-};
-socket.on('updateCanvasBg', (color) => {
-    ctx.fillStyle = color;
-    ctx.fillRect(0, 0, canvas.width, canvas.height);
-});
+          
