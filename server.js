@@ -248,4 +248,3 @@ app.get("/ping", (req, res) => res.status(200).send("alive"));
 // ======== تشغيل السيرفر ========
 const PORT = process.env.PORT || 10000;
 server.listen(PORT, () => console.log(`Server running on port ${PORT}`));
-        
