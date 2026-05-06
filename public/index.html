@@ -1,189 +1,119 @@
-<!DOCTYPE html>
-<html lang="ar" dir="rtl">
-<head>
-  <meta charset="UTF-8" />
-  <meta name="viewport" content="width=device-width, initial-scale=1, maximum-scale=1" />
-  <title>لعبة الكلمات السريعة - المرسم الاحترافي</title>
-  <link rel="stylesheet" href="style.css" />
-  <script src="/socket.io/socket.io.js" defer></script>
-  <script src="game.js" defer></script>
-</head>
-<body>
-  <main id="app-container">
-    <header>
-      <h1>🇮🇷🇮🇷🇮🇷</h1>
-    </header>
-
-    <section class="game-section">
+<!DOCTYPE html>  <html lang="ar" dir="rtl">  
+<head>  
+  <meta charset="UTF-8" />  
+  <meta name="viewport" content="width=device-width, initial-scale=1, maximum-scale=1" />  
+  <title>لعبة الكلمات السريعة</title>  
+  <link rel="stylesheet" href="style.css" />  
+  <script src="/socket.io/socket.io.js" defer></script>  
+  <script src="game.js" defer></script>  
+</head>  
+<body>  
+  <main id="app-container">  
+    <header>  
+      <h1>🇮🇷🇮🇷🇮🇷</h1>  
+    </header>  
+    <section class="game-section"> 
       <div id="typingIndicator"></div>
-      <div class="word-box" aria-live="polite" aria-atomic="true" id="current-word">جاري التحميل...</div>
-      <input
-        type="text"
-        id="input-answer"
-        placeholder="اكتب الكلمة هنا"
-        autocomplete="off"
-        spellcheck="false"
-        aria-label="حقل إدخال الإجابة"
-      />
-      <div id="answer-time" class="answer-time"></div>
-      <div id="points-display" class="points-display">النقاط: 0</div>
-    </section>
+      <div class="word-box" aria-live="polite" aria-atomic="true" id="current-word">جاري التحميل...</div>  
+      <input  
+        type="text"  
+        id="input-answer"  
+        placeholder="اكتب الكلمة هنا"  
+        autocomplete="off"  
+        spellcheck="false"  
+        aria-label="حقل إدخال الإجابة"  
+      />  
+      <div id="answer-time" class="answer-time"></div>  
+      <div id="points-display" class="points-display">النقاط: 0</div>  
+    </section>  <section class="controls">  
+  <button id="btn-chat" class="btn-main" aria-expanded="false" aria-controls="chat-container">💬 الشات</button>  
+  <button id="btn-change-name" class="btn-main">✍️ تغيير الاسم</button>  
+  <button id="btn-instructions" class="btn-main">📖 تعليمات اللعبة</button>  
+  <!-- زر الوضع الليلي الجديد -->  
+  <button id="dark-mode-toggle" class="btn-main" aria-label="تفعيل الوضع الليلي">🌙 الوضع الليلي</button>  
+</section>  
 
-    <section id="creative-studio" class="studio-container">
-      <div class="studio-header">
-        <div class="mode-badges">
-          <span id="drawing-status">🎨 المرسم الاحترافي</span>
-          <span id="solo-badge" class="badge hidden">وضع المنفرد</span>
-        </div>
-        <div class="top-actions">
-          <button id="undo-btn" class="btn-icon" title="تراجع">↩️</button>
-          <button id="toggle-lock" class="btn-icon" title="حماية الرسمة (الكل يشاهد فقط)">🔒</button>
-          <button id="toggle-solo" class="btn-icon" title="رسم خاص (منفرد)">👤</button>
-          <button id="clear-canvas" class="btn-icon-red">🗑️</button>
-        </div>
-      </div>
+<section id="players-list-container" class="players-list-container" aria-label="قائمة اللاعبين">  
+  <h2>🏆 المتصدرون</h2>  
+  <ul id="players-list" role="list"></ul>  
+</section>  
 
-      <canvas id="main-canvas"></canvas>
+<!-- الشات -->  
+<aside id="chat-container" class="chat-container" aria-live="polite" aria-atomic="true" hidden>  
+  <header class="chat-header">  
+    <h3>الشات</h3>  
+    <button id="btn-close-chat" aria-label="إغلاق الشات">✖️</button>  
+  </header>  
+  <section id="chat-messages" class="chat-messages" role="log" aria-live="polite"></section>  
+  <form id="chat-form" class="chat-form" aria-label="إرسال رسالة شات">  
+    <input  
+      type="text"  
+      id="chat-input"  
+      placeholder="اكتب رسالة..."  
+      autocomplete="off"  
+      spellcheck="false"  
+      aria-label="نص الرسالة"  
+      required  
+      maxlength="10000"  
+    />  
+    <button type="submit" id="btn-send-chat" class="btn-send">إرسال</button>  
+  </form>  
+</aside>  
 
-      <div class="advanced-controls">
-        <div class="tool-row">
-          <div class="input-item">
-            <label>الريشة</label>
-            <input type="color" id="brush-color" value="#ffd700">
-          </div>
-          <div class="input-item">
-            <label>الخلفية</label>
-            <input type="color" id="bg-color" value="#1a140a">
-          </div>
-          <select id="brush-type" class="studio-select">
-            <option value="round">ريشة دائرية</option>
-            <option value="square">ريشة مربعة</option>
-            <option value="spray">بخاخ (Spray)</option>
-          </select>
-        </div>
+<!-- نافذة تغيير الاسم -->  
+<dialog id="change-name-dialog" aria-modal="true" aria-labelledby="change-name-title">  
+  <form method="dialog" id="change-name-form">  
+    <h3 id="change-name-title">تغيير الاسم</h3>  
+    <input  
+      type="text"  
+      id="input-name"  
+      placeholder="اكتب اسمك الجديد"  
+      autocomplete="off"  
+      spellcheck="false"  
+      maxlength="20"  
+      required  
+      aria-label="اسم جديد"  
+    />  
+    <label for="input-color" style="margin-top: 12px; font-weight: 700; color: #aaffff; display: block;">  
+      اختر لون الاسم:  
+    </label>  
+    <input  
+      type="color"  
+      id="input-color"  
+      value="#00e5ff"  
+      aria-label="لون الاسم"  
+      style="width: 100%; height: 35px; border-radius: 8px; border: none; cursor: pointer;"  
+    />  
+    <menu style="margin-top: 20px;">  
+      <button id="cancel-name" type="reset">إلغاء</button>  
+      <button id="confirm-name" type="submit">تأكيد</button>  
+    </menu>  
+  </form>  
+</dialog>  
 
-        <div class="shape-row">
-          <button class="shape-btn active" data-shape="free">✍️ حر</button>
-          <button class="shape-btn" data-shape="circle">⭕ دائرة</button>
-          <button class="shape-btn" data-shape="rect">🟦 مربع</button>
-          <button class="shape-btn" data-shape="eraser">🧽 ممحاة</button>
-        </div>
+<!-- نافذة التعليمات -->  
+<dialog id="instructions-dialog" aria-modal="true" aria-labelledby="instructions-title">  
+  <h3 id="instructions-title">تعليمات اللعبة</h3>  
+  <div class="instructions-content">  
+    <ol>  
+      <li>تظهر كلمة على الشاشة، اكتبها بأسرع وقت ممكن واضغط Enter.</li>  
+      <li>كل إجابة صحيحة تمنحك نقطة.</li>  
+      <li>اللاعب الذي يصل إلى 1000 نقطة يفوز باللعبة.</li>  
+      <li>يمكنك التواصل مع اللاعبين الآخرين عبر الشات.</li>  
+      <li>استخدم زر "تغيير الاسم" لتعديل اسمك في اللعبة.</li>  
+      <li>لا تنسى تحمد ربك وتدعيلي 😅.</li>  
+      <li>لا تكرر الإجابة على نفس الكلمة أكثر من مرة.</li>  
+      <li>استمتع باللعب وحاول الوصول إلى القمة!</li>  
+      <li>احترم اللاعبين الآخرين والتزم باللعب النظيف.</li>  
+    </ol>  
+  </div>  
+  <button id="close-instructions" type="button">إغلاق</button>  
+</dialog>
 
-        <div class="sliders-row">
-          <div class="range-group">
-            <span>الحجم</span>
-            <input type="range" id="brush-size" min="1" max="100" value="5">
-          </div>
-          <div class="range-group">
-            <span>التباين</span>
-            <input type="range" id="brush-opacity" min="0.1" max="1" step="0.1" value="1">
-          </div>
-        </div>
-        
-        <div class="final-actions">
-          <button id="save-to-gallery" class="btn-gold">💾 حفظ</button>
-          <button id="share-to-all" class="btn-gold hidden">📢 مشاركة مع الجميع</button>
-          <button id="open-gallery" class="btn-gold">🖼️ المعرض</button>
-        </div>
-      </div>
-    </section>
-    <section class="controls">
-      <button id="btn-chat" class="btn-main" aria-expanded="false" aria-controls="chat-container">💬 الشات</button>
-      <button id="btn-change-name" class="btn-main">✍️ تغيير الاسم</button>
-      <button id="btn-instructions" class="btn-main">📖 تعليمات اللعبة</button>
-      <button id="dark-mode-toggle" class="btn-main" aria-label="تفعيل الوضع الليلي">🌙 الوضع الليلي</button>
-    </section>
-
-    <section id="players-list-container" class="players-list-container" aria-label="قائمة اللاعبين">
-      <h2>🏆 المتصدرون</h2>
-      <ul id="players-list" role="list"></ul>
-    </section>
-
-    <aside id="chat-container" class="chat-container" aria-live="polite" aria-atomic="true" hidden>
-      <header class="chat-header">
-        <h3>الشات</h3>
-        <button id="btn-close-chat" aria-label="إغلاق الشات">✖️</button>
-      </header>
-      <section id="chat-messages" class="chat-messages" role="log" aria-live="polite"></section>
-      <form id="chat-form" class="chat-form" aria-label="إرسال رسالة شات">
-        <input
-          type="text"
-          id="chat-input"
-          placeholder="اكتب رسالة..."
-          autocomplete="off"
-          spellcheck="false"
-          aria-label="نص الرسالة"
-          required
-          maxlength="10000"
-        />
-        <button type="submit" id="btn-send-chat" class="btn-send">إرسال</button>
-      </form>
-    </aside>
-
-    <dialog id="change-name-dialog" aria-modal="true" aria-labelledby="change-name-title">
-      <form method="dialog" id="change-name-form">
-        <h3 id="change-name-title">تغيير الاسم</h3>
-        <input
-          type="text"
-          id="input-name"
-          placeholder="اكتب اسمك الجديد"
-          autocomplete="off"
-          spellcheck="false"
-          maxlength="20"
-          required
-          aria-label="اسم جديد"
-        />
-        <label for="input-color" style="margin-top: 12px; font-weight: 700; color: #aaffff; display: block;">
-          اختر لون الاسم:
-        </label>
-        <input
-          type="color"
-          id="input-color"
-          value="#00e5ff"
-          aria-label="لون الاسم"
-          style="width: 100%; height: 35px; border-radius: 8px; border: none; cursor: pointer;"
-        />
-        <menu style="margin-top: 20px;">
-          <button id="cancel-name" type="reset">إلغاء</button>
-          <button id="confirm-name" type="submit">تأكيد</button>
-        </menu>
-      </form>
-    </dialog>
-
-    <dialog id="instructions-dialog" aria-modal="true" aria-labelledby="instructions-title">
-      <h3 id="instructions-title">تعليمات اللعبة</h3>
-      <div class="instructions-content">
-        <ol>
-          <li>تظهر كلمة على الشاشة، اكتبها بأسرع وقت ممكن واضغط Enter.</li>
-          <li>كل إجابة صحيحة تمنحك نقطة.</li>
-          <li>اللاعب الذي يصل إلى 1000 نقطة يفوز باللعبة.</li>
-          <li>يمكنك التواصل مع اللاعبين الآخرين عبر الشات.</li>
-          <li>استخدم زر "تغيير الاسم" لتعديل اسمك في اللعبة.</li>
-          <li>لا تنسى تحمد ربك وتدعيلي 😅.</li>
-          <li>لا تكرر الإجابة على نفس الكلمة أكثر من مرة.</li>
-          <li>استمتع باللعب وحاول الوصول إلى القمة!</li>
-          <li>احترم اللاعبين الآخرين والتزم باللعب النظيف.</li>
-        </ol>
-      </div>
-      <button id="close-instructions" type="button">إغلاق</button>
-    </dialog>
-
-    <dialog id="gallery-dialog" class="studio-dialog">
-      <div class="dialog-header" style="display: flex; justify-content: space-between; align-items: center; border-bottom: 1px solid #ffd700; padding-bottom: 10px;">
-        <h3>🖼️ معرض الرسومات (30/0)</h3>
-        <button id="close-gallery" style="background:none; border:none; color:#ffd700; font-size:1.5rem; cursor:pointer;">✖️</button>
-      </div>
-      <div id="gallery-grid" class="gallery-grid">
-        </div>
-    </dialog>
-
-  </main>
-
-  <script>
-    const darkModeBtn = document.getElementById('dark-mode-toggle');
-    darkModeBtn.addEventListener('click', () => {
-      document.body.classList.toggle('dark-mode');
-    });
-  </script>
-</body>
+  </main>    <!-- كود JS للوضع الليلي -->    <script>  
+    const darkModeBtn = document.getElementById('dark-mode-toggle');  
+    darkModeBtn.addEventListener('click', () => {  
+      document.body.classList.toggle('dark-mode');  
+    });  
+  </script>  </body>  
 </html>
