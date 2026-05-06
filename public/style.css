@@ -574,3 +574,98 @@ body.dark-mode #btn-send-chat:hover { background: #4a5060; transform: none; }
 body {
   font-family: 'Cairo', sans-serif;
                        }
+.studio-container {
+  background: rgba(60, 40, 20, 0.9);
+  border: 3px solid #ffd700;
+  border-radius: 20px;
+  padding: 15px;
+  margin: 20px 0;
+  box-shadow: 0 0 20px #ffd70044;
+}
+
+#main-canvas {
+  background: #1a140a;
+  border-radius: 12px;
+  width: 100%;
+  height: 350px;
+  touch-action: none;
+  border: 1px solid #b8860b;
+  cursor: crosshair;
+}
+
+.studio-header {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  margin-bottom: 12px;
+}
+
+.pulse {
+  color: #ff3366;
+  font-size: 12px;
+  animation: blink 1s infinite;
+}
+
+@keyframes blink { 50% { opacity: 0; } }
+
+.studio-controls { display: flex; flex-direction: column; gap: 15px; margin-top: 15px; }
+
+.tool-row { display: flex; align-items: center; justify-content: space-between; gap: 10px; background: rgba(0,0,0,0.3); padding: 10px; border-radius: 10px; }
+
+.range-group { display: flex; flex-direction: column; font-size: 12px; color: #ffd700; flex: 1; }
+
+.btn-studio {
+  background: linear-gradient(135deg, #b8860b, #ffd700);
+  border: none;
+  color: #3e2f1c;
+  padding: 8px 12px;
+  border-radius: 8px;
+  font-weight: bold;
+  cursor: pointer;
+  font-size: 0.85rem;
+}
+
+.gallery-grid {
+  display: grid;
+  grid-template-columns: repeat(auto-fill, minmax(100px, 1fr));
+  gap: 15px;
+  max-height: 400px;
+  overflow-y: auto;
+  padding: 10px;
+}
+
+.gallery-item {
+  border: 1px solid #ffd700;
+  border-radius: 8px;
+  overflow: hidden;
+  position: relative;
+}
+
+.gallery-item img { width: 100%; cursor: pointer; background: #fff; }
+
+.gallery-item .delete-art {
+  position: absolute;
+  top: 2px;
+  right: 2px;
+  background: red;
+  color: white;
+  border: none;
+  border-radius: 50%;
+  width: 20px;
+  height: 20px;
+  font-size: 12px;
+  cursor: pointer;
+}
+.mode-badges { display: flex; gap: 10px; align-items: center; }
+.badge { background: #ff3366; color: white; padding: 2px 8px; border-radius: 5px; font-size: 10px; }
+.hidden { display: none !important; }
+
+.advanced-controls { display: flex; flex-direction: column; gap: 12px; margin-top: 15px; background: rgba(0,0,0,0.4); padding: 15px; border-radius: 15px; }
+
+.shape-row { display: flex; gap: 8px; justify-content: center; }
+.shape-btn { background: #4b2f1c; border: 1px solid #ffd700; color: #ffd700; padding: 5px 10px; border-radius: 8px; cursor: pointer; flex: 1; }
+.shape-btn.active { background: #ffd700; color: #3e2f1c; }
+
+.studio-select { background: #4b2f1c; color: #ffd700; border: 1px solid #ffd700; border-radius: 8px; padding: 5px; }
+
+.btn-gold { background: linear-gradient(135deg, #b8860b, #ffd700); border: none; color: #3e2f1c; padding: 10px; border-radius: 10px; font-weight: bold; cursor: pointer; flex: 1; }
