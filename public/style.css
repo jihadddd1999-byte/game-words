@@ -717,48 +717,141 @@ body {
         font-size: 13px;
     }
 }
+/* ==========================================
+   تصميم استوديو الرسم المستقبلي (Future UI)
+   ========================================== */
 
-/* أزرار مستقبلية */
+/* الحاوية الأساسية للمفاتيح */
+.studio-controls {
+    display: flex;
+    flex-direction: column;
+    gap: 20px;
+    padding: 15px;
+    background: rgba(20, 20, 20, 0.8);
+    border-radius: 12px;
+    border: 1px solid rgba(255, 215, 0, 0.2);
+    backdrop-filter: blur(10px);
+}
+
+/* الأزرار بنمط المستقبل */
 .studio-controls button {
-    background: rgba(0, 0, 0, 0.6);
+    position: relative;
+    background: linear-gradient(45deg, #000, #1a1a1a);
     border: 1px solid #ffd700;
-    color: gold;
-    border-radius: 4px;
-    transition: all 0.3s ease;
+    color: #ffd700;
+    padding: 10px 20px;
+    font-size: 14px;
+    font-weight: 900;
     text-transform: uppercase;
-    font-weight: bold;
-    letter-spacing: 1px;
+    letter-spacing: 2px;
+    cursor: pointer;
+    overflow: hidden;
+    transition: all 0.4s cubic-bezier(0.175, 0.885, 0.32, 1.275);
+    clip-path: polygon(10% 0, 100% 0, 100% 70%, 90% 100%, 0 100%, 0% 30%); /* قص حواف هندسي */
 }
 
 .studio-controls button:hover {
-    box-shadow: 0 0 15px #ffd700;
     background: #ffd700;
-    color: black;
+    color: #000;
+    box-shadow: 0 0 20px rgba(255, 215, 0, 0.6);
+    transform: translateY(-2px);
 }
 
+/* زر الوضع المنفرد المتفاعل (ON/OFF) */
 #art-btn-solo-mode {
-    border: 2px solid #ff0000;
-    padding: 10px;
-    background: rgba(255, 0, 0, 0.1);
+    border: 2px solid #ff3366;
+    color: #ff3366;
+    background: rgba(255, 51, 102, 0.05);
 }
 
-/* شكل المعرض الشبكي */
+#art-btn-solo-mode.active {
+    border-color: #00ff88;
+    color: #00ff88;
+    box-shadow: 0 0 15px rgba(0, 255, 136, 0.4);
+    background: rgba(0, 255, 136, 0.1);
+}
+
+/* ==========================================
+   نظام المعرض الشبكي المرتب (Grid System)
+   ========================================== */
+
+.gallery-header {
+    border-bottom: 2px solid rgba(255, 215, 0, 0.3);
+    margin-bottom: 15px;
+    padding-bottom: 5px;
+}
+
 .gallery-grid {
     display: grid;
-    grid-template-columns: repeat(auto-fill, minmax(80px, 1fr));
-    gap: 10px;
-    margin-top: 15px;
+    grid-template-columns: repeat(auto-fill, minmax(100px, 1fr)); /* ترتيب تلقائي ذكي */
+    gap: 15px;
+    max-height: 300px;
+    overflow-y: auto;
+    padding: 10px;
+    scrollbar-width: thin;
+    scrollbar-color: #ffd700 #000;
 }
 
-.gallery-item-future {
+/* كرت الرسمة في المعرض */
+.gallery-card {
     position: relative;
-    border: 1px solid #444;
-    padding: 4px;
-    background: #111;
+    background: #0a0a0a;
+    border: 1px solid rgba(255, 215, 0, 0.4);
+    border-radius: 8px;
+    padding: 8px;
+    transition: all 0.3s ease;
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    gap: 8px;
 }
 
-.gallery-item-future img {
+.gallery-card:hover {
+    border-color: #ffd700;
+    transform: scale(1.05);
+    box-shadow: 0 10px 20px rgba(0, 0, 0, 0.5);
+    z-index: 10;
+}
+
+.gallery-card img {
     width: 100%;
-    height: 60px;
+    height: 70px;
     object-fit: cover;
+    border-radius: 4px;
+    border: 1px solid #222;
+}
+
+.gallery-card span {
+    font-size: 11px;
+    color: #eee;
+    font-weight: bold;
+    white-space: nowrap;
+    overflow: hidden;
+    text-overflow: ellipsis;
+    width: 100%;
+    text-align: center;
+}
+
+/* أزرار الأكشن داخل الكرت */
+.gallery-card .btn-group {
+    display: flex;
+    width: 100%;
+    gap: 5px;
+}
+
+.gallery-card button {
+    flex: 1;
+    padding: 5px;
+    font-size: 10px;
+    clip-path: none; /* إلغاء القص للأزرار الصغيرة */
+    border-radius: 4px;
+}
+
+/* ستايل شريط التمرير */
+.gallery-grid::-webkit-scrollbar {
+    width: 6px;
+}
+.gallery-grid::-webkit-scrollbar-thumb {
+    background: #ffd700;
+    border-radius: 10px;
 }
