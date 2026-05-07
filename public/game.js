@@ -663,90 +663,112 @@ document.addEventListener('DOMContentLoaded', () => {
     };
 });
 /* ============================================================ */
-/* برمجة ستوديو الرسم - نزار قطوش (الإصلاح النهائي للأدوات)     */
+/* المحرك النهائي لستوديو الرسم - إصلاح الأزرار والخلفية (نزار قطوش) */
 /* ============================================================ */
 
-const canvas = document.getElementById('main-canvas');
-const ctx = canvas.getContext('2d');
-let drawing = false;
+document.addEventListener('DOMContentLoaded', () => {
+    const canvas = document.getElementById('main-canvas');
+    if (!canvas) return; // تأمين إذا الكانفاس مش موجود
 
-// 1. إعداد حجم الكانفاس الحقيقي (ضروري عشان الرسم ما يطلع زايح)
-function resizeCanvas() {
-    const container = canvas.parentElement;
-    canvas.width = container.clientWidth;
-    canvas.height = container.clientHeight;
-    // إعادة تعيين الخصائص بعد الرسايز
+    const ctx = canvas.getContext('2d');
+    let drawing = false;
+
+    // أدوات التحكم - تأكد أن الـ ID في HTML يطابق هذه الأسماء
+    const colorPicker = document.getElementById('color-picker');
+    const bgColorPicker = document.getElementById('bg-color-picker'); // أضف هذا الـ ID في HTML للخلفية
+    const brushSize = document.getElementById('brush-size');
+    const clearBtn = document.getElementById('clear-canvas');
+    const saveBtn = document.getElementById('save-drawing');
+
+    // إعدادات افتراضية
     ctx.lineCap = 'round';
     ctx.lineJoin = 'round';
-    ctx.strokeStyle = document.getElementById('color-picker').value;
-    ctx.lineWidth = document.getElementById('brush-size').value;
-}
 
-// تشغيل الرسايز عند فتح الستوديو أو تغيير حجم الشاشة
-window.addEventListener('resize', resizeCanvas);
-setTimeout(resizeCanvas, 100); // تأخير بسيط لضمان تحميل الـ CSS
-
-// 2. وظائف الرسم (دعم الماوس واللمس)
-function startDrawing(e) {
-    drawing = true;
-    draw(e);
-}
-
-function stopDrawing() {
-    drawing = false;
-    ctx.beginPath();
-}
-
-function draw(e) {
-    if (!drawing) return;
-    
-    // حساب الإحداثيات بدقة (لمس أو ماوس)
-    const rect = canvas.getBoundingClientRect();
-    const x = (e.clientX || e.touches[0].clientX) - rect.left;
-    const y = (e.clientY || e.touches[0].clientY) - rect.top;
-
-    ctx.lineTo(x, y);
-    ctx.stroke();
-    ctx.beginPath();
-    ctx.moveTo(x, y);
-}
-
-// أحداث الماوس
-canvas.addEventListener('mousedown', startDrawing);
-canvas.addEventListener('mousemove', draw);
-canvas.addEventListener('mouseup', stopDrawing);
-
-// أحداث اللمس (للجوال)
-canvas.addEventListener('touchstart', (e) => { e.preventDefault(); startDrawing(e); }, {passive: false});
-canvas.addEventListener('touchmove', (e) => { e.preventDefault(); draw(e); }, {passive: false});
-canvas.addEventListener('touchend', stopDrawing);
-
-// 3. ربط أدوات التحكم (الأزرار)
-document.getElementById('color-picker').addEventListener('input', (e) => {
-    ctx.strokeStyle = e.target.value;
-});
-
-document.getElementById('brush-size').addEventListener('input', (e) => {
-    ctx.lineWidth = e.target.value;
-});
-
-// زر المسح (Clear)
-function clearCanvas() {
-    if(confirm("بدك تمسح كل شي رسمته؟")) {
-        ctx.clearRect(0, 0, canvas.width, canvas.height);
+    // 1. وظيفة ضبط الحجم (عشان الرسم ما يطلع بعيد عن الماوس)
+    function initCanvas() {
+        const container = canvas.parentElement;
+        canvas.width = container.clientWidth;
+        canvas.height = container.clientHeight;
+        ctx.lineCap = 'round'; // نعيدها بعد ضبط الحجم
+        ctx.strokeStyle = colorPicker ? colorPicker.value : '#ffd700';
+        ctx.lineWidth = brushSize ? brushSize.value : 5;
     }
-}
+    
+    window.addEventListener('load', initCanvas);
+    window.addEventListener('resize', initCanvas);
+    initCanvas();
 
-// زر الحفظ (Save)
-function saveDrawing() {
-    const dataURL = canvas.toDataURL('image/png');
-    const link = document.createElement('a');
-    link.download = `nizar-drawing-${Date.now()}.png`;
-    link.href = dataURL;
-    link.click();
-}
+    // 2. منطق الرسم (دعم الجوال والكمبيوتر)
+    function getPos(e) {
+        const rect = canvas.getBoundingClientRect();
+        const clientX = e.touches ? e.touches[0].clientX : e.clientX;
+        const clientY = e.touches ? e.touches[0].clientY : e.clientY;
+        return {
+            x: clientX - rect.left,
+            y: clientY - rect.top
+        };
+    }
 
-// ملاحظة: تأكد إن الأزرار في الـ HTML عندها هاد الـ Onclick
-// <button class="btn-danger" onclick="clearCanvas()">مسح</button>
-// <button class="btn-gold" onclick="saveDrawing()">حفظ الرسمة</button>
-      
+    function start(e) {
+        drawing = true;
+        const pos = getPos(e);
+        ctx.beginPath();
+        ctx.moveTo(pos.x, pos.y);
+        if (e.type === 'touchstart') e.preventDefault();
+    }
+
+    function move(e) {
+        if (!drawing) return;
+        const pos = getPos(e);
+        ctx.lineTo(pos.x, pos.y);
+        ctx.stroke();
+        if (e.type === 'touchmove') e.preventDefault();
+    }
+
+    function stop() {
+        drawing = false;
+    }
+
+    // ربط أحداث اللمس والماوس
+    canvas.addEventListener('mousedown', start);
+    canvas.addEventListener('mousemove', move);
+    window.addEventListener('mouseup', stop);
+
+    canvas.addEventListener('touchstart', start, { passive: false });
+    canvas.addEventListener('touchmove', move, { passive: false });
+    canvas.addEventListener('touchend', stop);
+
+    // 3. تشغيل الأزرار (Event Listeners)
+    
+    if (colorPicker) {
+        colorPicker.oninput = (e) => ctx.strokeStyle = e.target.value;
+    }
+
+    if (brushSize) {
+        brushSize.oninput = (e) => ctx.lineWidth = e.target.value;
+    }
+
+    // تغيير لون الخلفية (اللي سألت عنها)
+    if (bgColorPicker) {
+        bgColorPicker.oninput = (e) => {
+            canvas.style.backgroundColor = e.target.value;
+        };
+    }
+
+    if (clearBtn) {
+        clearBtn.onclick = () => {
+            if (confirm('تصفير اللوحة؟')) {
+                ctx.clearRect(0, 0, canvas.width, canvas.height);
+            }
+        };
+    }
+
+    if (saveBtn) {
+        saveBtn.onclick = () => {
+            const link = document.createElement('a');
+            link.download = 'nizar-art.png';
+            link.href = canvas.toDataURL();
+            link.click();
+        };
+    }
+});
