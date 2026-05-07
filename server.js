@@ -248,3 +248,28 @@ app.get("/ping", (req, res) => res.status(200).send("alive"));
 // ======== تشغيل السيرفر ========
 const PORT = process.env.PORT || 10000;
 server.listen(PORT, () => console.log(`Server running on port ${PORT}`));
+
+// --- كود السيرفر المطور للرسم المباشر والخصوصية ---
+
+io.on('connection', (socket) => {
+    // 1. استقبال بيانات الرسم وتوزيعها
+    socket.on('draw-data', (data) => {
+        // السيرفر ببعث الرسمة لكل الناس "ما عدا" اللي رسمها
+        socket.broadcast.emit('draw-remote', data);
+    });
+
+    // 2. استقبال أمر مسح اللوحة (للجميع)
+    socket.on('clear-board-all', () => {
+        socket.broadcast.emit('clear-board-remote');
+    });
+
+    // 3. استقبال أمر عرض رسمة من المعرض للكل
+    socket.on('load-gallery-all', (imageData) => {
+        socket.broadcast.emit('load-gallery-remote', imageData);
+    });
+
+    // 4. مزامنة التراجع (Undo) عند الكل
+    socket.on('undo-all', (lastState) => {
+        socket.broadcast.emit('undo-remote', lastState);
+    });
+});
