@@ -545,47 +545,50 @@ document.addEventListener('DOMContentLoaded', () => {
         draw(e);
     };
 
-    const draw = (e) => {
-        if (!drawing) return;
-        const rect = canvas.getBoundingClientRect();
-        const x = (e.touches ? e.touches[0].clientX : e.clientX) - rect.left;
-        const y = (e.touches ? e.touches[0].clientY : e.clientY) - rect.top;
+  const draw = (e) => {
+    if (!drawing) return;
+    const rect = canvas.getBoundingClientRect();
+    const x = (e.touches ? e.touches[0].clientX : e.clientX) - rect.left;
+    const y = (e.touches ? e.touches[0].clientY : e.clientY) - rect.top;
 
-        ctx.lineCap = 'round';
-        ctx.lineJoin = 'round';
-        ctx.lineWidth = brushSize.value;
+    ctx.lineCap = 'round';
+    ctx.lineJoin = 'round';
+    ctx.lineWidth = brushSize.value;
 
-        if (brushType.value === 'eraser') {
-            // الممحاة الآن "ذكية": تمسح وترجع لون الخلفية الحالي
-            ctx.globalCompositeOperation = 'source-over'; 
-            ctx.strokeStyle = bgColor.value;
-            ctx.globalAlpha = 1.0;
-        } else if (brushType.value === 'spray') {
-            ctx.globalCompositeOperation = 'source-over';
-            ctx.globalAlpha = brushOpacity.value;
-            ctx.fillStyle = brushColor.value;
-            for (let i = 0; i < 20; i++) {
-                const off = brushSize.value * 1.5;
-                ctx.fillRect(x + (Math.random() * off - off / 2), y + (Math.random() * off - off / 2), 1, 1);
-            }
-            return;
-        } else {
-            ctx.globalCompositeOperation = 'source-over';
-            ctx.globalAlpha = brushOpacity.value;
-            ctx.strokeStyle = brushColor.value;
-        }
+    let currentColor = brushColor.value;
+    if (brushType.value === 'eraser') {
+        ctx.globalCompositeOperation = 'source-over'; 
+        ctx.strokeStyle = bgColor.value;
+        ctx.globalAlpha = 1.0;
+        currentColor = bgColor.value; // لون المسح هو لون الخلفية
+    } else {
+        ctx.globalCompositeOperation = 'source-over';
+        ctx.globalAlpha = brushOpacity.value;
+        ctx.strokeStyle = brushColor.value;
+    }
 
-        ctx.lineTo(x, y);
-        ctx.stroke();
-        ctx.beginPath();
-        ctx.moveTo(x, y);
-    };
+    ctx.lineTo(x, y);
+    ctx.stroke();
 
-    canvas.addEventListener('mousedown', startDrawing);
-    canvas.addEventListener('mousemove', draw);
-    window.addEventListener('mouseup', () => { drawing = false; });
-    canvas.addEventListener('touchstart', (e) => { e.preventDefault(); startDrawing(e); }, {passive:false});
-    canvas.addEventListener('touchmove', (e) => { e.preventDefault(); draw(e); }, {passive:false});
+    // --- الربط مع السيرفر ---
+    if (!isSoloMode) {
+        socket.emit('draw-data', {
+            x: x,
+            y: y,
+            prevX: lastX, // إحداثيات النقطة السابقة لضمان سلاسة الخط
+            prevY: lastY,
+            color: currentColor,
+            size: brushSize.value,
+            opacity: brushOpacity.value
+        });
+    }
+    // ----------------------
+
+    ctx.beginPath();
+    ctx.moveTo(x, y);
+    [lastX, lastY] = [x, y]; // تحديث الإحداثيات الأخيرة
+};
+
 
     // --- 3. الأزرار التفاعلية (Future Style) ---
 
