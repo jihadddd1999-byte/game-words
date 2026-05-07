@@ -662,3 +662,91 @@ document.addEventListener('DOMContentLoaded', () => {
         if (typeof socket !== 'undefined') socket.emit('canvasBgChange', bgColor.value);
     };
 });
+/* ============================================================ */
+/* برمجة ستوديو الرسم - نزار قطوش (الإصلاح النهائي للأدوات)     */
+/* ============================================================ */
+
+const canvas = document.getElementById('main-canvas');
+const ctx = canvas.getContext('2d');
+let drawing = false;
+
+// 1. إعداد حجم الكانفاس الحقيقي (ضروري عشان الرسم ما يطلع زايح)
+function resizeCanvas() {
+    const container = canvas.parentElement;
+    canvas.width = container.clientWidth;
+    canvas.height = container.clientHeight;
+    // إعادة تعيين الخصائص بعد الرسايز
+    ctx.lineCap = 'round';
+    ctx.lineJoin = 'round';
+    ctx.strokeStyle = document.getElementById('color-picker').value;
+    ctx.lineWidth = document.getElementById('brush-size').value;
+}
+
+// تشغيل الرسايز عند فتح الستوديو أو تغيير حجم الشاشة
+window.addEventListener('resize', resizeCanvas);
+setTimeout(resizeCanvas, 100); // تأخير بسيط لضمان تحميل الـ CSS
+
+// 2. وظائف الرسم (دعم الماوس واللمس)
+function startDrawing(e) {
+    drawing = true;
+    draw(e);
+}
+
+function stopDrawing() {
+    drawing = false;
+    ctx.beginPath();
+}
+
+function draw(e) {
+    if (!drawing) return;
+    
+    // حساب الإحداثيات بدقة (لمس أو ماوس)
+    const rect = canvas.getBoundingClientRect();
+    const x = (e.clientX || e.touches[0].clientX) - rect.left;
+    const y = (e.clientY || e.touches[0].clientY) - rect.top;
+
+    ctx.lineTo(x, y);
+    ctx.stroke();
+    ctx.beginPath();
+    ctx.moveTo(x, y);
+}
+
+// أحداث الماوس
+canvas.addEventListener('mousedown', startDrawing);
+canvas.addEventListener('mousemove', draw);
+canvas.addEventListener('mouseup', stopDrawing);
+
+// أحداث اللمس (للجوال)
+canvas.addEventListener('touchstart', (e) => { e.preventDefault(); startDrawing(e); }, {passive: false});
+canvas.addEventListener('touchmove', (e) => { e.preventDefault(); draw(e); }, {passive: false});
+canvas.addEventListener('touchend', stopDrawing);
+
+// 3. ربط أدوات التحكم (الأزرار)
+document.getElementById('color-picker').addEventListener('input', (e) => {
+    ctx.strokeStyle = e.target.value;
+});
+
+document.getElementById('brush-size').addEventListener('input', (e) => {
+    ctx.lineWidth = e.target.value;
+});
+
+// زر المسح (Clear)
+function clearCanvas() {
+    if(confirm("بدك تمسح كل شي رسمته؟")) {
+        ctx.clearRect(0, 0, canvas.width, canvas.height);
+    }
+}
+
+// زر الحفظ (Save)
+function saveDrawing() {
+    const dataURL = canvas.toDataURL('image/png');
+    const link = document.createElement('a');
+    link.download = `nizar-drawing-${Date.now()}.png`;
+    link.href = dataURL;
+    link.click();
+}
+
+// ملاحظة: تأكد إن الأزرار في الـ HTML عندها هاد الـ Onclick
+// <button class="btn-danger" onclick="clearCanvas()">مسح</button>
+// <button class="btn-gold" onclick="saveDrawing()">حفظ الرسمة</button>
+      
