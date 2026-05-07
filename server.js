@@ -76,14 +76,12 @@ function sendSystemMessage(message) {
 
 // ======== اتصال اللاعبين ========
 io.on('connection', socket => {
-  // التحقق من الحد الأقصى للاعبين
   if (players.length >= MAX_PLAYERS) {
     socket.emit('chatMessage', { system: true, message: 'عذراً، عدد اللاعبين وصل للحد الأقصى.' });
     socket.disconnect(true);
     return;
   }
 
-  // إضافة اللاعب الجديد
   const newPlayer = {
     id: socket.id,
     name: `لاعب${Math.floor(Math.random() * 1000)}`,
@@ -98,17 +96,37 @@ io.on('connection', socket => {
   sendSystemMessage(`${newPlayer.name} دخل اللعبة.`);
   updatePlayersList();
 
-  // إرسال الكلمة الحالية
   if (!currentWord) chooseNewWord();
   else {
     socket.emit('newWord', currentWord);
     socket.emit('updateScore', newPlayer.score);
   }
 
-  // ======== تغيير الاسم ========
+  // ==========================================
+  //    نظام استوديو نزار المطور (الرسم المشترك)
+  // ==========================================
+
+  // 1 & 2. استقبال بيانات الرسم وتوزيعها (بخاخ، ريشة، ممحاة)
+  socket.on('draw-data', (data) => {
+    socket.broadcast.emit('draw-remote', data);
+  });
+
+  // 3 & 4. مسح اللوحة وتغيير الخلفية فوراً عند الجميع
+  socket.on('clear-board-all', (data) => {
+    // نرسل الـ data كاملة لأنها تحتوي على اللون المختار
+    io.emit('clear-board-remote', data);
+  });
+
+  // 5. التراجع (Undo) وتزامن الصور من المعرض
+  socket.on('load-gallery-all', (imgData) => {
+    socket.broadcast.emit('load-remote', imgData);
+  });
+
+  // ميزة 6 "الوضع المنفرد" تُدار في المتصفح تلقائياً
+  // ==========================================
+
   socket.on('setName', data => {
     if (!data || typeof data.name !== 'string') return;
-
     const player = players.find(p => p.id === socket.id);
     if (!player) return;
 
@@ -122,43 +140,23 @@ io.on('connection', socket => {
     updatePlayersList();
     sendSystemMessage(`${oldName} غير اسمه إلى ${player.name}`);
 
-    // ترحيب خاص بكول
     if (player.name === "كول") {
-      socket.emit('chatMessage', {
-        system: true,
-        message: "🌸 أهلاً كول! نورتِ اللعبة، وجودك يضيف للمكان جمال 🤍"
-      });
+      socket.emit('chatMessage', { system: true, message: "🌸 أهلاً كول! نورتِ اللعبة، وجودك يضيف للمكان جمال 🤍" });
     }
   });
 
-  // ======== الشات و الرسائل ========
   socket.on('sendMessage', msg => {
     const player = players.find(p => p.id === socket.id);
     if (!player) return;
-
     const message = msg.trim();
     if (!message) return;
 
-    // كلمة سرية
-    if (message === 'إيرين') {
-      socket.emit('chatMessage', { system: true, message: 'تم تفعيل تأثير إيرين على اسمك!' });
-      return;
-    }
-
-    io.emit('chatMessage', {
-      name: player.name,
-      message,
-      system: false,
-      color: player.color
-    });
+    io.emit('chatMessage', { name: player.name, message, system: false, color: player.color });
   });
 
-  // ======== جاري الكتابة ========
   socket.on('typing', () => {
     const player = players.find(p => p.id === socket.id);
     if (!player) return;
-
-    socket.username = player.name;
     typingUsers.add(player.name);
     io.emit('typing', [...typingUsers]);
   });
@@ -166,12 +164,10 @@ io.on('connection', socket => {
   socket.on('stopTyping', () => {
     const player = players.find(p => p.id === socket.id);
     if (!player) return;
-
     typingUsers.delete(player.name);
     io.emit('typing', [...typingUsers]);
   });
 
-  // ======== إرسال الإجابة ========
   socket.on('submitAnswer', data => {
     const player = players.find(p => p.id === socket.id);
     if (!player || !data || typeof data.answer !== 'string') return;
@@ -200,7 +196,6 @@ io.on('connection', socket => {
         chooseNewWord();
         players.forEach(p => p.canAnswer = true);
       }, 2000);
-
     } else {
       socket.emit('chatMessage', { system: true, message: '❌ إجابة خاطئة، حاول مرة أخرى!' });
       player.canAnswer = true;
@@ -208,9 +203,8 @@ io.on('connection', socket => {
     }
   });
 
-  // ======== طرد اللاعبين ========
   socket.on('kickPlayer', targetId => {
-    if (players.length > 0 && socket.id === players[0].id) { // الادمن هو أول لاعب
+    if (players.length > 0 && socket.id === players[0].id) {
       const index = players.findIndex(p => p.id === targetId);
       if (index !== -1) {
         const kicked = players.splice(index, 1)[0];
@@ -222,10 +216,9 @@ io.on('connection', socket => {
     }
   });
 
-  // ======== قطع الاتصال ========
   socket.on('disconnect', () => {
-    // إزالة من typingUsers
-    if (socket.username) typingUsers.delete(socket.username);
+    const player = players.find(p => p.id === socket.id);
+    if (player && player.name) typingUsers.delete(player.name);
     io.emit('typing', [...typingUsers]);
 
     const index = players.findIndex(p => p.id === socket.id);
@@ -233,45 +226,16 @@ io.on('connection', socket => {
       const left = players.splice(index, 1)[0];
       sendSystemMessage(`${left.name} خرج من اللعبة.`);
       updatePlayersList();
-
       if (players.length === 0) {
         currentWord = '';
         if (wordTimer) { clearTimeout(wordTimer); wordTimer = null; }
       }
     }
   });
-
-    // ==========================================
-  //    نظام استوديو نزار المطور (الرسم المشترك)
-  // ==========================================
-
-  // 1 & 2. استقبال بيانات الرسم (الإحداثيات، اللون، الحجم، والنوع مثل البخاخ)
-  socket.on('draw-data', (data) => {
-    // نرسل البيانات لكل اللاعبين ما عدا اللي رسم (عشان ما يصير تكرار عنده)
-    socket.broadcast.emit('draw-remote', data);
-  });
-
-  // 3 & 4. مسح اللوحة وتغيير لون الخلفية فوراً عند الجميع
-  socket.on('clear-board-all', (data) => {
-    // نرسل أمر المسح مع اللون الجديد (data.color) لكل المتصلين
-    io.emit('clear-board-remote', data);
-  });
-
-  // 5. نظام التراجع (Undo) وتحميل الصور من المعرض
-  socket.on('load-gallery-all', (imgData) => {
-    // نرسل صورة اللوحة الكاملة (Base64) للبقية لتحديث شاشاتهم فوراً
-    socket.broadcast.emit('load-remote', imgData);
-  });
-
-  // ملاحظة: ميزة "الوضع المنفرد" (Solo Mode) تعمل تلقائياً 
-  // لأنها تمنع الـ emit من جهة المتصفح (الجافا سكريبت) عندك.
-  // ==========================================
-  
- });
 });
-// ======== Render Keep Alive ========
+
 app.get("/ping", (req, res) => res.status(200).send("alive"));
 
-// ======== تشغيل السيرفر ========
 const PORT = process.env.PORT || 10000;
 server.listen(PORT, () => console.log(`Server running on port ${PORT}`));
+                                
