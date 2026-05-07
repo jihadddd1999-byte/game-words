@@ -469,7 +469,7 @@ chatForm.addEventListener('submit', () => {
     delete typingMessages[playerName];
   }
 });
-      // ==========================================
+    // ==========================================
 //   استوديو نزار المطور (V2 - Final Clean)
 // ==========================================
 
@@ -509,11 +509,11 @@ window.loadToCanvas = (idx) => {
     img.src = galleryData[idx].img;
     img.onload = () => {
         ctx.save();
+        ctx.globalAlpha = 1.0;
         ctx.globalCompositeOperation = 'source-over';
         ctx.clearRect(0, 0, canvas.width, canvas.height);
         ctx.drawImage(img, 0, 0);
         ctx.restore();
-        // إرسال للكل إذا وضع المنفرد مطفأ
         if(!isSoloMode) socket.emit('load-gallery-all', canvas.toDataURL());
     };
 };
@@ -549,15 +549,11 @@ const initStudio = () => {
 
     updateGalleryUI();
 
-    // دالة تهيئة حجم اللوحة
-    function resizeCanvas() {
-        const container = canvas.parentElement;
-        if (canvas.width !== container.clientWidth) {
-            canvas.width = container.clientWidth;
-            canvas.height = container.clientHeight;
-            resetCanvasBackground();
-        }
-    }
+    // تغيير الخلفية فوراً عند اختيار اللون
+    bgColor.oninput = () => {
+        resetCanvasBackground();
+        if(!isSoloMode) socket.emit('clear-board-all');
+    };
 
     function resetCanvasBackground() {
         ctx.save();
@@ -573,11 +569,15 @@ const initStudio = () => {
         undoStack.push(canvas.toDataURL());
     }
 
-    // فتح وإغلاق
     if(btnOpen) {
         btnOpen.onclick = () => {
             boardDialog.showModal();
-            resizeCanvas();
+            const container = canvas.parentElement;
+            if (canvas.width !== container.clientWidth) {
+                canvas.width = container.clientWidth;
+                canvas.height = container.clientHeight;
+                resetCanvasBackground();
+            }
             if (persistentCanvasData) {
                 const img = new Image();
                 img.src = persistentCanvasData;
@@ -593,7 +593,6 @@ const initStudio = () => {
         };
     }
 
-    // منطق الرسم
     const startDrawing = (e) => {
         drawing = true;
         saveState();
@@ -610,6 +609,7 @@ const initStudio = () => {
         const x = (e.touches ? e.touches[0].clientX : e.clientX) - rect.left;
         const y = (e.touches ? e.touches[0].clientY : e.clientY) - rect.top;
 
+        ctx.save();
         ctx.lineCap = 'round';
         ctx.lineJoin = 'round';
         ctx.lineWidth = brushSize.value;
@@ -621,13 +621,13 @@ const initStudio = () => {
             currentColor = bgColor.value;
         } else if (brushType.value === 'spray') {
             ctx.fillStyle = brushColor.value;
-            ctx.globalAlpha = brushOpacity.value;
-            for (let i = 0; i < 15; i++) {
-                const offset = Math.random() * brushSize.value * 1.5 - brushSize.value;
-                ctx.fillRect(x + offset, y + Math.random() * brushSize.value * 1.5 - brushSize.value, 1, 1);
+            ctx.globalAlpha = 1.0; // البخاخ كثيف وواضح
+            for (let i = 0; i < 40; i++) { // زيادة عدد النقاط للكثافة
+                const offset = Math.random() * brushSize.value * 2 - brushSize.value;
+                ctx.fillRect(x + offset, y + Math.random() * brushSize.value * 2 - brushSize.value, 1.5, 1.5);
             }
         } else {
-            ctx.globalAlpha = brushOpacity.value;
+            ctx.globalAlpha = brushOpacity.value; // الشفافية للريشة فقط
             ctx.strokeStyle = brushColor.value;
         }
 
@@ -635,25 +635,25 @@ const initStudio = () => {
             ctx.lineTo(x, y);
             ctx.stroke();
         }
+        ctx.restore();
 
         if (!isSoloMode) {
             socket.emit('draw-data', {
                 x, y, prevX: lastX, prevY: lastY,
                 color: currentColor, size: brushSize.value,
-                opacity: ctx.globalAlpha, type: brushType.value
+                opacity: (brushType.value === 'spray' || brushType.value === 'eraser') ? 1.0 : brushOpacity.value, 
+                type: brushType.value
             });
         }
         [lastX, lastY] = [x, y];
     };
 
-    // الأحداث
     canvas.addEventListener('mousedown', startDrawing);
     canvas.addEventListener('mousemove', draw);
     window.addEventListener('mouseup', () => drawing = false);
     canvas.addEventListener('touchstart', (e) => { e.preventDefault(); startDrawing(e); }, {passive:false});
     canvas.addEventListener('touchmove', (e) => { e.preventDefault(); draw(e); }, {passive:false});
 
-    // استقبال من الآخرين
     socket.on('draw-remote', (data) => {
         if (isSoloMode) return;
         ctx.save();
@@ -662,9 +662,9 @@ const initStudio = () => {
         ctx.globalAlpha = data.opacity;
         if (data.type === 'spray') {
             ctx.fillStyle = data.color;
-            for (let i = 0; i < 15; i++) {
-                const offset = Math.random() * data.size * 1.5 - data.size;
-                ctx.fillRect(data.x + offset, data.y + Math.random() * data.size * 1.5 - data.size, 1, 1);
+            for (let i = 0; i < 40; i++) {
+                const offset = Math.random() * data.size * 2 - data.size;
+                ctx.fillRect(data.x + offset, data.y + Math.random() * data.size * 2 - data.size, 1.5, 1.5);
             }
         } else {
             ctx.strokeStyle = data.color;
@@ -681,59 +681,57 @@ const initStudio = () => {
         const img = new Image();
         img.src = imgData;
         img.onload = () => {
+            ctx.save();
+            ctx.globalAlpha = 1.0;
             ctx.clearRect(0, 0, canvas.width, canvas.height);
             ctx.drawImage(img, 0, 0);
+            ctx.restore();
         };
     });
 
     socket.on('clear-board-remote', () => { if (!isSoloMode) resetCanvasBackground(); });
 
-    // الأزرار الوظيفية
-    if(btnSolo) {
-        btnSolo.onclick = () => {
-            isSoloMode = !isSoloMode;
-            btnSolo.classList.toggle('active', isSoloMode);
-            btnSolo.innerHTML = isSoloMode ? 
-                '🔐 وضع منفرد: <span style="color:#00ff00;">ON</span>' : 
-                '🔐 وضع منفرد: <span style="color:#ff4444;">OFF</span>';
-        };
-    }
+    btnSolo.onclick = () => {
+        isSoloMode = !isSoloMode;
+        btnSolo.classList.toggle('active', isSoloMode);
+        btnSolo.innerHTML = isSoloMode ? 
+            '🔐 وضع منفرد: <span style="color:#00ff00;">ON</span>' : 
+            '🔐 وضع منفرد: <span style="color:#ff4444;">OFF</span>';
+    };
 
-    if(btnUndo) {
-        btnUndo.onclick = () => {
-            if (undoStack.length > 0) {
-                const img = new Image();
-                img.src = undoStack.pop();
-                img.onload = () => {
-                    ctx.clearRect(0, 0, canvas.width, canvas.height);
-                    ctx.drawImage(img, 0, 0);
-                    if(!isSoloMode) socket.emit('load-gallery-all', canvas.toDataURL());
-                };
-            }
-        };
-    }
+    btnUndo.onclick = () => {
+        if (undoStack.length > 0) {
+            const lastImg = undoStack.pop();
+            const img = new Image();
+            img.src = lastImg;
+            img.onload = () => {
+                ctx.save();
+                ctx.globalAlpha = 1.0;
+                ctx.globalCompositeOperation = 'source-over';
+                ctx.clearRect(0, 0, canvas.width, canvas.height);
+                ctx.drawImage(img, 0, 0);
+                ctx.restore();
+                if(!isSoloMode) socket.emit('load-gallery-all', canvas.toDataURL());
+            };
+        }
+    };
 
-    if(btnClear) {
-        btnClear.onclick = () => {
-            if(confirm("تفريغ اللوحة؟")) {
-                resetCanvasBackground();
-                if(!isSoloMode) socket.emit('clear-board-all');
-            }
-        };
-    }
+    btnClear.onclick = () => {
+        if(confirm("تفريغ اللوحة؟")) {
+            resetCanvasBackground();
+            if(!isSoloMode) socket.emit('clear-board-all');
+        }
+    };
 
-    if (btnSaveGallery) {
-        btnSaveGallery.onclick = () => {
-            const artName = prompt("اسم الرسمة:", `عمل نزار ${galleryData.length + 1}`);
-            if (artName) {
-                galleryData.push({ name: artName, img: canvas.toDataURL() });
-                localStorage.setItem('myArtGallery', JSON.stringify(galleryData));
-                updateGalleryUI();
-            }
-        };
-    }
+    btnSaveGallery.onclick = () => {
+        const artName = prompt("اسم الرسمة:", `عمل نزار ${galleryData.length + 1}`);
+        if (artName) {
+            galleryData.push({ name: artName, img: canvas.toDataURL() });
+            localStorage.setItem('myArtGallery', JSON.stringify(galleryData));
+            updateGalleryUI();
+        }
+    };
 };
 
-// تشغيل الاستوديو (تأكد من وجود هذا السطر داخل DOMContentLoaded)
 initStudio();
-  
+      
