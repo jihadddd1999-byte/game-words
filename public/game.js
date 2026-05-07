@@ -471,103 +471,81 @@ chatForm.addEventListener('submit', () => {
 });
         
 // ==========================================
-//      نظام لوحة الرسم (STUDIO SYSTEM)
+//   نظام استوديو الرسم المتكامل - نزار قطوش
 // ==========================================
 
 document.addEventListener('DOMContentLoaded', () => {
-    // 1. ربط العناصر (تأكد أن الـ ID في HTML يطابق هذه الأسماء)
-    const boardDialog = document.getElementById('board-dialog'); // المودال نفسه
-    const btnOpen = document.getElementById('btn-open-board');   // زر الفتح بالصفحة
-    const btnClose = document.getElementById('btn-close-board'); // زر الإغلاق (X)
+    // 1. تعريف العناصر الأساسية
+    const boardDialog = document.getElementById('board-dialog');
+    const btnOpen = document.getElementById('btn-open-board');
+    const btnClose = document.getElementById('art-btn-close-board');
     const canvas = document.getElementById('main-canvas');
     const ctx = canvas.getContext('2d');
     
-    // أدوات التحكم
-    const brushColor = document.getElementById('brush-color') || document.getElementById('color-picker');
-    const bgColor = document.getElementById('bg-color') || document.getElementById('bg-color-picker');
-    const brushSize = document.getElementById('brush-size');
-    const brushType = document.getElementById('brush-type');
-    const brushOpacity = document.getElementById('brush-opacity');
+    const brushColor = document.getElementById('art-brush-color');
+    const bgColor = document.getElementById('art-bg-color');
+    const brushSize = document.getElementById('art-brush-size');
+    const brushType = document.getElementById('art-brush-type');
+    const brushOpacity = document.getElementById('art-brush-opacity');
     
-    const btnClear = document.getElementById('btn-clear-canvas');
-    const btnUndo = document.getElementById('btn-undo');
-    const btnSaveGallery = document.getElementById('btn-save-to-gallery');
-    const miniGallery = document.getElementById('mini-gallery');
+    const btnClear = document.getElementById('art-btn-clear-canvas');
+    const btnUndo = document.getElementById('art-btn-undo');
+    const btnSaveGallery = document.getElementById('art-btn-save-to-gallery');
+    const miniGallery = document.getElementById('art-mini-gallery');
 
     let drawing = false;
     let undoStack = [];
-    let galleryData = []; 
+    let galleryData = [];
 
     // 2. إعدادات فتح وإغلاق اللوحة
     if(btnOpen) {
         btnOpen.onclick = () => {
             boardDialog.showModal();
-            // ضبط حجم الكانفاس ليتناسب مع الحاوية فور الفتح
             setTimeout(initCanvas, 100); 
         };
     }
-    
     if(btnClose) btnClose.onclick = () => boardDialog.close();
 
     function initCanvas() {
         const container = canvas.parentElement;
         canvas.width = container.clientWidth;
         canvas.height = container.clientHeight;
-        
-        // تعبئة خلفية الكانفاس باللون المختار
-        ctx.fillStyle = bgColor ? bgColor.value : "#1a140a";
+        ctx.fillStyle = bgColor.value;
         ctx.fillRect(0, 0, canvas.width, canvas.height);
-        
-        // إعدادات الفرشاة الأساسية
         ctx.lineCap = 'round';
         ctx.lineJoin = 'round';
     }
 
-    // 3. منطق الرسم (دعم لمس وماوس)
+    // 3. منطق الرسم الأساسي
     const getPos = (e) => {
         const rect = canvas.getBoundingClientRect();
         const clientX = e.touches ? e.touches[0].clientX : e.clientX;
         const clientY = e.touches ? e.touches[0].clientY : e.clientY;
-        return {
-            x: clientX - rect.left,
-            y: clientY - rect.top
-        };
+        return { x: clientX - rect.left, y: clientY - rect.top };
     };
 
     const startDrawing = (e) => {
         drawing = true;
-        saveState(); // حفظ الحالة للتراجع
+        saveState();
         draw(e);
-    };
-
-    const stopDrawing = () => {
-        drawing = false;
-        ctx.beginPath();
     };
 
     const draw = (e) => {
         if (!drawing) return;
         const pos = getPos(e);
         
-        const type = brushType ? brushType.value : 'brush';
-        const color = brushColor ? brushColor.value : '#ffd700';
-        const size = brushSize ? brushSize.value : 5;
-        const opacity = brushOpacity ? brushOpacity.value : 1;
+        ctx.globalAlpha = brushOpacity.value;
+        ctx.lineWidth = brushSize.value;
+        ctx.strokeStyle = brushColor.value;
 
-        ctx.globalAlpha = opacity;
-
-        if (type === 'spray') {
-            ctx.fillStyle = color;
-            for (let i = 0; i < 15; i++) {
-                const off = size * 2;
+        if (brushType.value === 'spray') {
+            ctx.fillStyle = brushColor.value;
+            for (let i = 0; i < 20; i++) {
+                const off = brushSize.value * 1.5;
                 ctx.fillRect(pos.x + (Math.random() * off - off / 2), pos.y + (Math.random() * off - off / 2), 1, 1);
             }
         } else {
-            ctx.lineWidth = size;
-            ctx.lineCap = 'round';
-            // إذا النوع ممحاة نستخدم "destination-out"
-            ctx.globalCompositeOperation = (type === 'eraser') ? 'destination-out' : 'source-over';
-            ctx.strokeStyle = color;
+            ctx.globalCompositeOperation = (brushType.value === 'eraser') ? 'destination-out' : 'source-over';
             ctx.lineTo(pos.x, pos.y);
             ctx.stroke();
             ctx.beginPath();
@@ -575,55 +553,92 @@ document.addEventListener('DOMContentLoaded', () => {
         }
     };
 
-    // مستمعات الأحداث
+    // مستمعات الأحداث (ماوس + لمس)
     canvas.addEventListener('mousedown', startDrawing);
     canvas.addEventListener('mousemove', draw);
-    window.addEventListener('mouseup', stopDrawing);
+    window.addEventListener('mouseup', () => { drawing = false; ctx.beginPath(); });
     
     canvas.addEventListener('touchstart', (e) => { e.preventDefault(); startDrawing(e); }, {passive:false});
     canvas.addEventListener('touchmove', (e) => { e.preventDefault(); draw(e); }, {passive:false});
-    canvas.addEventListener('touchend', stopDrawing);
+    canvas.addEventListener('touchend', () => { drawing = false; ctx.beginPath(); });
 
-    // 4. الأزرار الوظيفية
-    
-    // تغيير لون الخلفية فورياً
-    if(bgColor) {
-        bgColor.oninput = () => {
-            // تنبيه: هذا سيمسح الرسم الحالي إلا إذا قمت برسم مستطيل خلفي
-            if(confirm("تغيير لون الخلفية سيمسح الرسمة الحالية، موافق؟")) {
-                ctx.globalCompositeOperation = 'source-over';
-                ctx.fillStyle = bgColor.value;
-                ctx.fillRect(0, 0, canvas.width, canvas.height);
+    // 4. نظام المعرض والحفظ (30 رسمة)
+    if (btnSaveGallery) {
+        btnSaveGallery.onclick = () => {
+            if (galleryData.length >= 30) {
+                alert("المعرض ممتلئ! (30/30)");
+                return;
             }
+            const artName = prompt("اسم الرسمة:", `رسمة ${galleryData.length + 1}`);
+            if (!artName) return;
+
+            const artObject = { id: Date.now(), name: artName, image: canvas.toDataURL() };
+            galleryData.push(artObject);
+            updateGalleryUI();
         };
     }
 
-    if(btnClear) {
-        btnClear.onclick = () => {
-            if(confirm("بدك تمسح كل شي؟")) {
-                ctx.globalCompositeOperation = 'source-over';
-                ctx.fillStyle = bgColor ? bgColor.value : "#1a140a";
-                ctx.fillRect(0, 0, canvas.width, canvas.height);
-            }
-        };
+    function updateGalleryUI() {
+        miniGallery.innerHTML = '';
+        galleryData.forEach((art, index) => {
+            const card = document.createElement('div');
+            card.className = 'gallery-card';
+            card.innerHTML = `
+                <img src="${art.image}" style="width:100%; height:60px; object-fit:cover; border-radius:5px;">
+                <span style="font-size:10px; color:gold; display:block; margin:2px 0;">${art.name}</span>
+                <button onclick="event.stopPropagation(); deleteArtItem(${index})" style="background:red; color:white; border:none; border-radius:3px; font-size:9px; width:100%;">حذف</button>
+            `;
+            card.onclick = () => {
+                if(confirm("تعديل الرسمة؟")) {
+                    const img = new Image();
+                    img.src = art.image;
+                    img.onload = () => {
+                        ctx.globalCompositeOperation = 'source-over';
+                        ctx.drawImage(img, 0, 0);
+                    };
+                }
+            };
+            miniGallery.appendChild(card);
+        });
+        document.getElementById('art-gallery-count').innerText = `📸 المعرض (${galleryData.length}/30)`;
     }
 
+    window.deleteArtItem = (index) => {
+        if(confirm("حذف الرسمة؟")) {
+            galleryData.splice(index, 1);
+            updateGalleryUI();
+        }
+    };
+
+    // 5. وظائف إضافية (تراجع، مسح، خلفية)
     function saveState() {
         if (undoStack.length >= 20) undoStack.shift();
         undoStack.push(canvas.toDataURL());
     }
 
-    if(btnUndo) {
-        btnUndo.onclick = () => {
-            if (undoStack.length > 0) {
-                const img = new Image();
-                img.src = undoStack.pop();
-                img.onload = () => {
-                    ctx.globalCompositeOperation = 'source-over';
-                    ctx.clearRect(0, 0, canvas.width, canvas.height);
-                    ctx.drawImage(img, 0, 0);
-                };
-            }
-        };
-    }
+    btnUndo.onclick = () => {
+        if (undoStack.length > 0) {
+            const img = new Image();
+            img.src = undoStack.pop();
+            img.onload = () => {
+                ctx.globalCompositeOperation = 'source-over';
+                ctx.clearRect(0, 0, canvas.width, canvas.height);
+                ctx.drawImage(img, 0, 0);
+            };
+        }
+    };
+
+    btnClear.onclick = () => {
+        if(confirm("مسح اللوحة؟")) {
+            ctx.globalCompositeOperation = 'source-over';
+            ctx.fillStyle = bgColor.value;
+            ctx.fillRect(0, 0, canvas.width, canvas.height);
+        }
+    };
+
+    bgColor.oninput = () => {
+        ctx.globalCompositeOperation = 'source-over';
+        ctx.fillStyle = bgColor.value;
+        ctx.fillRect(0, 0, canvas.width, canvas.height);
+    };
 });
