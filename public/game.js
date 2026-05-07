@@ -536,7 +536,27 @@ const initStudio = () => {
     const btnOpen = document.getElementById('btn-open-board');
     const btnClose = document.getElementById('art-btn-close-board');
     const brushColor = document.getElementById('art-brush-color');
-    const bgColor = document.getElementById('art-bg-color');
+        // تغيير الخلفية فوراً عند اختيار اللون من الدائرة
+    bgColor.oninput = () => {
+        // 1. تغيير الخلفية عندك فوراً
+        resetCanvasBackground(); 
+        
+        // 2. إخبار السيرفر يمسح عند الكل ويلون بالخلفية الجديدة
+        if(!isSoloMode) {
+            socket.emit('clear-board-all'); 
+        }
+    };
+
+    // تأكد أن دالة resetCanvasBackground مكتوبة بهذا الشكل لضمان التحديث
+    function resetCanvasBackground() {
+        ctx.save();
+        ctx.globalCompositeOperation = 'source-over';
+        ctx.globalAlpha = 1.0;
+        ctx.fillStyle = bgColor.value; // بيأخذ القيمة الحالية من bgColor
+        ctx.fillRect(0, 0, canvas.width, canvas.height);
+        ctx.restore();
+    }
+  
     const brushSize = document.getElementById('art-brush-size');
     const brushType = document.getElementById('art-brush-type');
     const brushOpacity = document.getElementById('art-brush-opacity');
