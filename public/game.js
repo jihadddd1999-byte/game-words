@@ -469,7 +469,6 @@ chatForm.addEventListener('submit', () => {
     delete typingMessages[playerName];
   }
 });
-
         // ==========================================
 //   استوديو نزار المطور (Future Edition) 🚀
 // ==========================================
@@ -690,4 +689,4 @@ document.addEventListener('DOMContentLoaded', () => {
         }
     };
 });
-              
+      
