@@ -690,4 +690,37 @@ document.addEventListener('DOMContentLoaded', () => {
         resetCanvasBackground();
     };
 });
-  
+
+// استقبال الرسم من السيرفر
+socket.on('draw-remote', (data) => {
+    if (isSoloMode) return; // لو أنت منفرد، ما تستقبل إزعاج من حد
+
+    ctx.save();
+    ctx.lineCap = 'round';
+    ctx.lineWidth = data.size;
+    ctx.globalAlpha = data.opacity;
+    ctx.strokeStyle = data.color;
+
+    ctx.beginPath();
+    // بنوصل من النقطة السابقة للنقطة الحالية اللي وصلت من السيرفر
+    ctx.moveTo(data.prevX || data.x, data.prevY || data.y);
+    ctx.lineTo(data.x, data.y);
+    ctx.stroke();
+    ctx.restore();
+});
+
+// استقبال أمر مسح اللوحة
+socket.on('clear-board-remote', () => {
+    if (!isSoloMode) resetCanvasBackground();
+});
+
+// استقبال أمر عرض رسمة من معرض لاعب آخر
+socket.on('load-gallery-remote', (imageData) => {
+    if (isSoloMode) return;
+    const img = new Image();
+    img.src = imageData;
+    img.onload = () => {
+        ctx.drawImage(img, 0, 0);
+    };
+});
+
