@@ -469,28 +469,7 @@ chatForm.addEventListener('submit', () => {
     delete typingMessages[playerName];
   }
 });
-        // =====        currentColor = bgColor.value; // لون المسح هو لون الخلفية
-    } else {
-        ctx.globalCompositeOperation = 'source-over';
-        ctx.globalAlpha = brushOpacity.value;
-        ctx.strokeStyle = brushColor.value;
-    }
 
-    ctx.lineTo(x, y);
-    ctx.stroke();
-
-    // --- الربط مع السيرفر ---
-    if (!isSoloMode) {
-        socket.emit('draw-data', {
-            x: x,
-            y: y,
-            prevX: lastX, // إحداثيات النقطة السابقة لضمان سلاسة الخط
-            prevY: lastY,
-            color: currentColor,
-            size: brushSize.value,
-            opacity: brushOpacity.value
-        });
-    }
         // ==========================================
 //   استوديو نزار المطور (Future Edition) 🚀
 // ==========================================
