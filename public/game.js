@@ -536,27 +536,7 @@ const initStudio = () => {
     const btnOpen = document.getElementById('btn-open-board');
     const btnClose = document.getElementById('art-btn-close-board');
     const brushColor = document.getElementById('art-brush-color');
-        // تغيير الخلفية فوراً عند اختيار اللون من الدائرة
-    bgColor.oninput = () => {
-        // 1. تغيير الخلفية عندك فوراً
-        resetCanvasBackground(); 
-        
-        // 2. إخبار السيرفر يمسح عند الكل ويلون بالخلفية الجديدة
-        if(!isSoloMode) {
-            socket.emit('clear-board-all'); 
-        }
-    };
-
-    // تأكد أن دالة resetCanvasBackground مكتوبة بهذا الشكل لضمان التحديث
-    function resetCanvasBackground() {
-        ctx.save();
-        ctx.globalCompositeOperation = 'source-over';
-        ctx.globalAlpha = 1.0;
-        ctx.fillStyle = bgColor.value; // بيأخذ القيمة الحالية من bgColor
-        ctx.fillRect(0, 0, canvas.width, canvas.height);
-        ctx.restore();
-    }
-  
+    const bgColor = document.getElementById('art-bg-color');
     const brushSize = document.getElementById('art-brush-size');
     const brushType = document.getElementById('art-brush-type');
     const brushOpacity = document.getElementById('art-brush-opacity');
@@ -569,10 +549,11 @@ const initStudio = () => {
 
     updateGalleryUI();
 
-    // تغيير الخلفية فوراً عند اختيار اللون
+    // --- التعديل هنا: تغيير الخلفية فوراً عند تحريك مؤشر الألوان ---
     bgColor.oninput = () => {
         resetCanvasBackground();
-        if(!isSoloMode) socket.emit('clear-board-all');
+        // نرسل اللون الجديد للسيرفر عشان يتغير عند الكل فوراً
+        if(!isSoloMode) socket.emit('clear-board-all', { color: bgColor.value });
     };
 
     function resetCanvasBackground() {
@@ -641,13 +622,13 @@ const initStudio = () => {
             currentColor = bgColor.value;
         } else if (brushType.value === 'spray') {
             ctx.fillStyle = brushColor.value;
-            ctx.globalAlpha = 1.0; // البخاخ كثيف وواضح
-            for (let i = 0; i < 40; i++) { // زيادة عدد النقاط للكثافة
+            ctx.globalAlpha = 1.0; 
+            for (let i = 0; i < 40; i++) {
                 const offset = Math.random() * brushSize.value * 2 - brushSize.value;
                 ctx.fillRect(x + offset, y + Math.random() * brushSize.value * 2 - brushSize.value, 1.5, 1.5);
             }
         } else {
-            ctx.globalAlpha = brushOpacity.value; // الشفافية للريشة فقط
+            ctx.globalAlpha = brushOpacity.value;
             ctx.strokeStyle = brushColor.value;
         }
 
@@ -709,7 +690,15 @@ const initStudio = () => {
         };
     });
 
-    socket.on('clear-board-remote', () => { if (!isSoloMode) resetCanvasBackground(); });
+    // --- التعديل هنا: استقبال اللون الجديد من السيرفر وتطبيقه فوراً ---
+    socket.on('clear-board-remote', (data) => { 
+        if (!isSoloMode) {
+            if (data && data.color) {
+                bgColor.value = data.color; // تحديث قيمة الـ input عند البقية
+            }
+            resetCanvasBackground(); 
+        }
+    });
 
     btnSolo.onclick = () => {
         isSoloMode = !isSoloMode;
@@ -739,7 +728,7 @@ const initStudio = () => {
     btnClear.onclick = () => {
         if(confirm("تفريغ اللوحة؟")) {
             resetCanvasBackground();
-            if(!isSoloMode) socket.emit('clear-board-all');
+            if(!isSoloMode) socket.emit('clear-board-all', { color: bgColor.value });
         }
     };
 
