@@ -469,6 +469,28 @@ chatForm.addEventListener('submit', () => {
     delete typingMessages[playerName];
   }
 });
+        // =====        currentColor = bgColor.value; // لون المسح هو لون الخلفية
+    } else {
+        ctx.globalCompositeOperation = 'source-over';
+        ctx.globalAlpha = brushOpacity.value;
+        ctx.strokeStyle = brushColor.value;
+    }
+
+    ctx.lineTo(x, y);
+    ctx.stroke();
+
+    // --- الربط مع السيرفر ---
+    if (!isSoloMode) {
+        socket.emit('draw-data', {
+            x: x,
+            y: y,
+            prevX: lastX, // إحداثيات النقطة السابقة لضمان سلاسة الخط
+            prevY: lastY,
+            color: currentColor,
+            size: brushSize.value,
+            opacity: brushOpacity.value
+        });
+    }
         // ==========================================
 //   استوديو نزار المطور (Future Edition) 🚀
 // ==========================================
@@ -476,6 +498,11 @@ chatForm.addEventListener('submit', () => {
 // متغيرات خارج النطاق لضمان عدم ضياع الرسمة عند الإغلاق
 let persistentCanvasData = null; 
 let isSoloMode = false;
+let lastX = 0; // تعريف إحداثيات البداية
+let lastY = 0;
+
+// تحميل المعرض من الذاكرة الدائمة فوراً
+let galleryData = JSON.parse(localStorage.getItem('myArtGallery')) || [];
 
 document.addEventListener('DOMContentLoaded', () => {
     const boardDialog = document.getElementById('board-dialog');
@@ -498,14 +525,14 @@ document.addEventListener('DOMContentLoaded', () => {
 
     let drawing = false;
     let undoStack = [];
-    let galleryData = [];
 
-    // --- 1. إعدادات الفتح والإغلاق الذكية ---
+    // إظهار المعرض المخزن أول ما تفتح الصفحة
+    updateGalleryUI();
+
     if(btnOpen) {
         btnOpen.onclick = () => {
             boardDialog.showModal();
             initCanvas(); 
-            // استرجاع الرسمة إذا كانت موجودة
             if (persistentCanvasData) {
                 const img = new Image();
                 img.src = persistentCanvasData;
@@ -516,7 +543,7 @@ document.addEventListener('DOMContentLoaded', () => {
 
     if(btnClose) {
         btnClose.onclick = () => {
-            persistentCanvasData = canvas.toDataURL(); // حفظ تلقائي قبل الإغلاق
+            persistentCanvasData = canvas.toDataURL();
             boardDialog.close();
         };
     }
@@ -537,190 +564,151 @@ document.addEventListener('DOMContentLoaded', () => {
         ctx.fillRect(0, 0, canvas.width, canvas.height);
     }
 
-    // --- 2. منطق الرسم المطور (إصلاح الممحاة والشفافية) ---
+    // --- منطق الرسم المتزامن ---
     const startDrawing = (e) => {
         drawing = true;
-        saveState(); // حفظ للحالة قبل الخط الجديد
+        const rect = canvas.getBoundingClientRect();
+        lastX = (e.touches ? e.touches[0].clientX : e.clientX) - rect.left;
+        lastY = (e.touches ? e.touches[0].clientY : e.clientY) - rect.top;
+        saveState();
         ctx.beginPath();
-        draw(e);
+        ctx.moveTo(lastX, lastY);
     };
 
-  const draw = (e) => {
-    if (!drawing) return;
-    const rect = canvas.getBoundingClientRect();
-    const x = (e.touches ? e.touches[0].clientX : e.clientX) - rect.left;
-    const y = (e.touches ? e.touches[0].clientY : e.clientY) - rect.top;
+    const draw = (e) => {
+        if (!drawing) return;
+        const rect = canvas.getBoundingClientRect();
+        const x = (e.touches ? e.touches[0].clientX : e.clientX) - rect.left;
+        const y = (e.touches ? e.touches[0].clientY : e.clientY) - rect.top;
 
-    ctx.lineCap = 'round';
-    ctx.lineJoin = 'round';
-    ctx.lineWidth = brushSize.value;
+        ctx.lineCap = 'round';
+        ctx.lineJoin = 'round';
+        ctx.lineWidth = brushSize.value;
 
-    let currentColor = brushColor.value;
-    if (brushType.value === 'eraser') {
-        ctx.globalCompositeOperation = 'source-over'; 
-        ctx.strokeStyle = bgColor.value;
-        ctx.globalAlpha = 1.0;
-        currentColor = bgColor.value; // لون المسح هو لون الخلفية
-    } else {
-        ctx.globalCompositeOperation = 'source-over';
-        ctx.globalAlpha = brushOpacity.value;
-        ctx.strokeStyle = brushColor.value;
-    }
+        let currentColor = brushColor.value;
+        if (brushType.value === 'eraser') {
+            ctx.globalCompositeOperation = 'source-over'; 
+            ctx.strokeStyle = bgColor.value;
+            ctx.globalAlpha = 1.0;
+            currentColor = bgColor.value;
+        } else {
+            ctx.globalCompositeOperation = 'source-over';
+            ctx.globalAlpha = brushOpacity.value;
+            ctx.strokeStyle = brushColor.value;
+        }
 
-    ctx.lineTo(x, y);
-    ctx.stroke();
+        ctx.lineTo(x, y);
+        ctx.stroke();
 
-    // --- الربط مع السيرفر ---
-    if (!isSoloMode) {
-        socket.emit('draw-data', {
-            x: x,
-            y: y,
-            prevX: lastX, // إحداثيات النقطة السابقة لضمان سلاسة الخط
-            prevY: lastY,
-            color: currentColor,
-            size: brushSize.value,
-            opacity: brushOpacity.value
-        });
-    }
-    // ----------------------
+        // إرسال للسيرفر إذا مش منفرد
+        if (!isSoloMode) {
+            socket.emit('draw-data', {
+                x: x, y: y,
+                prevX: lastX, prevY: lastY,
+                color: currentColor,
+                size: brushSize.value,
+                opacity: brushOpacity.value
+            });
+        }
 
-    ctx.beginPath();
-    ctx.moveTo(x, y);
-    [lastX, lastY] = [x, y]; // تحديث الإحداثيات الأخيرة
-};
+        [lastX, lastY] = [x, y];
+    };
 
+    canvas.addEventListener('mousedown', startDrawing);
+    canvas.addEventListener('mousemove', draw);
+    window.addEventListener('mouseup', () => { drawing = false; });
+    canvas.addEventListener('touchstart', (e) => { e.preventDefault(); startDrawing(e); }, {passive:false});
+    canvas.addEventListener('touchmove', (e) => { e.preventDefault(); draw(e); }, {passive:false});
 
-    // --- 3. الأزرار التفاعلية (Future Style) ---
+    // --- استقبال الرسم من الآخرين ---
+    socket.on('draw-remote', (data) => {
+        if (isSoloMode) return;
+        ctx.save();
+        ctx.lineCap = 'round';
+        ctx.lineWidth = data.size;
+        ctx.globalAlpha = data.opacity;
+        ctx.strokeStyle = data.color;
+        ctx.beginPath();
+        ctx.moveTo(data.prevX, data.prevY);
+        ctx.lineTo(data.x, data.y);
+        ctx.stroke();
+        ctx.restore();
+    });
 
-    // زر الوضع المنفرد ON/OFF
+    socket.on('clear-board-remote', () => { if (!isSoloMode) resetCanvasBackground(); });
+
+    // زر الوضع المنفرد
     if(btnSolo) {
         btnSolo.onclick = () => {
             isSoloMode = !isSoloMode;
-            if(isSoloMode) {
-                btnSolo.innerHTML = '🔐 وضع منفرد: <span style="color:#00ff00; text-shadow: 0 0 10px #00ff00;">ON</span>';
-                btnSolo.style.borderColor = '#00ff00';
-            } else {
-                btnSolo.innerHTML = '🔐 وضع منفرد: <span style="color:#ff0000; text-shadow: 0 0 10px #ff0000;">OFF</span>';
-                btnSolo.style.borderColor = '#ff0000';
-            }
+            btnSolo.classList.toggle('active', isSoloMode);
+            btnSolo.innerHTML = isSoloMode ? 
+                '🔐 وضع منفرد: <span style="color:#00ff00;">ON</span>' : 
+                '🔐 وضع منفرد: <span style="color:#ff0000;">OFF</span>';
         };
     }
 
-    // زر مسح الكل (إصلاح شامل)
     if(btnClear) {
         btnClear.onclick = () => {
             if(confirm("هل تريد إفراغ اللوحة بالكامل؟")) {
-                undoStack = []; // تصغير الذاكرة
                 resetCanvasBackground();
-                persistentCanvasData = canvas.toDataURL();
+                if(!isSoloMode) socket.emit('clear-board-all');
             }
         };
     }
 
-    // التراجع الذكي (Undo)
     function saveState() {
         if (undoStack.length >= 25) undoStack.shift();
         undoStack.push(canvas.toDataURL());
     }
 
-    if(btnUndo) {
-        btnUndo.onclick = () => {
-            if (undoStack.length > 0) {
-                const img = new Image();
-                img.src = undoStack.pop();
-                img.onload = () => {
-                    ctx.globalCompositeOperation = 'source-over';
-                    ctx.globalAlpha = 1.0;
-                    ctx.clearRect(0, 0, canvas.width, canvas.height);
-                    ctx.drawImage(img, 0, 0);
-                };
-            }
-        };
-    }
-
-    // --- 4. المعرض (إصلاح خطأ التعديل والصور المتداخلة) ---
+    // --- المعرض المحمي من الضياع ---
     if (btnSaveGallery) {
         btnSaveGallery.onclick = () => {
             const artName = prompt("اسم التحفة الفنية:", `عمل رقم ${galleryData.length + 1}`);
             if (!artName) return;
             galleryData.push({ name: artName, img: canvas.toDataURL() });
+            localStorage.setItem('myArtGallery', JSON.stringify(galleryData)); // حفظ دائم
             updateGalleryUI();
         };
     }
 
     function updateGalleryUI() {
+        if(!miniGallery) return;
         miniGallery.innerHTML = '';
         galleryData.forEach((item, index) => {
             const div = document.createElement('div');
-            div.className = 'gallery-item-future';
+            div.className = 'gallery-card'; // استخدمنا الكلاس الجديد المرتب
             div.innerHTML = `
                 <img src="${item.img}">
-                <div class="actions">
-                    <button onclick="event.stopPropagation(); loadToCanvas(${index})">📝</button>
-                    <button onclick="event.stopPropagation(); deleteGalleryItem(${index})">🗑️</button>
-                </div>
                 <span>${item.name}</span>
+                <div style="display:flex; gap:2px; width:100%;">
+                    <button onclick="loadToCanvas(${index})" style="flex:1; padding:2px;">📝</button>
+                    <button onclick="deleteGalleryItem(${index})" style="flex:1; padding:2px; background:red;">🗑️</button>
+                </div>
             `;
             miniGallery.appendChild(div);
         });
-        document.getElementById('art-gallery-count').innerText = `📸 المعرض (${galleryData.length}/30)`;
     }
 
     window.loadToCanvas = (idx) => {
-        if(confirm("سيتم استبدال اللوحة الحالية، استمرار؟")) {
+        if(confirm("تحميل الرسمة؟")) {
             const img = new Image();
             img.src = galleryData[idx].img;
             img.onload = () => {
-                resetCanvasBackground(); // تنظيف قبل التحميل
+                resetCanvasBackground();
                 ctx.drawImage(img, 0, 0);
-                persistentCanvasData = canvas.toDataURL();
+                if(!isSoloMode) socket.emit('load-gallery-all', img.src);
             };
         }
     };
 
     window.deleteGalleryItem = (idx) => {
-        galleryData.splice(idx, 1);
-        updateGalleryUI();
-    };
-
-    // تغيير الخلفية بدون مسح الخطوط (اختياري: إذا أردت مسح اللوحة عند تغيير اللون فعل الكود أدناه)
-    bgColor.oninput = () => {
-        // إذا أردت أن يتغير اللون فقط خلف الرسمة، هذا يحتاج نظام طبقات معقد.
-        // حالياً: سيمسح اللوحة ليعطيك خلفية نظيفة باللون الجديد.
-        resetCanvasBackground();
+        if(confirm("حذف؟")) {
+            galleryData.splice(idx, 1);
+            localStorage.setItem('myArtGallery', JSON.stringify(galleryData));
+            updateGalleryUI();
+        }
     };
 });
-
-// استقبال الرسم من السيرفر
-socket.on('draw-remote', (data) => {
-    if (isSoloMode) return; // لو أنت منفرد، ما تستقبل إزعاج من حد
-
-    ctx.save();
-    ctx.lineCap = 'round';
-    ctx.lineWidth = data.size;
-    ctx.globalAlpha = data.opacity;
-    ctx.strokeStyle = data.color;
-
-    ctx.beginPath();
-    // بنوصل من النقطة السابقة للنقطة الحالية اللي وصلت من السيرفر
-    ctx.moveTo(data.prevX || data.x, data.prevY || data.y);
-    ctx.lineTo(data.x, data.y);
-    ctx.stroke();
-    ctx.restore();
-});
-
-// استقبال أمر مسح اللوحة
-socket.on('clear-board-remote', () => {
-    if (!isSoloMode) resetCanvasBackground();
-});
-
-// استقبال أمر عرض رسمة من معرض لاعب آخر
-socket.on('load-gallery-remote', (imageData) => {
-    if (isSoloMode) return;
-    const img = new Image();
-    img.src = imageData;
-    img.onload = () => {
-        ctx.drawImage(img, 0, 0);
-    };
-});
-
+              
