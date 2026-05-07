@@ -690,3 +690,187 @@ document.addEventListener('DOMContentLoaded', () => {
     };
 });
       
+// ==========================================
+//   استوديو نزار المطور (V2 - Fixed) 🚀
+// ==========================================
+
+let persistentCanvasData = null; 
+let isSoloMode = false;
+let lastX = 0;
+let lastY = 0;
+let undoStack = []; // مصفوفة التراجع
+
+let galleryData = JSON.parse(localStorage.getItem('myArtGallery')) || [];
+
+document.addEventListener('DOMContentLoaded', () => {
+    const boardDialog = document.getElementById('board-dialog');
+    const canvas = document.getElementById('main-canvas');
+    const ctx = canvas.getContext('2d', { willReadFrequently: true });
+    
+    // العناصر
+    const brushColor = document.getElementById('art-brush-color');
+    const bgColor = document.getElementById('art-bg-color');
+    const brushSize = document.getElementById('art-brush-size');
+    const brushType = document.getElementById('art-brush-type');
+    const brushOpacity = document.getElementById('art-brush-opacity');
+    const btnClear = document.getElementById('art-btn-clear-canvas');
+    const btnUndo = document.getElementById('art-btn-undo'); // تأكد أن الـ ID مطابق في HTML
+    const btnSaveGallery = document.getElementById('art-btn-save-to-gallery');
+    const miniGallery = document.getElementById('art-mini-gallery');
+    const btnSolo = document.getElementById('art-btn-solo-mode');
+
+    let drawing = false;
+
+    updateGalleryUI();
+
+    // --- إصلاح لون الخلفية (تحديث فوري عند التغيير) ---
+    bgColor.oninput = () => {
+        if(confirm("تغيير لون الخلفية سيمسح اللوحة الحالية، موافق؟")) {
+            resetCanvasBackground();
+            if(!isSoloMode) socket.emit('clear-board-all'); // إبلاغ الجميع
+        }
+    };
+
+    function resetCanvasBackground() {
+        ctx.save();
+        ctx.globalCompositeOperation = 'source-over';
+        ctx.globalAlpha = 1.0;
+        ctx.fillStyle = bgColor.value;
+        ctx.fillRect(0, 0, canvas.width, canvas.height);
+        ctx.restore();
+    }
+
+    // --- وظيفة التراجع (Undo) ---
+    function saveState() {
+        if (undoStack.length >= 25) undoStack.shift();
+        undoStack.push(canvas.toDataURL());
+    }
+
+    if(btnUndo) {
+        btnUndo.onclick = () => {
+            if (undoStack.length > 0) {
+                let lastState = undoStack.pop();
+                let img = new Image();
+                img.src = lastState;
+                img.onload = () => {
+                    ctx.clearRect(0, 0, canvas.width, canvas.height);
+                    ctx.drawImage(img, 0, 0);
+                    // إرسال الحالة الجديدة للجميع ليحدث عندهم التراجع
+                    if(!isSoloMode) socket.emit('load-gallery-all', canvas.toDataURL());
+                };
+            }
+        };
+    }
+
+    // --- منطق الرسم المطور (إصلاح البخاخ والمزامنة) ---
+    const startDrawing = (e) => {
+        drawing = true;
+        saveState(); // حفظ الحالة قبل البدء برسم خط جديد
+        const rect = canvas.getBoundingClientRect();
+        lastX = (e.touches ? e.touches[0].clientX : e.clientX) - rect.left;
+        lastY = (e.touches ? e.touches[0].clientY : e.clientY) - rect.top;
+        ctx.beginPath();
+        ctx.moveTo(lastX, lastY);
+    };
+
+    const draw = (e) => {
+        if (!drawing) return;
+        const rect = canvas.getBoundingClientRect();
+        const x = (e.touches ? e.touches[0].clientX : e.clientX) - rect.left;
+        const y = (e.touches ? e.touches[0].clientY : e.clientY) - rect.top;
+
+        ctx.lineCap = 'round';
+        ctx.lineJoin = 'round';
+        ctx.lineWidth = brushSize.value;
+
+        let currentColor = brushColor.value;
+        
+        // إصلاح البخاخ والممحاة
+        if (brushType.value === 'eraser') {
+            ctx.strokeStyle = bgColor.value;
+            ctx.globalAlpha = 1.0;
+            currentColor = bgColor.value;
+        } else if (brushType.value === 'spray') {
+            // منطق البخاخ (Spray Paint)
+            ctx.fillStyle = brushColor.value;
+            ctx.globalAlpha = brushOpacity.value;
+            for (let i = 0; i < 20; i++) {
+                let offset = Math.random() * brushSize.value * 2 - brushSize.value;
+                ctx.fillRect(x + offset, y + Math.random() * brushSize.value * 2 - brushSize.value, 1, 1);
+            }
+        } else {
+            ctx.globalAlpha = brushOpacity.value;
+            ctx.strokeStyle = brushColor.value;
+        }
+
+        if (brushType.value !== 'spray') {
+            ctx.lineTo(x, y);
+            ctx.stroke();
+        }
+
+        // --- المزامنة (الرسم المشترك) ---
+        if (!isSoloMode) {
+            socket.emit('draw-data', {
+                x: x, y: y,
+                prevX: lastX, prevY: lastY,
+                color: currentColor,
+                size: brushSize.value,
+                opacity: ctx.globalAlpha,
+                type: brushType.value // نرسل النوع عشان البخاخ يشتغل عند الكل
+            });
+        }
+        [lastX, lastY] = [x, y];
+    };
+
+    // --- استقبال الرسم من الآخرين ---
+    socket.on('draw-remote', (data) => {
+        if (isSoloMode) return;
+        ctx.save();
+        ctx.lineCap = 'round';
+        ctx.lineWidth = data.size;
+        ctx.globalAlpha = data.opacity;
+        
+        if (data.type === 'spray') {
+            ctx.fillStyle = data.color;
+            for (let i = 0; i < 20; i++) {
+                let offset = Math.random() * data.size * 2 - data.size;
+                ctx.fillRect(data.x + offset, data.y + Math.random() * data.size * 2 - data.size, 1, 1);
+            }
+        } else {
+            ctx.strokeStyle = data.color;
+            ctx.beginPath();
+            ctx.moveTo(data.prevX, data.prevY);
+            ctx.lineTo(data.x, data.y);
+            ctx.stroke();
+        }
+        ctx.restore();
+    });
+
+    // --- إصلاح تحميل المعرض للجميع ---
+    window.loadToCanvas = (idx) => {
+        const img = new Image();
+        img.src = galleryData[idx].img;
+        img.onload = () => {
+            resetCanvasBackground();
+            ctx.drawImage(img, 0, 0);
+            if(!isSoloMode) {
+                // نرسل الصورة كاملة للسيرفر ليوزعها على البقية
+                socket.emit('load-gallery-all', canvas.toDataURL());
+            }
+        };
+    };
+
+    // استقبال تحميل الصور من الآخرين
+    socket.on('load-remote', (imgData) => {
+        if (isSoloMode) return;
+        const img = new Image();
+        img.src = imgData;
+        img.onload = () => {
+            ctx.clearRect(0, 0, canvas.width, canvas.height);
+            ctx.drawImage(img, 0, 0);
+        };
+    });
+
+    // ... باقي دوال المعرض والفتح (تأكد من وجودها) ...
+});
+                 
