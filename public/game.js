@@ -469,8 +469,9 @@ chatForm.addEventListener('submit', () => {
     delete typingMessages[playerName];
   }
 });
-    // ==========================================
-//   استوديو نزار المطور (V2 - Final Clean)
+    
+            // ==========================================
+//   استوديو نزار المطور (V2 - Responsive Fix)
 // ==========================================
 
 // متغيرات الحالة (خارج النطاق لضمان الاستمرارية)
@@ -549,10 +550,8 @@ const initStudio = () => {
 
     updateGalleryUI();
 
-    // --- التعديل هنا: تغيير الخلفية فوراً عند تحريك مؤشر الألوان ---
     bgColor.oninput = () => {
         resetCanvasBackground();
-        // نرسل اللون الجديد للسيرفر عشان يتغير عند الكل فوراً
         if(!isSoloMode) socket.emit('clear-board-all', { color: bgColor.value });
     };
 
@@ -638,9 +637,13 @@ const initStudio = () => {
         }
         ctx.restore();
 
+        // التعديل هنا: نرسل الإحداثيات كنسبة مئوية لضمان المطابقة بين الأجهزة
         if (!isSoloMode) {
             socket.emit('draw-data', {
-                x, y, prevX: lastX, prevY: lastY,
+                x: x / canvas.width,
+                y: y / canvas.height,
+                prevX: lastX / canvas.width,
+                prevY: lastY / canvas.height,
                 color: currentColor, size: brushSize.value,
                 opacity: (brushType.value === 'spray' || brushType.value === 'eraser') ? 1.0 : brushOpacity.value, 
                 type: brushType.value
@@ -661,17 +664,24 @@ const initStudio = () => {
         ctx.lineCap = 'round';
         ctx.lineWidth = data.size;
         ctx.globalAlpha = data.opacity;
+
+        // التعديل هنا: تحويل النسبة المئوية لإحداثيات تناسب حجم شاشتك الحالية
+        const currentX = data.x * canvas.width;
+        const currentY = data.y * canvas.height;
+        const prevX = data.prevX * canvas.width;
+        const prevY = data.prevY * canvas.height;
+
         if (data.type === 'spray') {
             ctx.fillStyle = data.color;
             for (let i = 0; i < 40; i++) {
                 const offset = Math.random() * data.size * 2 - data.size;
-                ctx.fillRect(data.x + offset, data.y + Math.random() * data.size * 2 - data.size, 1.5, 1.5);
+                ctx.fillRect(currentX + offset, currentY + Math.random() * data.size * 2 - data.size, 1.5, 1.5);
             }
         } else {
             ctx.strokeStyle = data.color;
             ctx.beginPath();
-            ctx.moveTo(data.prevX, data.prevY);
-            ctx.lineTo(data.x, data.y);
+            ctx.moveTo(prevX, prevY);
+            ctx.lineTo(currentX, currentY);
             ctx.stroke();
         }
         ctx.restore();
@@ -690,11 +700,10 @@ const initStudio = () => {
         };
     });
 
-    // --- التعديل هنا: استقبال اللون الجديد من السيرفر وتطبيقه فوراً ---
     socket.on('clear-board-remote', (data) => { 
         if (!isSoloMode) {
             if (data && data.color) {
-                bgColor.value = data.color; // تحديث قيمة الـ input عند البقية
+                bgColor.value = data.color;
             }
             resetCanvasBackground(); 
         }
@@ -743,4 +752,4 @@ const initStudio = () => {
 };
 
 initStudio();
-      
+              
