@@ -470,8 +470,8 @@ chatForm.addEventListener('submit', () => {
   }
 });
     
-            // ==========================================
-//   استوديو نزار المطور (V2 - Responsive Fix)
+          // ==========================================
+//   استوديو نزار المطور (V2 - Gallery Fix)
 // ==========================================
 
 // متغيرات الحالة (خارج النطاق لضمان الاستمرارية)
@@ -502,7 +502,7 @@ function updateGalleryUI() {
     });
 }
 
-// دالات المعرض (Global)
+// دالات المعرض (Global) - تم التعديل هنا لحل مشكلة القص
 window.loadToCanvas = (idx) => {
     const canvas = document.getElementById('main-canvas');
     const ctx = canvas.getContext('2d');
@@ -513,7 +513,10 @@ window.loadToCanvas = (idx) => {
         ctx.globalAlpha = 1.0;
         ctx.globalCompositeOperation = 'source-over';
         ctx.clearRect(0, 0, canvas.width, canvas.height);
-        ctx.drawImage(img, 0, 0);
+        
+        // التعديل السحري: رسم الصورة بأبعاد اللوحة الحالية كاملة
+        ctx.drawImage(img, 0, 0, canvas.width, canvas.height);
+        
         ctx.restore();
         if(!isSoloMode) socket.emit('load-gallery-all', canvas.toDataURL());
     };
@@ -637,7 +640,6 @@ const initStudio = () => {
         }
         ctx.restore();
 
-        // التعديل هنا: نرسل الإحداثيات كنسبة مئوية لضمان المطابقة بين الأجهزة
         if (!isSoloMode) {
             socket.emit('draw-data', {
                 x: x / canvas.width,
@@ -665,7 +667,6 @@ const initStudio = () => {
         ctx.lineWidth = data.size;
         ctx.globalAlpha = data.opacity;
 
-        // التعديل هنا: تحويل النسبة المئوية لإحداثيات تناسب حجم شاشتك الحالية
         const currentX = data.x * canvas.width;
         const currentY = data.y * canvas.height;
         const prevX = data.prevX * canvas.width;
@@ -695,7 +696,8 @@ const initStudio = () => {
             ctx.save();
             ctx.globalAlpha = 1.0;
             ctx.clearRect(0, 0, canvas.width, canvas.height);
-            ctx.drawImage(img, 0, 0);
+            // تم التعديل هنا أيضاً لضمان التوافق عند الاستقبال عن بعد
+            ctx.drawImage(img, 0, 0, canvas.width, canvas.height);
             ctx.restore();
         };
     });
