@@ -877,56 +877,52 @@ select {
 }
 
 .redo-lightning-name {
-    color: #fff !important;
-    font-weight: bold;
-    text-transform: uppercase;
-    position: relative;
     display: inline-block;
-    /* اللون الأساسي للبرق */
-    text-shadow: 
-        0 0 5px #fff,
-        0 0 10px #fff,
-        0 0 20px #b300ff,
-        0 0 30px #b300ff,
-        0 0 40px #b300ff;
-    /* إضافة التصدعات باستخدام الـ filter */
-    filter: drop-shadow(0 0 1px #fff) drop-shadow(0 0 2px #b300ff);
-    animation: lightning-cracks 2s infinite;
+    font-weight: 900;
+    text-transform: uppercase;
+    font-size: 1.3em;
+    position: relative;
+    
+    /* 1. جعل الصورة هي جسم الأحرف */
+    background: url('https://i.ibb.co/v690FY0d/1000081450.png') center;
+    background-size: 120% auto; /* تكبير بسيط لتناسب الأحرف */
+    -webkit-background-clip: text;
+    background-clip: text;
+    color: transparent !important;
+
+    /* 2. التوهج البنفسجي العنيف حول الحواف */
+    filter: drop-shadow(0 0 5px #b300ff) 
+            drop-shadow(0 0 15px #b300ff)
+            brightness(1.8);
+
+    /* 3. إضافة "التصدعات" الخارجية كظل خلفي */
+    animation: lightning-strike 0.15s infinite alternate;
 }
 
-/* إضافة "الشرارات" قبل وبعد الاسم */
-.redo-lightning-name::before, .redo-lightning-name::after {
-    content: '';
+/* إضافة طبقة "شرارات" خلف النص لإظهار البرق الخارج عن الحدود */
+.redo-lightning-name::after {
+    content: 'REDO';
     position: absolute;
-    top: 0; left: 0; right: 0; bottom: 0;
-    background: transparent;
-    pointer-events: none;
+    left: 0;
+    top: 0;
+    z-index: -1;
+    color: transparent;
+    /* استخدام الصورة كخلفية أوسع خلف النص لمحاكاة البرق المتناثر */
+    background: url('https://i.ibb.co/v690FY0d/1000081450.png') center;
+    background-size: 150%; 
+    -webkit-background-clip: text;
+    background-clip: text;
+    filter: blur(8px) brightness(2);
+    opacity: 0.6;
 }
 
-@keyframes lightning-cracks {
-    0%, 10%, 25%, 40%, 60%, 85%, 100% {
-        opacity: 1;
-        transform: scale(1);
-        text-shadow: 
-            0 0 5px #fff,
-            0 0 10px #b300ff,
-            0 0 20px #b300ff,
-            /* محاكاة التصدعات بظلال حادة وبعيدة قليلاً */
-            2px 2px 2px rgba(255,255,255,0.8),
-            -2px -1px 2px rgba(179,0,255,0.8);
+@keyframes lightning-strike {
+    0% { 
+        filter: drop-shadow(0 0 5px #b300ff) brightness(1.5);
+        transform: skewX(0deg) scale(1);
     }
-    11%, 24%, 41%, 59%, 86% {
-        /* لحظة "الضربة" القوية (تصدع مفاجئ) */
-        opacity: 0.8;
-        transform: scale(1.05) skewX(-5deg);
-        text-shadow: 
-            0 0 15px #fff,
-            0 0 30px #ffffff,
-            0 0 50px #b300ff,
-            /* تصدعات شعاعية */
-            5px 0px 10px #fff,
-            -5px 0px 10px #b300ff,
-            0px 5px 15px #fff;
+    100% { 
+        filter: drop-shadow(0 0 20px #fff) brightness(2.5);
+        transform: skewX(-1deg) scale(1.02);
     }
 }
-
