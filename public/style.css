@@ -875,3 +875,34 @@ select {
     border-radius: 10px !important;
     padding: 8px !important;
 }
+
+/* تنسيق اسم REDO البرقي */
+.redo-lightning-name {
+    color: #fff; /* النص نفسه أبيض */
+    font-weight: bold;
+    text-transform: uppercase;
+    position: relative;
+    /* التوهج الأساسي البرقي */
+    text-shadow: 
+        0 0 7px #b300ff,
+        0 0 10px #b300ff,
+        0 0 21px #b300ff,
+        0 0 42px #b300ff,
+        0 0 82px #b300ff;
+    animation: lightningGlow 1.5s infinite; /* إضافة تأثير الوميض */
+}
+
+/* حركة الوميض والكهرباء */
+@keyframes lightningGlow {
+    0%, 18%, 22%, 25%, 53%, 57%, 100% {
+        text-shadow: 
+            0 0 7px #b300ff,
+            0 0 10px #b300ff,
+            0 0 21px #b300ff,
+            0 0 42px #b300ff,
+            0 0 82px #b300ff;
+    }
+    20%, 24%, 55% {
+        text-shadow: none; /* ينطفئ للحظة لمحاكاة الكهرباء */
+    }
+}
