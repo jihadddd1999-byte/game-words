@@ -876,32 +876,31 @@ select {
     padding: 8px !important;
 }
 
-/* الكود المطابق للصورة بالملي */
+/* الكود المطابق للصورة الأصلية بالملي وبأعلى وضوح */
 .redo-lightning-name {
     display: inline-block;
-    font-family: 'Arial Black', sans-serif; /* أو أي خط عريض جداً */
     font-weight: 900;
     text-transform: uppercase;
-    font-size: 1.6em;
+    font-size: 1.5em; /* كبّر الخط شوي عشان تظهر التفاصيل */
     position: relative;
-    color: transparent !important;
+    color: transparent !important; /* النص نفسه شفاف لاستقبال الصورة */
     white-space: nowrap;
 
     /* 1. استخدام الصورة كخلفية داخل الأحرف */
-    background: url('https://i.ibb.co/v690FY0d/1000081450.png') center center no-repeat;
-    background-size: 110% 110%; /* لضمان تغطية التصدعات للحواف */
+    background: url('https://f.top4top.io/p_3782dsi0z0.png') center center no-repeat;
+    background-size: contain; /* لضمان إن الصورة ما تمط وتخرب التفاصيل */
     -webkit-background-clip: text;
     background-clip: text;
 
-    /* 2. إضافة التوهج الخارجي الهادئ (بدون وميض) */
-    filter: drop-shadow(0 0 3px rgba(255, 255, 255, 0.7)) 
-            drop-shadow(0 0 12px rgba(179, 0, 255, 0.5));
+    /* 2. التوهج الخارجي الهادئ والثابت ليعطي نفس إحساس الصورة */
+    filter: drop-shadow(0 0 2px rgba(255, 255, 255, 0.9)) /* توهج أبيض خفيف */
+            drop-shadow(0 0 10px rgba(179, 0, 255, 0.8)); /* توهج بنفسجي هادئ */
 
-    /* 3. طبقة التصدعات الخارجية (البرق الخارج عن حدود الاسم) */
+    /* 3. طبقة إضافية لمحاكاة الشرارات الخارجة من حرف O وباقي الاسم */
     z-index: 1;
 }
 
-/* إضافة البرق المحيط والشرارات الخارجة من حرف O */
+/* إضافة طبقة "شرارات" هادئة خلف النص لتعطي عمق التصميم الأصلي */
 .redo-lightning-name::before {
     content: 'REDO';
     position: absolute;
@@ -912,19 +911,19 @@ select {
     z-index: -1;
     
     /* تكرار الصورة خلف النص لإظهار التصدعات الجانبية */
-    background: url('https://i.ibb.co/v690FY0d/1000081450.png') center center no-repeat;
-    background-size: 140% 140%; /* تكبير الصورة خلف النص لإظهار البرق */
+    background: url('https://f.top4top.io/p_3782dsi0z0.png') center center no-repeat;
+    background-size: cover; 
     
-    /* جعل النص الشفاف يعمل كقالب لإظهار البرق المحيط فقط */
+    /* جعل النص الشفاف يعمل كقالب لإظهار الشرارات المحيطة فقط */
     -webkit-mask-image: linear-gradient(black, black); 
     mask-image: linear-gradient(black, black);
     
-    /* زيادة السطوع للتصدعات لتطابق الصورة */
-    filter: brightness(1.8) contrast(1.2) blur(1px);
-    opacity: 0.9;
+    /* زيادة السطوع وتغبيش الشرارات لتطابق الصورة */
+    filter: brightness(2) blur(1.5px);
+    opacity: 0.6;
 }
 
-/* إلغاء أي حركة أو وميض لضمان الثبات التام */
+/* إلغاء أي وميض أو حركة عنيفة لضمان ثبات الهيبة */
 .redo-lightning-name {
     animation: none !important;
 }
