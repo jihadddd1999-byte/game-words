@@ -61,10 +61,6 @@ function scrollChatToBottom() {
 }
 
 function colorizeName(name, color = null) {
-  // إضافة فحص اسم REDO هنا لضمان ظهوره البرقي في كل مكان
-  if (name && name.toUpperCase() === "REDO") {
-    return `<span class="redo-lightning-name">REDO</span>`;
-  }
 
   // تأثير خاص لاسم كول (فقط بالشات)
   if (name === "كول") {
@@ -88,7 +84,6 @@ function highlightSpecialWords(text) {
     'حلا': { color: '#ff33cc', shake: false },
     'كول': { color: '#33ccff', shake: false },
     'مصطفى': { color: '#33ff99', shake: false },
-    'REDO': { color: '#b300ff', shake: true }, // إضافة ريدو للكلمات المميزة
   };
 
   let result = text;
@@ -96,6 +91,7 @@ function highlightSpecialWords(text) {
   Object.keys(specialWords).forEach(word => {
     const { color, shake } = specialWords[word];
     const shakeClass = shake ? ' shake' : '';
+    // استخدم regex للبحث عن الكلمة فقط كاملة (كلمة منفصلة)
     const regex = new RegExp(`\\b${word}\\b`, 'gu');
     result = result.replace(regex, `<span class="special-word${shakeClass}" style="color:${color}">${word}</span>`);
   });
@@ -104,10 +100,12 @@ function highlightSpecialWords(text) {
 }
 
 // إضافة رسالة جديدة للشات
+
 function addChatMessage({ name, message, system = false, color = null, time = '' }) {
   const div = document.createElement('div');
   div.classList.add('chat-message');
 
+  // توليد الوقت إذا ما وصل من السيرفر
   if (!time) {
     const now = new Date();
     const hours = now.getHours().toString().padStart(2, '0');
@@ -119,6 +117,7 @@ function addChatMessage({ name, message, system = false, color = null, time = ''
     div.classList.add('chat-system-message');
     div.textContent = message;
 
+    // إضافة الوقت في نهاية الرسالة
     const timeSpan = document.createElement('span');
     timeSpan.textContent = ` [${time}]`;
     timeSpan.style.fontSize = '10px';
@@ -128,8 +127,6 @@ function addChatMessage({ name, message, system = false, color = null, time = ''
   } else {
     const nameSpan = document.createElement('span');
     nameSpan.classList.add('chat-name');
-    
-    // استخدام دالة التلوين التي تدعم الآن تأثير REDO البرقي
     nameSpan.innerHTML = colorizeName(name, color);
 
     const messageSpan = document.createElement('span');
@@ -140,6 +137,7 @@ function addChatMessage({ name, message, system = false, color = null, time = ''
     div.appendChild(document.createTextNode(' : '));
     div.appendChild(messageSpan);
 
+    // إضافة الوقت في نهاية الرسالة
     const timeSpan = document.createElement('span');
     timeSpan.textContent = ` [${time}]`;
     timeSpan.style.fontSize = '10px';
@@ -150,13 +148,14 @@ function addChatMessage({ name, message, system = false, color = null, time = ''
   chatMessages.appendChild(div);
   scrollChatToBottom();
   
+  // إشعار صوتي ووميض في زر الشات إذا الشات مغلق والرسالة ليست نظامية
   if (!chatContainer.classList.contains('open') && !system) {
     btnChat.classList.add('notify');
     playNotificationSound();
   }
 }
 
-// دالة تشغيل صوت تنبيه
+// دالة تشغيل صوت تنبيه (صوت بسيط قصير)
 function playNotificationSound() {
   try {
     const audioCtx = new (window.AudioContext || window.webkitAudioContext)();
@@ -166,7 +165,9 @@ function playNotificationSound() {
     oscillator.connect(audioCtx.destination);
     oscillator.start();
     oscillator.stop(audioCtx.currentTime + 0.15);
-  } catch (e) {}
+  } catch (e) {
+    // صوت غير مدعوم أو مشكلة، تجاهل
+  }
 }
 
 // تحديث قائمة اللاعبين بالترتيب مع الألوان
@@ -177,18 +178,16 @@ function updatePlayersList(players) {
     li.dataset.id = p.id;
 
     let color = '';
-    if (i === 0) color = 'gold';       
-    else if (i === 1) color = 'silver'; 
-    else if (i === 2) color = 'bronze';
-    else color = '#00d1ff';            
+    if (i === 0) color = 'gold';       // المركز الأول ذهبي
+    else if (i === 1) color = 'silver'; // الثاني سلفر
+    else if (i === 2) color = 'bronze';// الثالث برونزي 
+    else color = '#00d1ff';            // باقي المراكز أزرق سماوي
 
     li.style.color = color;
-    // هنا استخدمنا دالة colorizeName المعدلة لتظهر REDO بالبرق حتى في القائمة
     li.innerHTML = `${i + 1}. ${colorizeName(p.name, p.color)} - ${p.score} نقطة`;
     playersList.appendChild(li);
   });
 }
-
 
 // --- الأحداث ---
 
@@ -641,7 +640,8 @@ const initStudio = () => {
         }
         ctx.restore();
 
-        if (!isSoloMode) {
+
+              if (!isSoloMode) {
             socket.emit('draw-data', {
                 x: x / canvas.width,
                 y: y / canvas.height,
