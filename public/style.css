@@ -876,53 +876,55 @@ select {
     padding: 8px !important;
 }
 
+/* الكود المطابق للصورة بالملي */
 .redo-lightning-name {
     display: inline-block;
+    font-family: 'Arial Black', sans-serif; /* أو أي خط عريض جداً */
     font-weight: 900;
     text-transform: uppercase;
-    font-size: 1.3em;
+    font-size: 1.6em;
     position: relative;
-    
-    /* 1. جعل الصورة هي جسم الأحرف */
-    background: url('https://i.ibb.co/v690FY0d/1000081450.png') center;
-    background-size: 120% auto; /* تكبير بسيط لتناسب الأحرف */
+    color: transparent !important;
+    white-space: nowrap;
+
+    /* 1. استخدام الصورة كخلفية داخل الأحرف */
+    background: url('https://i.ibb.co/v690FY0d/1000081450.png') center center no-repeat;
+    background-size: 110% 110%; /* لضمان تغطية التصدعات للحواف */
     -webkit-background-clip: text;
     background-clip: text;
-    color: transparent !important;
 
-    /* 2. التوهج البنفسجي العنيف حول الحواف */
-    filter: drop-shadow(0 0 5px #b300ff) 
-            drop-shadow(0 0 15px #b300ff)
-            brightness(1.8);
+    /* 2. إضافة التوهج الخارجي الهادئ (بدون وميض) */
+    filter: drop-shadow(0 0 3px rgba(255, 255, 255, 0.7)) 
+            drop-shadow(0 0 12px rgba(179, 0, 255, 0.5));
 
-    /* 3. إضافة "التصدعات" الخارجية كظل خلفي */
-    animation: lightning-strike 0.15s infinite alternate;
+    /* 3. طبقة التصدعات الخارجية (البرق الخارج عن حدود الاسم) */
+    z-index: 1;
 }
 
-/* إضافة طبقة "شرارات" خلف النص لإظهار البرق الخارج عن الحدود */
-.redo-lightning-name::after {
+/* إضافة البرق المحيط والشرارات الخارجة من حرف O */
+.redo-lightning-name::before {
     content: 'REDO';
     position: absolute;
-    left: 0;
     top: 0;
+    left: 0;
+    width: 100%;
+    height: 100%;
     z-index: -1;
-    color: transparent;
-    /* استخدام الصورة كخلفية أوسع خلف النص لمحاكاة البرق المتناثر */
-    background: url('https://i.ibb.co/v690FY0d/1000081450.png') center;
-    background-size: 150%; 
-    -webkit-background-clip: text;
-    background-clip: text;
-    filter: blur(8px) brightness(2);
-    opacity: 0.6;
+    
+    /* تكرار الصورة خلف النص لإظهار التصدعات الجانبية */
+    background: url('https://i.ibb.co/v690FY0d/1000081450.png') center center no-repeat;
+    background-size: 140% 140%; /* تكبير الصورة خلف النص لإظهار البرق */
+    
+    /* جعل النص الشفاف يعمل كقالب لإظهار البرق المحيط فقط */
+    -webkit-mask-image: linear-gradient(black, black); 
+    mask-image: linear-gradient(black, black);
+    
+    /* زيادة السطوع للتصدعات لتطابق الصورة */
+    filter: brightness(1.8) contrast(1.2) blur(1px);
+    opacity: 0.9;
 }
 
-@keyframes lightning-strike {
-    0% { 
-        filter: drop-shadow(0 0 5px #b300ff) brightness(1.5);
-        transform: skewX(0deg) scale(1);
-    }
-    100% { 
-        filter: drop-shadow(0 0 20px #fff) brightness(2.5);
-        transform: skewX(-1deg) scale(1.02);
-    }
+/* إلغاء أي حركة أو وميض لضمان الثبات التام */
+.redo-lightning-name {
+    animation: none !important;
 }
