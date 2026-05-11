@@ -8,45 +8,6 @@
   <link rel="stylesheet" href="style.css" />
   <script src="/socket.io/socket.io.js" defer></script>
   <script src="game.js" defer></script>
-  
-  <style>
-    :root {
-      --bg-color: #1a1a1a;
-      --chat-bg: rgba(0, 0, 0, 0.6);
-      --text-color: #ffffff;
-      --btn-bg: #ffd700;
-      --btn-text: #000000;
-      --led-color: #ffd700;
-      --led-strength: 10px;
-    }
-
-    /* ربط المتغيرات بالصفحة */
-    body { background-color: var(--bg-color); color: var(--text-color); transition: 0.3s; }
-    #chat-container { background: var(--chat-bg) !important; color: var(--text-color); }
-    
-    /* تأثير الليد للأزرار */
-    .btn-main, .btn-send, .art-btn, #confirm-name, #close-instructions {
-      background-color: var(--btn-bg) !important;
-      color: var(--btn-text) !important;
-      box-shadow: 0 0 var(--led-strength) var(--led-color);
-      border: none !important;
-      transition: 0.3s;
-    }
-
-    /* ستايل نافذة الثيم */
-    #theme-dialog {
-      background: #222;
-      color: white;
-      border: 2px solid var(--led-color);
-      border-radius: 15px;
-      padding: 20px;
-      width: 90%;
-      max-width: 400px;
-    }
-    .theme-grid { display: grid; grid-template-columns: 1fr 1fr; gap: 10px; margin-top: 15px; }
-    .theme-grid label { font-size: 12px; display: flex; flex-direction: column; gap: 5px; }
-    .theme-grid input { width: 100%; cursor: pointer; }
-  </style>
 </head>
 
 <body>
@@ -66,7 +27,7 @@
     <section class="controls">
       <button id="btn-chat" class="btn-main" aria-expanded="false" aria-controls="chat-container">💬 الشات</button>
       <button id="btn-change-name" class="btn-main">✍️ تغيير الاسم</button>
-      <button id="btn-open-theme" class="btn-main">🎨 اختر ثيمك</button> <button id="btn-instructions" class="btn-main">📖 تعليمات اللعبة</button>
+      <button id="btn-instructions" class="btn-main">📖 تعليمات اللعبة</button>
       <button id="dark-mode-toggle" class="btn-main" aria-label="تفعيل الوضع الليلي">🌙 الوضع الليلي</button>
       <button id="btn-open-board" class="btn-main">🎨 لوحة الرسم</button>
     </section>
@@ -87,24 +48,6 @@
         <button type="submit" id="btn-send-chat" class="btn-send">إرسال</button>
       </form>
     </aside>
-
-    <dialog id="theme-dialog">
-      <h3 style="text-align:center; color:var(--led-color);">🎨 صمم ثيمك الخاص</h3>
-      <div class="theme-grid">
-        <label>الخلفية <input type="color" id="c-bg" value="#1a1a1a"></label>
-        <label>الشات <input type="color" id="c-chat" value="#000000"></label>
-        <label>الأزرار <input type="color" id="c-btn" value="#ffd700"></label>
-        <label>النص <input type="color" id="c-txt" value="#ffffff"></label>
-        <label>الليد <input type="color" id="c-led" value="#ffd700"></label>
-        <label>قوة النيون <input type="range" id="c-strength" min="0" max="30" value="10"></label>
-      </div>
-      <div style="display:flex; gap:5px; margin-top:15px;">
-        <button class="btn-main" onclick="copySuperCode()" style="flex:1; padding:8px; font-size:12px;">نسخ الرمز</button>
-        <button class="btn-main" onclick="importSuperCode()" style="flex:1; padding:8px; font-size:12px;">تحميل رمز</button>
-      </div>
-      <button onclick="resetToDefaultTheme()" style="width:100%; margin-top:10px; background:#ff4444 !important; color:white; border:none; padding:8px; border-radius:5px; cursor:pointer;">🔄 استعادة الأصلي</button>
-      <button onclick="document.getElementById('theme-dialog').close()" style="width:100%; margin-top:5px; background:#444; color:white; border:none; padding:8px; border-radius:5px; cursor:pointer;">إغلاق</button>
-    </dialog>
 
     <dialog id="change-name-dialog" aria-modal="true" aria-labelledby="change-name-title">
       <form method="dialog" id="change-name-form">
@@ -197,83 +140,15 @@
   </main>
 
   <script>
-    // كود الوضع الليلي الأصلي
     const darkModeBtn = document.getElementById('dark-mode-toggle');
     if (darkModeBtn) {
       darkModeBtn.addEventListener('click', () => {
         document.body.classList.toggle('dark-mode');
       });
     }
-
-    // --- منطق ميزة الثيمات والحفظ ---
-    const themeDialog = document.getElementById('theme-dialog');
-    const btnOpenTheme = document.getElementById('btn-open-theme');
-    if(btnOpenTheme) { btnOpenTheme.onclick = () => themeDialog.showModal(); }
-
-    const defaultTheme = { bg: '#1a1a1a', chat: '#000000', btn: '#ffd700', txt: '#ffffff', led: '#ffd700', str: '10' };
-
-    function applySuperTheme(data) {
-      const root = document.documentElement;
-      root.style.setProperty('--bg-color', data.bg);
-      root.style.setProperty('--chat-bg', data.chat);
-      root.style.setProperty('--btn-bg', data.btn);
-      root.style.setProperty('--text-color', data.txt);
-      root.style.setProperty('--led-color', data.led);
-      root.style.setProperty('--led-strength', data.str + 'px');
-      localStorage.setItem('superTheme', JSON.stringify(data));
-      
-      if(document.getElementById('c-bg')) {
-        document.getElementById('c-bg').value = data.bg;
-        document.getElementById('c-chat').value = data.chat;
-        document.getElementById('c-btn').value = data.btn;
-        document.getElementById('c-txt').value = data.txt;
-        document.getElementById('c-led').value = data.led;
-        document.getElementById('c-strength').value = data.str;
-      }
-    }
-
-    function copySuperCode() {
-      const theme = {
-        bg: document.getElementById('c-bg').value,
-        chat: document.getElementById('c-chat').value,
-        btn: document.getElementById('c-btn').value,
-        txt: document.getElementById('c-txt').value,
-        led: document.getElementById('c-led').value,
-        str: document.getElementById('c-strength').value
-      };
-      navigator.clipboard.writeText(btoa(JSON.stringify(theme)));
-      alert("تم نسخ رمز الثيم! أرسله لأصدقائك.");
-    }
-
-    function importSuperCode() {
-      const code = prompt("أدخل رمز الثيم:");
-      if (code) {
-        try { applySuperTheme(JSON.parse(atob(code))); } catch(e) { alert("الرمز غير صحيح!"); }
-      }
-    }
-
-    function resetToDefaultTheme() {
-      if(confirm("هل تريد استعادة ألوان اللعبة الأصلية؟")) { applySuperTheme(defaultTheme); }
-    }
-
-    window.addEventListener('DOMContentLoaded', () => {
-      const savedTheme = JSON.parse(localStorage.getItem('superTheme'));
-      applySuperTheme(savedTheme || defaultTheme);
-    });
-
-    document.querySelectorAll('#theme-dialog input').forEach(input => {
-      input.oninput = () => {
-        applySuperTheme({
-          bg: document.getElementById('c-bg').value,
-          chat: document.getElementById('c-chat').value,
-          btn: document.getElementById('c-btn').value,
-          txt: document.getElementById('c-txt').value,
-          led: document.getElementById('c-led').value,
-          str: document.getElementById('c-strength').value
-        });
-      };
-    });
   </script>
 </body>
 
-</html>
+              </html>
+
+              
