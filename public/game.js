@@ -470,10 +470,11 @@ chatForm.addEventListener('submit', () => {
   }
 });
     
-                          // ==========================================
-//   استوديو نزار المطور (V2 - iPad & Gallery Fix)
+                                  // ==========================================
+//   استوديو نزار المطور (V2 - Gallery Fix)
 // ==========================================
 
+// متغيرات الحالة (خارج النطاق لضمان الاستمرارية)
 let persistentCanvasData = null; 
 let isSoloMode = false;
 let lastX = 0;
@@ -481,28 +482,27 @@ let lastY = 0;
 let undoStack = []; 
 let galleryData = JSON.parse(localStorage.getItem('myArtGallery')) || [];
 
-// --- التعديل هنا: تحديث واجهة المعرض لتعمل بنظام الشبكة (Grid) ---
+// دالة تحديث واجهة المعرض (متاحة عالمياً)
 function updateGalleryUI() {
     const miniGallery = document.getElementById('art-mini-gallery');
     if(!miniGallery) return;
     miniGallery.innerHTML = '';
-    
     galleryData.forEach((item, index) => {
         const div = document.createElement('div');
         div.className = 'gallery-card'; 
-        // الأزرار صارت صفراء دائرية والتنسيق يدعم الآيباد
         div.innerHTML = `
-            <img src="${item.img}" alt="رسمة">
-            <span class="gallery-item-name">${item.name}</span>
-            <div class="gallery-buttons">
-                <button class="gallery-btn delete-btn-yellow" onclick="deleteGalleryItem(${index})">🗑️</button>
-                <button class="gallery-btn edit-btn-yellow" onclick="loadToCanvas(${index})">📝</button>
+            <img src="${item.img}" style="width:100%; border-radius:5px;">
+            <span style="font-size:12px; display:block; margin:5px 0;">${item.name}</span>
+            <div style="display:flex; gap:2px; width:100%;">
+                <button onclick="loadToCanvas(${index})" style="flex:1; padding:5px; cursor:pointer;">📝</button>
+                <button onclick="deleteGalleryItem(${index})" style="flex:1; padding:5px; background:#ff4444; color:white; border:none; cursor:pointer;">🗑️</button>
             </div>
         `;
         miniGallery.appendChild(div);
     });
 }
 
+// دالات المعرض (Global) - تم التعديل هنا لحل مشكلة القص
 window.loadToCanvas = (idx) => {
     const canvas = document.getElementById('main-canvas');
     const ctx = canvas.getContext('2d');
@@ -513,7 +513,10 @@ window.loadToCanvas = (idx) => {
         ctx.globalAlpha = 1.0;
         ctx.globalCompositeOperation = 'source-over';
         ctx.clearRect(0, 0, canvas.width, canvas.height);
+        
+        // التعديل السحري: رسم الصورة بأبعاد اللوحة الحالية كاملة
         ctx.drawImage(img, 0, 0, canvas.width, canvas.height);
+        
         ctx.restore();
         if(!isSoloMode) socket.emit('load-gallery-all', canvas.toDataURL());
     };
@@ -527,6 +530,7 @@ window.deleteGalleryItem = (idx) => {
     }
 };
 
+// منطق الاستوديو الأساسي
 const initStudio = () => {
     const canvas = document.getElementById('main-canvas');
     if (!canvas) return;
@@ -636,7 +640,8 @@ const initStudio = () => {
         }
         ctx.restore();
 
-        if (!isSoloMode) {
+
+              if (!isSoloMode) {
             socket.emit('draw-data', {
                 x: x / canvas.width,
                 y: y / canvas.height,
@@ -662,10 +667,12 @@ const initStudio = () => {
         ctx.lineCap = 'round';
         ctx.lineWidth = data.size;
         ctx.globalAlpha = data.opacity;
+
         const currentX = data.x * canvas.width;
         const currentY = data.y * canvas.height;
         const prevX = data.prevX * canvas.width;
         const prevY = data.prevY * canvas.height;
+
         if (data.type === 'spray') {
             ctx.fillStyle = data.color;
             for (let i = 0; i < 40; i++) {
@@ -690,6 +697,7 @@ const initStudio = () => {
             ctx.save();
             ctx.globalAlpha = 1.0;
             ctx.clearRect(0, 0, canvas.width, canvas.height);
+            // تم التعديل هنا أيضاً لضمان التوافق عند الاستقبال عن بعد
             ctx.drawImage(img, 0, 0, canvas.width, canvas.height);
             ctx.restore();
         };
@@ -697,7 +705,9 @@ const initStudio = () => {
 
     socket.on('clear-board-remote', (data) => { 
         if (!isSoloMode) {
-            if (data && data.color) bgColor.value = data.color;
+            if (data && data.color) {
+                bgColor.value = data.color;
+            }
             resetCanvasBackground(); 
         }
     });
