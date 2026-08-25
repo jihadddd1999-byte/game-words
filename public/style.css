@@ -1,6 +1,4 @@
-/* ==========================================
-   1. التنسيقات العامة والأساسية (رمضاني كلاسيكي)
-   ========================================== */
+/* عام */
 *,
 *::before,
 *::after {
@@ -14,7 +12,7 @@ html, body {
 
 body {
   margin: 0;
-  font-family: 'Cairo', 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
+  font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
   background: linear-gradient(135deg, #3e2f1c, #6b4e1c); /* بني رمضاني */
   color: #fff2c2; /* ذهبي فاتح */
   direction: rtl;
@@ -41,7 +39,7 @@ body {
   user-select: none;
 }
 
-header.main-header h1 {
+header h1 {
   font-weight: 900;
   font-size: 2.4rem;
   text-align: center;
@@ -53,9 +51,7 @@ header.main-header h1 {
     0 0 30px #ffaa00cc;
 }
 
-/* ==========================================
-   2. قسم اللعبة والكلمات
-   ========================================== */
+/* --- قسم اللعبة --- */
 .game-section {
   display: flex;
   flex-direction: column;
@@ -77,29 +73,12 @@ header.main-header h1 {
   max-width: 400px;
   text-align: center;
   box-shadow: 0 0 25px #ffd70099;
-  transition: background 0.4s ease, color 0.4s ease, box-shadow 0.4s ease, filter 0.3s ease;
-}
-
-/* مود الكلمات المخفية (Blur Mode) */
-.word-box.blur-active {
-  filter: blur(12px);
-  cursor: pointer;
-  transition: filter 0.2s ease;
-}
-
-.word-box.blur-active:hover {
-  filter: blur(0px);
-}
-
-.input-wrapper {
-  width: 100%;
-  max-width: 400px;
-  display: flex;
-  justify-content: center;
+  transition: background 0.4s ease, color 0.4s ease, box-shadow 0.4s ease;
 }
 
 #input-answer {
   width: 100%;
+  max-width: 400px;
   font-size: 1.3rem;
   padding: 12px 20px;
   border-radius: 40px;
@@ -112,20 +91,13 @@ header.main-header h1 {
   box-shadow:
     inset 0 0 12px #d4af3788,
     0 0 12px #ffd700bb;
-  transition: box-shadow 0.3s ease, background 0.3s ease;
+  transition: box-shadow 0.3s ease;
 }
 
 #input-answer:focus {
   box-shadow:
     inset 0 0 18px #ffd700cc,
     0 0 18px #ffd700cc;
-}
-
-#input-answer:disabled {
-  background: #555 !important;
-  color: #888 !important;
-  cursor: not-allowed;
-  box-shadow: none !important;
 }
 
 .answer-time {
@@ -135,19 +107,23 @@ header.main-header h1 {
   margin-top: 5px;
 }
 
-.points-display {
-  font-size: 1.2rem;
-  font-weight: 800;
-  color: #ffd700;
+#answers-display {
+  background: rgba(60, 40, 20, 0.8);
+  border-radius: 12px;
+  padding: 10px;
+  width: 100%;
+  max-width: 400px;
+  font-size: 0.95rem;
+  color: #ffdd88;
+  margin-top: 10px;
+  box-shadow: 0 0 10px #ffd70088;
 }
 
-/* ==========================================
-   3. أزرار التحكم والواجهة الرئيسية
-   ========================================== */
+/* --- أزرار التحكم --- */
 .controls {
   display: flex;
   justify-content: center;
-  gap: 12px;
+  gap: 14px;
   margin: 25px 0;
   flex-wrap: wrap;
 }
@@ -155,16 +131,16 @@ header.main-header h1 {
 .btn-main {
   background: linear-gradient(135deg, #b8860b, #ffd700);
   border: none;
-  padding: 10px 20px;
+  padding: 10px 22px;
   font-weight: 700;
-  font-size: 1rem;
+  font-size: 1.1rem;
   border-radius: 40px;
   color: #3e2f1c;
   box-shadow:
     0 0 15px #ffd700cc,
     inset 0 -3px 10px #b8860baa;
   cursor: pointer;
-  transition: background 0.3s ease, transform 0.15s ease, box-shadow 0.3s ease;
+  transition: background 0.3s ease, transform 0.15s ease;
   user-select: none;
   min-width: 110px;
   text-align: center;
@@ -177,21 +153,22 @@ header.main-header h1 {
   outline: none;
 }
 
-.btn-theme {
-  background: linear-gradient(135deg, #ff007f, #7928ca) !important;
-  color: #fff !important;
-  box-shadow: 0 0 15px rgba(255, 0, 127, 0.6) !important;
+#dark-mode-toggle {
+  background: linear-gradient(135deg, #7a4f1c, #b8860b);
+  color: #fff2c2;
+  border-radius: 40px;
+  padding: 10px 16px;
+  font-size: 1.2rem;
+  box-shadow: 0 0 12px #00000088;
+  cursor: pointer;
+  transition: background 0.3s ease;
 }
 
-.btn-admin {
-  background: linear-gradient(135deg, #ff8c00, #ff4500) !important;
-  color: #fff !important;
-  box-shadow: 0 0 15px rgba(255, 69, 0, 0.7) !important;
+#dark-mode-toggle:hover {
+  background: linear-gradient(135deg, #b8860b, #ffd700);
 }
 
-/* ==========================================
-   4. قائمة المتصدرين واللاعبين
-   ========================================== */
+/* --- قائمة اللاعبين --- */
 .players-list-container {
   background: rgba(60, 40, 20, 0.85);
   border-radius: 14px;
@@ -214,29 +191,24 @@ header.main-header h1 {
 }
 
 #players-list li {
-  padding: 8px;
+  padding: 6px 8px;
   font-weight: 700;
   border-bottom: 1px solid #b8860b55;
-  display: flex;
-  justify-content: space-between;
-  align-items: center;
+  cursor: default;
+  transition: color 0.3s ease;
 }
 
-.vip-badge {
-  color: #ffd700;
-  text-shadow: 0 0 8px #ffd700;
-  margin-inline-start: 4px;
-}
+#players-list li:nth-child(1) { color: #ff4500; }
+#players-list li:nth-child(2) { color: #32cd32; }
+#players-list li:nth-child(3) { color: #ffa500; }
 
-/* ==========================================
-   5. الشات المباشر
-   ========================================== */
+/* --- الشات --- */
 .chat-container {
   position: fixed;
   top: 10%;
   left: 50%;
   transform: translateX(-50%) translateY(0);
-  width: 90%;
+  width: 100%;
   max-width: 480px;
   max-height: 60vh;
   background: rgba(60, 40, 20, 0.95);
@@ -266,6 +238,14 @@ header.main-header h1 {
   font-size: 1.25rem;
 }
 
+.chat-header button {
+  background: none;
+  border: none;
+  color: #ffd700;
+  font-size: 1.3rem;
+  cursor: pointer;
+}
+
 .chat-messages {
   flex: 1 1 auto;
   padding: 10px 15px;
@@ -275,444 +255,624 @@ header.main-header h1 {
   line-height: 1.3;
 }
 
-.chat-form {
-  display: flex;
-  padding: 10px;
-  gap: 8px;
-  background: #3e2f1c;
-  border-radius: 0 0 14px 14px;
-}
+.chat-message { margin-bottom: 8px; word-break: break-word; }
+.chat-system-message { font-style: italic; color: #ffd700; text-align: center; }
+.chat-name { font-weight: 800; color: #b8860b; margin-left: 6px; }
 
 #chat-input {
   flex: 1;
-  padding: 10px 14px;
+  padding: 12px 16px;
   font-size: 15px;
-  color: #fff;
-  background: rgba(0, 0, 0, 0.4);
+  color: #3e2f1c;
+  background: rgba(255, 215, 0, 0.2);
   border: 1px solid #b8860b44;
-  border-radius: 10px;
+  border-radius: 14px;
   outline: none;
+  transition: 0.25s;
 }
 
-.btn-send {
+#chat-input::placeholder {
+  color: #ffd700aa;
+}
+
+#btn-send-chat {
   padding: 0 18px;
-  border-radius: 10px;
+  border-radius: 14px;
   border: none;
   cursor: pointer;
   font-size: 14px;
   font-weight: bold;
   color: #3e2f1c;
   background: linear-gradient(135deg, #b8860b, #ffd700);
+  transition: 0.25s;
 }
 
-/* ==========================================
-   6. النوافذ المنبثقة العامة (Modals & Dialogs)
-   ========================================== */
-dialog {
-  border: none;
+#btn-send-chat:hover {
+  transform: scale(1.05);
+  box-shadow: 0 0 12px #ffd700aa;
+}
+
+/* --- كلمات خاصة --- */
+.special-word { font-weight: 900; user-select: text; }
+.special-word.shake { animation: shake 0.6s ease infinite alternate; }
+
+@keyframes shake {
+  0% { transform: translateX(0) }
+  25% { transform: translateX(-2px) }
+  50% { transform: translateX(2px) }
+  75% { transform: translateX(-2px) }
+  100% { transform: translateX(0) }
+}
+
+/* --- مودالات --- */
+dialog#change-name-dialog,
+dialog#instructions-dialog {
+  width: 90%;
+  max-width: 400px;
   border-radius: 16px;
+  border: none;
   background: linear-gradient(145deg, #4b2f1c, #7a4f1c);
   color: #ffd700;
-  box-shadow: 0 0 25px #ffd700cc;
-  padding: 20px;
+  box-shadow:
+    0 0 25px #ffd700cc,
+    inset 0 0 40px #b8860baa;
+  padding: 20px 25px;
   font-weight: 700;
+  user-select: none;
 }
 
-dialog::backdrop {
-  background: rgba(0, 0, 0, 0.75);
-  backdrop-filter: blur(4px);
-}
-
-.dialog-actions {
-  display: flex;
-  justify-content: flex-end;
-  gap: 10px;
-  margin-top: 18px;
-}
-
-.btn-primary, .btn-secondary {
-  padding: 8px 18px;
-  border-radius: 10px;
-  border: none;
-  font-weight: 700;
-  cursor: pointer;
-}
-
-.btn-primary { background: #ffd700; color: #3e2f1c; }
-.btn-secondary { background: #555; color: #fff; }
-
-/* ==========================================
-   7. النوافذ الخاصة بالأدمن والثيمات (Admin & Themes UI)
-   ========================================== */
-.admin-modal {
-  width: 95%;
-  max-width: 650px;
-  background: #1c1813 !important;
-  border: 2px solid #ff8c00 !important;
-  color: #fff !important;
-  border-radius: 18px !important;
-  padding: 20px !important;
-  box-shadow: 0 0 40px rgba(255, 140, 0, 0.4) !important;
-}
-
-.admin-modal.dialog-sm { max-width: 400px; }
-.admin-modal.dialog-lg { max-width: 750px; }
-
-.admin-header {
-  display: flex;
-  justify-content: space-between;
-  align-items: center;
-  border-bottom: 2px solid #3a2e21;
-  padding-bottom: 10px;
-  margin-bottom: 15px;
-}
-
-.admin-header h2, .admin-header h3 {
-  margin: 0;
-  color: #ff8c00;
-}
-
-.btn-close {
-  background: none;
-  border: none;
-  color: #ff4500;
-  font-size: 1.4rem;
-  cursor: pointer;
-}
-
-.admin-fieldset {
-  border: 1px solid #ff8c0066;
-  border-radius: 10px;
-  padding: 10px 15px;
-  margin-bottom: 15px;
-}
-
-.admin-fieldset legend {
-  color: #ffd700;
-  font-size: 0.9rem;
-  padding: 0 6px;
-}
-
-.flex-row {
-  display: flex;
-  align-items: center;
-  gap: 10px;
-  flex-wrap: wrap;
-}
-
-.admin-section h3 {
-  color: #ffd700;
+dialog#change-name-dialog input,
+dialog#instructions-dialog button,
+dialog#change-name-dialog button {
   font-size: 1.1rem;
-  margin-top: 10px;
-  margin-bottom: 12px;
-}
-
-.admin-grid-top {
-  display: grid;
-  grid-template-columns: repeat(auto-fit, minmax(200px, 1fr));
-  gap: 10px;
-  margin-bottom: 15px;
-}
-
-.admin-grid-actions {
-  display: grid;
-  grid-template-columns: repeat(auto-fill, minmax(170px, 1fr));
-  gap: 10px;
-}
-
-.btn-adm-act {
-  background: #2d241a;
-  border: 1px solid #ff8c00;
-  color: #ffdd88;
-  padding: 10px;
+  font-weight: 700;
   border-radius: 10px;
-  font-weight: bold;
+  border: none;
+  padding: 10px 15px;
   cursor: pointer;
-  transition: 0.2s ease;
-  font-size: 0.88rem;
-  text-align: center;
+  transition: background 0.3s ease;
+  background: linear-gradient(135deg, #b8860b, #ffd700);
+  color: #3e2f1c;
+  box-shadow:
+    0 0 12px #ffd700bb,
+    inset 0 -3px 6px #b8860baa;
+  user-select: none;
 }
 
-.btn-adm-act:hover {
-  background: #ff8c00;
-  color: #000;
-  box-shadow: 0 0 10px rgba(255, 140, 0, 0.6);
+dialog#change-name-dialog input:focus {
+  outline: none;
+  box-shadow:
+    0 0 20px #ffd700cc,
+    inset 0 0 20px #b8860baa;
 }
 
-.btn-danger {
-  border-color: #ff3333 !important;
-  color: #ff6666 !important;
-}
-
-.btn-danger:hover {
-  background: #ff3333 !important;
-  color: #fff !important;
-}
-
-.btn-purple {
-  border-color: #a855f7 !important;
-  color: #c084fc !important;
-}
-
-.btn-purple:hover {
-  background: #a855f7 !important;
-  color: #fff !important;
-}
-
-/* بطاقات التحكم الفردي باللاعبين داخل الأدمن */
-.admin-players-list {
-  display: flex;
-  flex-direction: column;
-  gap: 12px;
-  max-height: 280px;
-  overflow-y: auto;
-  padding-end: 5px;
-}
-
-.admin-player-card {
-  background: #282017;
-  border: 1px solid #4a3b2c;
-  border-radius: 12px;
-  padding: 12px;
-  display: flex;
-  flex-direction: column;
-  gap: 8px;
-}
-
-.player-card-header {
+dialog#change-name-dialog menu {
+  margin-top: 20px;
   display: flex;
   justify-content: space-between;
-  font-size: 1rem;
+  gap: 15px;
+}
+
+#instructions-title {
+  margin-top: 0;
+  margin-bottom: 15px;
+  text-align: center;
+  font-size: 1.7rem;
+  font-weight: 900;
+  color: #ffd700;
+  text-shadow:
+    0 0 10px #ffd700cc,
+    0 0 20px #b8860baa;
+}
+
+.instructions-content {
+  font-size: 1.15rem;
+  line-height: 1.5;
+  user-select: text;
+}
+
+.instructions-content ol {
+  padding-inline-start: 20px;
+  margin: 0 0 20px 0;
+  color: #ffd700;
+}
+
+#close-instructions {
+  display: block;
+  margin: 0 auto;
+  background: linear-gradient(135deg, #b8860b, #ffd700);
+  border: none;
+  color: #3e2f1c;
+  font-weight: 700;
+  padding: 12px 25px;
+  border-radius: 40px;
+  cursor: pointer;
+  box-shadow:
+    0 0 15px #ffd700cc,
+    inset 0 -3px 10px #b8860baa;
+  transition: background 0.3s ease, transform 0.15s ease;
+}
+
+#close-instructions:hover,
+#close-instructions:focus {
+  background: linear-gradient(135deg, #ffd700, #ffea00);
+  transform: scale(1.05);
+  outline: none;
+}
+
+
+/* --- الوضع الليلي المريح للعين النهائي --- */
+body.dark-mode {
+  background: #0b0d12;
+  color: #d0d0d0;
+}
+
+body.dark-mode #app-container { background: #111422; box-shadow: none; }
+body.dark-mode .word-box { background: #1a1e2b; color: #c0c0c0; text-shadow: none; box-shadow: none; }
+body.dark-mode #input-answer { background: #2a2f3e; color: #d0d0d0; box-shadow: none; }
+body.dark-mode #answers-display { background: #1c1f28; color: #c0c0c0; box-shadow: none; }
+
+/* الأزرار */
+body.dark-mode .controls .btn-main,
+body.dark-mode #dark-mode-toggle { background: #2a2f3e; color: #d0d0d0; box-shadow: none; }
+body.dark-mode .controls .btn-main:hover,
+body.dark-mode #dark-mode-toggle:hover { background: #3a3f50; transform: none; }
+
+/* لوحة المتصدرين */
+body.dark-mode .players-list-container { background: #1c1f28; color: #d0d0d0; box-shadow: none; }
+body.dark-mode .players-list-container h2 { color: #c0c0c0; }
+
+/* الشات */
+body.dark-mode .chat-container { background: #1c1f28; box-shadow: none; }
+body.dark-mode #chat-input { background: #2a2f3e; color: #d0d0d0; border: 1px solid #444; box-shadow: none; }
+body.dark-mode #btn-send-chat { background: #3a3f50; color: #d0d0d0; box-shadow: none; }
+body.dark-mode #btn-send-chat:hover { background: #4a5060; transform: none; }
+
+
+/* --- إطار اسم كول --- */
+.kol-wrapper {
+  position: relative;
+  display: inline-block;
+  padding: 2px 8px;
+}
+
+.kol-name {
+  color: #ff69b4;
+  font-weight: 800;
+  text-shadow:
+    0 0 6px #ff9acb,
+    0 0 12px #ff69b4;
+  animation: kolGlow 2s ease-in-out infinite;
+}
+
+@keyframes kolGlow {
+  0%   { text-shadow: 0 0 6px #ff9acb; }
+  50%  { text-shadow: 0 0 14px #ff69b4; }
+  100% { text-shadow: 0 0 6px #ff9acb; }
+}
+
+.kol-wrapper::before,
+.kol-wrapper::after {
+  content: "🌸";
+  position: absolute;
+  font-size: 14px;
+  animation: kolFlowers 3s linear infinite;
+  opacity: 0.9;
+}
+
+.kol-wrapper::before {
+  top: -8px;
+  right: -10px;
+}
+
+.kol-wrapper::after {
+  bottom: -8px;
+  left: -10px;
+  animation-delay: 1.5s;
+}
+
+@keyframes kolFlowers {
+  0%   { transform: rotate(0deg) scale(1); opacity: 0.6; }
+  50%  { transform: rotate(180deg) scale(1.2); opacity: 1; }
+  100% { transform: rotate(360deg) scale(1); opacity: 0.6; }
+}
+
+/* --- فوانيس رمضانية --- */
+.firefly-wrapper {
+  position: absolute;
+  width: 100%;
+  height: 100%;
+  top: 0;
+  left: 0;
+  pointer-events: none;
+  z-index: 9999;
+}
+
+.firefly {
+  position: absolute;
+  width: 10px;
+  height: 10px;
+  background: radial-gradient(circle, #ffd700 0%, #b8860b 70%);
+  border-radius: 50%;
+  animation: fireflyMove 10s linear infinite, fireflyGlow 2s ease-in-out infinite;
+}
+
+@keyframes fireflyMove {
+  0% { transform: translate(0,0) rotate(0deg); }
+  25% { transform: translate(50px, 80px) rotate(45deg); }
+  50% { transform: translate(-50px, 160px) rotate(-30deg); }
+  75% { transform: translate(40px, 240px) rotate(30deg); }
+  100% { transform: translate(0, 0) rotate(0deg); }
+}
+
+@keyframes fireflyGlow {
+  0%, 100% { opacity: 0.5; }
+  50% { opacity: 1; }
+}
+
+/* --- نص إضافي --- */
+.chat-msg {
+  margin-bottom: 6px;
+  line-height: 1.4;
+}
+
+.chat-time {
+  font-size: 11px;
+  color: #888;
+  margin-left: 6px;
+}
+
+.chat-name {
   font-weight: bold;
   color: #ffd700;
 }
 
-.player-card-btns {
-  display: flex;
-  flex-wrap: wrap;
-  gap: 6px;
+.chat-text {
+  color: #fff2c2;
+  word-wrap: break-word;
 }
 
-.btn-adm-sub {
-  background: #1a1510;
-  border: 1px solid #666;
-  color: #ddd;
-  font-size: 0.75rem;
-  padding: 5px 8px;
-  border-radius: 6px;
-  cursor: pointer;
-}
 
-.btn-adm-sub:hover {
-  border-color: #ffd700;
+/* --- تأثير عند الفوز --- */
+.winner-animation {
+  animation: glowWinner 1s ease-in-out infinite alternate;
   color: #ffd700;
+  text-shadow:
+    0 0 8px #ffd700aa,
+    0 0 16px #ffea00aa,
+    0 0 24px #ffdd00aa;
 }
 
-/* ==========================================
-   8. شبكة اختيار ثيمات الألوان المخصصة
-   ========================================== */
-.theme-options-grid {
-  display: grid;
-  grid-template-columns: repeat(auto-fit, minmax(140px, 1fr));
-  gap: 12px;
-  margin-top: 15px;
+@keyframes glowWinner {
+  0% { text-shadow: 0 0 8px #ffd700aa; }
+  50% { text-shadow: 0 0 20px #ffd700cc, 0 0 40px #ffea00cc; }
+  100% { text-shadow: 0 0 8px #ffd700aa; }
 }
 
-.btn-theme-select {
-  padding: 15px 10px;
-  border-radius: 12px;
-  border: 2px solid transparent;
-  font-weight: 800;
-  cursor: pointer;
-  transition: transform 0.2s, box-shadow 0.2s;
+/* --- تاج الفائزين --- */
+.crown {
+  font-size: 1.2rem;
+  margin-left: 4px;
+  color: #ffd700;
+  text-shadow: 0 0 8px #ffd700aa;
 }
 
-.btn-theme-select:hover {
-  transform: translateY(-3px);
+/* --- ألوان خاصة لبعض الأسماء --- */
+.player-special-1 { color: #ff4500; text-shadow: 0 0 8px #ff4500aa; }
+.player-special-2 { color: #32cd32; text-shadow: 0 0 8px #32cd32aa; }
+.player-special-3 { color: #ffa500; text-shadow: 0 0 8px #ffa500aa; }
+
+/* --- اهتزاز الكلمات في الشات --- */
+.shake-word {
+  display: inline-block;
+  animation: shake 0.6s ease infinite alternate;
 }
 
-.theme-red { background: linear-gradient(135deg, #800000, #ff0000); color: #fff; }
-.theme-cyan { background: linear-gradient(135deg, #008b8b, #00ffff); color: #000; }
-.theme-violet { background: linear-gradient(135deg, #4b0082, #8a2be2); color: #fff; }
-.theme-gold { background: linear-gradient(135deg, #b8860b, #ffd700); color: #000; }
-.theme-classic { background: linear-gradient(135deg, #111422, #2a2f3e); color: #fff; }
+/* --- خطوط عربية جمالية --- */
+@import url('https://fonts.googleapis.com/css2?family=Cairo:wght@400;700;900&display=swap');
 
-/* تطبيق الثيمات على الصفحة بالكامل */
-body.theme-red-black { background: linear-gradient(135deg, #1a0000, #400000) !important; color: #ffcccc !important; }
-body.theme-red-black #app-container { background: rgba(50, 0, 0, 0.9) !important; box-shadow: 0 0 30px #ff0000aa !important; }
-body.theme-red-black .word-box { background: #600000 !important; color: #fff !important; }
+body {
+  font-family: 'Cairo', sans-serif;
+  }
+/* ========================================== */
+/* تصميم لوحة الرسم (Popup Studio) - النسخة الموحدة */
+/* ========================================== */
 
-body.theme-neon-cyan { background: linear-gradient(135deg, #001a1a, #004040) !important; color: #e0ffff !important; }
-body.theme-neon-cyan #app-container { background: rgba(0, 40, 40, 0.9) !important; box-shadow: 0 0 30px #00ffffaa !important; }
-body.theme-neon-cyan .word-box { background: #008080 !important; color: #00ffff !important; }
-
-body.theme-dark-violet { background: linear-gradient(135deg, #120024, #2a004a) !important; color: #f0e6ff !important; }
-body.theme-dark-violet #app-container { background: rgba(35, 0, 60, 0.9) !important; box-shadow: 0 0 30px #a855f7aa !important; }
-body.theme-dark-violet .word-box { background: #4a0080 !important; color: #e9d5ff !important; }
-
-body.theme-royal-gold { background: linear-gradient(135deg, #3e2f1c, #6b4e1c) !important; color: #fff2c2 !important; }
-
-/* ==========================================
-   9. سجل المراقبة وإعلانات الشاشة
-   ========================================== */
-.audit-logs-body {
-  max-height: 350px;
-  overflow-y: auto;
-  background: #120e0a;
-  border-radius: 10px;
-  padding: 10px;
-}
-
-.audit-list {
-  list-style: none;
-  padding: 0;
-  margin: 0;
-  font-family: monospace;
-  font-size: 0.85rem;
-}
-
-.audit-list li {
-  padding: 6px 0;
-  border-bottom: 1px dashed #3a2e21;
-  color: #ffaa00;
-}
-
-.broadcast-body {
-  text-align: center;
-  padding: 10px;
-}
-
-.broadcast-icon {
-  font-size: 3rem;
-  display: block;
-  margin-bottom: 10px;
-}
-
-/* ==========================================
-   10. استوديو الرسم المباشر (Popup Studio)
-   ========================================== */
 .studio-popup {
-  position: fixed !important;
-  top: 50% !important;
-  left: 50% !important;
-  transform: translate(-50%, -50%) !important;
-  width: 94vw !important;
-  max-width: 550px !important;
-  max-height: 88vh !important;
-  height: auto !important;
-  background: #2d1e0f !important;
-  border: 2px solid #ffd700 !important;
-  border-radius: 20px !important;
-  padding: 15px !important;
-  color: #ffd700 !important;
-  box-shadow: 0 0 50px rgba(0, 0, 0, 0.9) !important;
-  z-index: 10001 !important;
-  overflow-y: auto !important;
-  direction: rtl !important;
+    /* 1. السنترة المطلقة: تضمن المركز تماماً غصب عن المتصفح */
+    position: fixed !important;
+    top: 50% !important;
+    left: 50% !important;
+    right: auto !important;
+    bottom: auto !important;
+    transform: translate(-50%, -50%) !important;
+    
+    /* 2. الأبعاد المرنة */
+    width: 94vw !important;
+    max-width: 550px !important;
+    max-height: 88vh !important;
+    height: auto !important;
+    
+    /* 3. التصميم الجمالي (ستايل نزار الرمضاني) */
+    background: #2d1e0f !important;
+    border: 2px solid #ffd700 !important;
+    border-radius: 20px !important;
+    padding: 15px !important;
+    color: #ffd700 !important;
+    box-shadow: 0 0 50px rgba(0, 0, 0, 0.9) !important;
+    
+    /* 4. الإعدادات التقنية */
+    z-index: 10001 !important;
+    overflow-y: auto !important;
+    overflow-x: hidden !important;
+    direction: rtl !important;
+    contain: content; /* تحسين أداء الريندر */
+}
+
+.studio-popup::backdrop {
+    background: rgba(0, 0, 0, 0.9);
+    backdrop-filter: blur(8px);
 }
 
 .studio-header {
-  display: flex;
-  justify-content: space-between;
-  align-items: center;
-  margin-bottom: 12px;
-  border-bottom: 2px solid #4b3a1a;
-  padding-bottom: 8px;
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    margin-bottom: 12px;
+    border-bottom: 2px solid #4b3a1a;
+    padding-bottom: 8px;
 }
 
+/* منطقة الرسم المرنة */
 .canvas-wrapper {
-  width: 100% !important;
-  aspect-ratio: 1 / 1 !important;
-  background: #1a140a !important;
-  border: 1px solid #4b3a1a !important;
-  border-radius: 12px !important;
-  overflow: hidden !important;
-  margin-bottom: 15px !important;
-  touch-action: none !important;
+    width: 100% !important;
+    aspect-ratio: 1 / 1 !important; /* يحافظ على المربع في كل الشاشات */
+    background: #1a140a !important;
+    border: 1px solid #4b3a1a !important;
+    border-radius: 12px !important;
+    overflow: hidden !important;
+    margin-bottom: 15px !important;
+    touch-action: none !important; /* يمنع اهتزاز الصفحة أثناء الرسم */
 }
 
 #main-canvas {
-  display: block !important;
-  width: 100% !important;
-  height: 100% !important;
-  background-color: #1a140a;
+    display: block !important;
+    width: 100% !important;
+    height: 100% !important;
+    background-color: #1a140a;
 }
 
+/* أدوات التحكم */
 .studio-controls {
-  display: flex;
-  flex-direction: column;
-  gap: 15px;
-  padding: 12px;
-  background: rgba(20, 20, 20, 0.8);
-  border-radius: 12px;
-  border: 1px solid rgba(255, 215, 0, 0.2);
+    display: flex;
+    flex-direction: column;
+    gap: 12px;
 }
 
-.studio-controls button, #art-btn-save-to-gallery {
-  background: linear-gradient(180deg, #ffdc19 0%, #b8860b 100%) !important;
-  color: #1a140a !important;
-  border: 2px solid #5c4405 !important;
-  padding: 10px 20px !important;
-  border-radius: 50px !important;
-  font-weight: 900 !important;
-  font-size: 14px !important;
-  box-shadow: 0 4px 0 #5c4405, 0 8px 20px rgba(0,0,0,0.5) !important;
-  cursor: pointer;
-  transition: 0.2s all ease;
+.control-group {
+    display: grid !important;
+    grid-template-columns: repeat(2, 1fr) !important; /* تقسيم الأدوات لعمودين متساويين */
+    gap: 8px !important;
+    align-items: center;
 }
 
-#art-btn-solo-mode {
-  background: #2a241a !important;
-  color: #ff3333 !important;
-  border: 2px solid #ff3333 !important;
+.item {
+    display: flex;
+    flex-direction: column;
+    font-size: 0.75rem;
 }
 
-#art-btn-solo-mode.active {
-  color: #00ff88 !important;
-  border-color: #00ff88 !important;
-  box-shadow: 0 0 15px rgba(0, 255, 136, 0.5) !important;
+.item label {
+    margin-bottom: 4px;
+    color: #ffd700;
 }
 
-#art-mini-gallery {
-  display: grid !important;
-  grid-template-columns: repeat(auto-fill, minmax(110px, 1fr)) !important;
-  gap: 12px !important;
-  padding: 12px !important;
-  background: rgba(0, 0, 0, 0.4) !important;
-  border-radius: 16px !important;
-  border: 1px solid #b8860b !important;
-  max-height: 250px !important;
-  overflow-y: auto !important;
+/* المعرض المتطور */
+.gallery-grid {
+    display: grid;
+    grid-template-columns: repeat(auto-fill, minmax(70px, 1fr));
+    gap: 8px;
+    background: rgba(0, 0, 0, 0.4);
+    padding: 10px;
+    border-radius: 10px;
+    max-height: 130px;
+    overflow-y: auto;
+    backface-visibility: hidden;
 }
 
 .gallery-card {
-  background: #2a241a !important;
-  border: 2px solid #ffdc19 !important;
-  border-radius: 12px !important;
-  padding: 6px !important;
-  display: flex !important;
-  flex-direction: column !important;
-  align-items: center !important;
+    border: 1px solid #4b3a1a;
+    border-radius: 8px;
+    overflow: hidden;
+    cursor: pointer;
+    transition: 0.3s;
 }
 
-.gallery-card img {
-  width: 100% !important;
-  height: 75px !important;
-  object-fit: contain !important;
-  background: #000 !important;
-  border-radius: 8px !important;
+.gallery-card:hover { border-color: #ffd700; transform: scale(1.05); }
+.gallery-card img { width: 100%; height: 45px; object-fit: cover; }
+
+/* الأزرار */
+.btn-gold {
+    background: linear-gradient(45deg, #ffd700, #b8860b) !important;
+    color: #000 !important;
+    border: none !important;
+    padding: 12px !important;
+    border-radius: 10px !important;
+    font-weight: bold !important;
+    width: 100% !important;
+    cursor: pointer;
+}
+
+/* تحسينات الموبايل النهائية */
+@media (max-width: 480px) {
+    .studio-popup {
+        padding: 10px !important;
+        width: 96vw !important;
+    }
+    .item label {
+        font-size: 10px;
+    }
+    .btn-gold {
+        padding: 8px !important;
+        font-size: 13px;
+    }
+}
+/* ==========================================
+   تصميم استوديو الرسم المستقبلي (Future UI)
+   ========================================== */
+
+/* الحاوية الأساسية للمفاتيح */
+.studio-controls {
+    display: flex;
+    flex-direction: column;
+    gap: 20px;
+    padding: 15px;
+    background: rgba(20, 20, 20, 0.8);
+    border-radius: 12px;
+    border: 1px solid rgba(255, 215, 0, 0.2);
+    backdrop-filter: blur(10px);
+}
+
+/* الأزرار بنمط المستقبل */
+.studio-controls button {
+    position: relative;
+    background: linear-gradient(45deg, #000, #1a1a1a);
+    border: 1px solid #ffd700;
+    color: #ffd700;
+    padding: 10px 20px;
+    font-size: 14px;
+    font-weight: 900;
+    text-transform: uppercase;
+    letter-spacing: 2px;
+    cursor: pointer;
+    overflow: hidden;
+    transition: all 0.4s cubic-bezier(0.175, 0.885, 0.32, 1.275);
+    clip-path: polygon(10% 0, 100% 0, 100% 70%, 90% 100%, 0 100%, 0% 30%); /* قص حواف هندسي */
+}
+
+.studio-controls button:hover {
+    background: #ffd700;
+    color: #000;
+    box-shadow: 0 0 20px rgba(255, 215, 0, 0.6);
+    transform: translateY(-2px);
+}
+
+/* زر الوضع المنفرد المتفاعل (ON/OFF) */
+#art-btn-solo-mode {
+    border: 2px solid #ff3366;
+    color: #ff3366;
+    background: rgba(255, 51, 102, 0.05);
+}
+
+#art-btn-solo-mode.active {
+    border-color: #00ff88;
+    color: #00ff88;
+    box-shadow: 0 0 15px rgba(0, 255, 136, 0.4);
+    background: rgba(0, 255, 136, 0.1);
 }
 
 /* ==========================================
-   11. الوضع الليلي المريح للعين
+   تطوير الواجهة لتصبح مطابقة لأزرار اللعبة (Gold Style)
    ========================================== */
-body.dark-mode {
-  background: #0b0d12 !important;
-  color: #d0d0d0 !important;
+
+/* 1. الأزرار الأساسية (شكل الكبسولة الذهبية المتوهجة) */
+.studio-controls button, #art-btn-save-to-gallery {
+    background: linear-gradient(180deg, #ffdc19 0%, #b8860b 100%) !important;
+    color: #1a140a !important;
+    border: 2px solid #5c4405 !important;
+    padding: 10px 25px !important;
+    border-radius: 50px !important; /* شكل بيضاوي زي أزرار اللعبة */
+    font-weight: 900 !important;
+    font-size: 14px !important;
+    box-shadow: 0 4px 0 #5c4405, 0 8px 20px rgba(0,0,0,0.5) !important; /* ظل سفلي يعطي عمق للزر */
+    cursor: pointer;
+    transition: 0.2s all ease;
+    text-shadow: 1px 1px 0px rgba(255,255,255,0.3);
 }
 
-body.dark-mode #app-container { background: #111422 !important; box-shadow: none !important; }
-body.dark-mode .word-box { background: #1a1e2b !important; color: #c0c0c0 !important; box-shadow: none !important; }
-body.dark-mode #input-answer { background: #2a2f3e !important; color: #d0d0d0 !important; box-shadow: none !important; }
-body.dark-mode .controls .btn-main { background: #2a2f3e !important; color: #d0d0d0 !important; box-shadow: none !important; }
-body.dark-mode .players-list-container { background: #1c1f28 !important; color: #d0d0d0 !important; box-shadow: none !important; }
+.studio-controls button:active {
+    transform: translateY(3px) !important;
+    box-shadow: 0 1px 0 #5c4405 !important;
+}
+
+/* 2. زر الوضع المنفرد (ON/OFF) */
+#art-btn-solo-mode {
+    background: #2a241a !important;
+    color: #ff3333 !important;
+    border: 2px solid #ff3333 !important;
+    box-shadow: 0 0 10px rgba(255, 51, 51, 0.3) !important;
+}
+
+#art-btn-solo-mode.active {
+    color: #00ff88 !important;
+    border-color: #00ff88 !important;
+    box-shadow: 0 0 15px rgba(0, 255, 136, 0.5) !important;
+}
+
+/* 3. تنسيق المعرض (الشبكة المرتبة) */
+#art-mini-gallery {
+    display: grid !important;
+    grid-template-columns: repeat(auto-fill, minmax(110px, 1fr)) !important; /* توزيع تلقائي للصور بجانب بعض */
+    gap: 12px !important;
+    padding: 15px !important;
+    background: rgba(0, 0, 0, 0.4) !important;
+    border-radius: 20px !important;
+    border: 1px solid #b8860b !important;
+    max-height: 300px !important;
+    overflow-y: auto !important;
+}
+
+/* كرت الصورة داخل المعرض */
+.gallery-card {
+    background: #2a241a !important;
+    border: 2px solid #ffdc19 !important;
+    border-radius: 12px !important;
+    padding: 6px !important;
+    display: flex !important;
+    flex-direction: column !important;
+    align-items: center !important;
+    box-shadow: 0 4px 10px rgba(0,0,0,0.3) !important;
+}
+
+.gallery-card img {
+    width: 100% !important;
+    height: 75px !important;
+    object-fit: contain !important; /* يحافظ على أبعاد الرسمة */
+    background: #000 !important;
+    border-radius: 8px !important;
+    border: 1px solid #5c4405 !important;
+}
+
+.gallery-card span {
+    color: #ffdc19 !important;
+    font-size: 11px !important;
+    font-weight: bold !important;
+    margin: 5px 0 !important;
+    white-space: nowrap;
+    overflow: hidden;
+    text-overflow: ellipsis;
+    width: 90%;
+}
+
+/* 4. تحسين شكل أدوات التحكم (الألوان والمنزلقات) */
+input[type="color"] {
+    width: 50px;
+    height: 50px;
+    border: 3px solid #ffdc19;
+    border-radius: 12px;
+    background: #1a140a;
+    cursor: pointer;
+}
+
+input[type="range"] {
+    accent-color: #ffdc19; /* يخلي لون المنزلق ذهبي */
+}
+
+select {
+    background: #1a140a !important;
+    color: gold !important;
+    border: 2px solid gold !important;
+    border-radius: 10px !important;
+    padding: 8px !important;
+}
+
