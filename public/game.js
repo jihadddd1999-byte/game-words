@@ -57,11 +57,12 @@ const specialNameColors = {
 
 // تمرير الشات لأسفل تلقائي
 function scrollChatToBottom() {
-  chatMessages.scrollTop = chatMessages.scrollHeight;
+  if (isUserAtBottom) {
+    chatMessages.scrollTop = chatMessages.scrollHeight;
+  }
 }
 
 function colorizeName(name, color = null) {
-
   // تأثير خاص لاسم كول (فقط بالشات)
   if (name === "كول") {
     return `
@@ -91,7 +92,6 @@ function highlightSpecialWords(text) {
   Object.keys(specialWords).forEach(word => {
     const { color, shake } = specialWords[word];
     const shakeClass = shake ? ' shake' : '';
-    // استخدم regex للبحث عن الكلمة فقط كاملة (كلمة منفصلة)
     const regex = new RegExp(`\\b${word}\\b`, 'gu');
     result = result.replace(regex, `<span class="special-word${shakeClass}" style="color:${color}">${word}</span>`);
   });
@@ -100,12 +100,10 @@ function highlightSpecialWords(text) {
 }
 
 // إضافة رسالة جديدة للشات
-
 function addChatMessage({ name, message, system = false, color = null, time = '' }) {
   const div = document.createElement('div');
   div.classList.add('chat-message');
 
-  // توليد الوقت إذا ما وصل من السيرفر
   if (!time) {
     const now = new Date();
     const hours = now.getHours().toString().padStart(2, '0');
@@ -117,13 +115,11 @@ function addChatMessage({ name, message, system = false, color = null, time = ''
     div.classList.add('chat-system-message');
     div.textContent = message;
 
-    // إضافة الوقت في نهاية الرسالة
     const timeSpan = document.createElement('span');
     timeSpan.textContent = ` [${time}]`;
     timeSpan.style.fontSize = '10px';
     timeSpan.style.color = '#888';
     div.appendChild(timeSpan);
-
   } else {
     const nameSpan = document.createElement('span');
     nameSpan.classList.add('chat-name');
@@ -137,7 +133,6 @@ function addChatMessage({ name, message, system = false, color = null, time = ''
     div.appendChild(document.createTextNode(' : '));
     div.appendChild(messageSpan);
 
-    // إضافة الوقت في نهاية الرسالة
     const timeSpan = document.createElement('span');
     timeSpan.textContent = ` [${time}]`;
     timeSpan.style.fontSize = '10px';
@@ -148,14 +143,13 @@ function addChatMessage({ name, message, system = false, color = null, time = ''
   chatMessages.appendChild(div);
   scrollChatToBottom();
   
-  // إشعار صوتي ووميض في زر الشات إذا الشات مغلق والرسالة ليست نظامية
   if (!chatContainer.classList.contains('open') && !system) {
     btnChat.classList.add('notify');
     playNotificationSound();
   }
 }
 
-// دالة تشغيل صوت تنبيه (صوت بسيط قصير)
+// دالة تشغيل صوت تنبيه
 function playNotificationSound() {
   try {
     const audioCtx = new (window.AudioContext || window.webkitAudioContext)();
@@ -165,26 +159,42 @@ function playNotificationSound() {
     oscillator.connect(audioCtx.destination);
     oscillator.start();
     oscillator.stop(audioCtx.currentTime + 0.15);
-  } catch (e) {
-    // صوت غير مدعوم أو مشكلة، تجاهل
-  }
+  } catch (e) {}
 }
 
-// تحديث قائمة اللاعبين بالترتيب مع الألوان
+// تحديث قائمة اللاعبين بالترتيب مع أزرار الأدمن (إذا كان المستخدم هو أول لاعب في القائمة)
 function updatePlayersList(players) {
   playersList.innerHTML = '';
+  // هل أنا الأدمن؟ (أول لاعب في القائمة يحمل الـ id الخاص بي)
+  const isAdmin = players.length > 0 && players[0].id === playerId;
+
   players.forEach((p, i) => {
     const li = document.createElement('li');
     li.dataset.id = p.id;
 
     let color = '';
-    if (i === 0) color = 'gold';       // المركز الأول ذهبي
-    else if (i === 1) color = 'silver'; // الثاني سلفر
-    else if (i === 2) color = 'bronze';// الثالث برونزي 
-    else color = '#00d1ff';            // باقي المراكز أزرق سماوي
+    if (i === 0) color = 'gold';       
+    else if (i === 1) color = 'silver'; 
+    else if (i === 2) color = 'bronze';
+    else color = '#00d1ff';            
 
     li.style.color = color;
-    li.innerHTML = `${i + 1}. ${colorizeName(p.name, p.color)} - ${p.score} نقطة`;
+    
+    // بناء النص الأساسي للاعب
+    let playerHtml = `${i + 1}. ${colorizeName(p.name, p.color)} - ${p.score} نقطة`;
+
+    // إذا كنت أنا الأدمن ولا تعرض الأزرار لنفسك (أو اعرضها للجميع ما عدا نفسك)
+    if (isAdmin && p.id !== playerId) {
+      playerHtml += `
+        <div style="display: inline-block; margin-right: 10px; font-size: 12px;">
+          <button onclick="socket.emit('kickPlayer', '${p.id}')" style="background: red; color: white; border: none; padding: 2px 5px; margin: 0 2px; cursor: pointer; border-radius: 3px;">طرد ❌</button>
+          <button onclick="socket.emit('admin_toggle_mute', '${p.id}')" style="background: ${p.isMuted ? 'darkorange' : 'orange'}; color: white; border: none; padding: 2px 5px; margin: 0 2px; cursor: pointer; border-radius: 3px;">${p.isMuted ? 'إلغاء المنع 💬' : 'منع 🔇'}</button>
+          <button onclick="socket.emit('admin_toggle_chat_view', '${p.id}')" style="background: ${p.canSeeChat ? 'purple' : 'gray'}; color: white; border: none; padding: 2px 5px; margin: 0 2px; cursor: pointer; border-radius: 3px;">${p.canSeeChat ? 'إخفاء الشات 👁️‍🗨️' : 'إظهار 👁️'}</button>
+        </div>
+      `;
+    }
+
+    li.innerHTML = playerHtml;
     playersList.appendChild(li);
   });
 }
@@ -197,17 +207,16 @@ btnChat.addEventListener('click', () => {
     chatContainer.classList.remove('open');
     btnChat.setAttribute('aria-expanded', 'false');
     chatContainer.hidden = true;
-    btnChat.classList.remove('notify'); // إزالة التنبيه عند الفتح
+    btnChat.classList.remove('notify');
   } else {
     chatContainer.classList.add('open');
     btnChat.setAttribute('aria-expanded', 'true');
     chatContainer.hidden = false;
     chatInput.focus();
-    btnChat.classList.remove('notify'); // إزالة التنبيه عند الفتح
+    btnChat.classList.remove('notify');
   }
 });
 
-// زر إغلاق الشات
 btnCloseChat.addEventListener('click', () => {
   chatContainer.classList.remove('open');
   btnChat.setAttribute('aria-expanded', 'false');
@@ -215,7 +224,6 @@ btnCloseChat.addEventListener('click', () => {
   btnChat.classList.remove('notify');
 });
 
-// إرسال رسالة شات
 chatForm.addEventListener('submit', e => {
   e.preventDefault();
   const msg = chatInput.value.trim();
@@ -225,19 +233,16 @@ chatForm.addEventListener('submit', e => {
   chatInput.value = '';
 });
 
-// فتح مودال تغيير الاسم مع تعبئة القيم الحالية
 btnChangeName.addEventListener('click', () => {
   inputName.value = playerName;
   inputColor.value = playerColor;
   changeNameDialog.showModal();
 });
 
-// إغلاق مودال تغيير الاسم عند إلغاء
 cancelNameBtn.addEventListener('click', () => {
   changeNameDialog.close();
 });
 
-// تأكيد تغيير الاسم واللون وإرسالها للسيرفر وتخزينها محليًا
 changeNameForm.addEventListener('submit', e => {
   e.preventDefault();
   const newName = inputName.value.trim();
@@ -252,18 +257,14 @@ changeNameForm.addEventListener('submit', e => {
   changeNameDialog.close();
 });
 
-// فتح نافذة التعليمات
 btnInstructions.addEventListener('click', () => {
   instructionsDialog.showModal();
 });
 
-// إغلاق نافذة التعليمات
 closeInstructionsBtn.addEventListener('click', () => {
   instructionsDialog.close();
 });
 
-
-// إرسال الإجابة عند الضغط على Enter في حقل الإجابة
 inputAnswer.addEventListener('keydown', e => {
   if (e.key === 'Enter') {
     if (!canAnswer) return;
@@ -277,7 +278,6 @@ inputAnswer.addEventListener('keydown', e => {
   }
 });
 
-// استقبال كلمة جديدة
 socket.on('newWord', word => {
   currentWord = word;
   wordDisplay.textContent = word;
@@ -286,18 +286,15 @@ socket.on('newWord', word => {
   canAnswer = true;
 });
 
-// استقبال تحديث نقاط اللاعب
 socket.on('updateScore', score => {
   myScore = score;
   pointsDisplay.textContent = `النقاط: ${myScore}`;
 });
 
-// تحديث قائمة اللاعبين
 socket.on('updatePlayers', players => {
   updatePlayersList(players);
 });
 
-// استقبال رسالة شات
 socket.on('chatMessage', data => {
   addChatMessage({
     name: data.system ? '' : data.name,
@@ -308,24 +305,32 @@ socket.on('chatMessage', data => {
   });
 });
 
-// إشعار فوز لاعب
 socket.on('playerWon', data => {
   alert(`🎉 مبروك ${data.name} لقد فزت باللعبة!`);
 });
 
-// تم طرد اللاعب من السيرفر
 socket.on('kicked', () => {
   alert('تم طردك من اللعبة بواسطة الأدمن.');
   window.location.reload();
 });
 
-// استقبال بيانات الترحيب وتعيين معرف اللاعب وإرسال اسمه ولونه للسيرفر
+// مستقبلات حالة المنع وإخفاء الشات للأدمن
+socket.on('update_mute_status', (isMuted) => {
+  chatInput.disabled = isMuted;
+  chatInput.placeholder = isMuted ? "أنت ممنوع من الكتابة بواسطة الأدمن" : "اكتب رسالة...";
+  if (isMuted) alert("⚠️ تنبيه: قام الأدمن بمنعك من الكتابة.");
+});
+
+socket.on('update_chat_view_status', (canSeeChat) => {
+  chatContainer.style.display = canSeeChat ? 'block' : 'none';
+  if (!canSeeChat) alert("⚠️ تنبيه: قام الأدمن بإخفاء الشات عنك.");
+});
+
 socket.on('welcome', data => {
   playerId = data.id;
   socket.emit('setName', { name: playerName, color: playerColor });
 });
 
-// استقبال إجابة صحيحة: عرض زمن الإجابة مؤقتًا ومنع الإجابة مؤقتاً
 socket.on('correctAnswer', data => {
   answerTimeDisplay.textContent = `أجبت في: ${data.timeUsed} ثانية`;
   canAnswer = false;
@@ -335,26 +340,16 @@ socket.on('correctAnswer', data => {
   }, 2000);
 });
 
-// استقبال إجابة خاطئة: إعادة السماح بالإجابة
 socket.on('wrongAnswer', () => {
   canAnswer = true;
 });
 
-// إعادة تمكين الإجابة (إذا لزم الأمر)
 socket.on('enableAnswer', () => {
   canAnswer = true;
 });
 
 let isUserAtBottom = true;
 
-// === تعديل scrollChatToBottom لمنع النزول عند قراءة رسائل قديمة ===
-function scrollChatToBottom() {
-  if (isUserAtBottom) {
-    chatMessages.scrollTop = chatMessages.scrollHeight;
-  }
-}
-
-// === إضافة badge للرسائل الجديدة ===
 let newMessageCount = 0;
 
 function showNewMessageBadge(count) {
@@ -388,7 +383,6 @@ function hideNewMessageBadge() {
   if (badge) badge.style.display = 'none';
 }
 
-// تعديل addChatMessage لإضافة عداد الرسائل الجديدة
 const originalAddChatMessage = addChatMessage;
 addChatMessage = function(data) {
   originalAddChatMessage(data);
@@ -403,7 +397,6 @@ addChatMessage = function(data) {
   }
 };
 
-// تحقق من scroll المستخدم
 chatMessages.addEventListener('scroll', () => {
   const threshold = 10;
   const position = chatMessages.scrollTop + chatMessages.clientHeight;
@@ -411,29 +404,23 @@ chatMessages.addEventListener('scroll', () => {
 
   isUserAtBottom = position >= height - threshold;
 });
+
 // =========================
 //      TYPING SYSTEM
 // =========================
 
-// نخزن رسائل جاري الكتابة لكل لاعب
 const typingMessages = {};
 
-// لما اللاعب يكتب
 chatInput.addEventListener('input', () => {
   const text = chatInput.value.trim();
-
   if (text.length > 0) {
-    // إرسال جاري الكتابة للسيرفر
     socket.emit('typing', playerName);
   } else {
-    // حذف جاري الكتابة لو النص صار فارغ
     socket.emit('stopTyping', playerName);
   }
 });
 
-// استقبال اللاعبين الذين يكتبون
 socket.on('typing', typingNames => {
-  // إزالة أي مؤشرات قديمة لم تعد موجودة
   Object.keys(typingMessages).forEach(name => {
     if (!typingNames.includes(name)) {
       typingMessages[name].remove();
@@ -442,7 +429,6 @@ socket.on('typing', typingNames => {
   });
 
   typingNames.forEach(name => {
-    // لا تظهر لنفسك
     if (name === playerName) return;
 
     if (!typingMessages[name]) {
@@ -459,9 +445,7 @@ socket.on('typing', typingNames => {
   });
 });
 
-// عند إرسال رسالة
 chatForm.addEventListener('submit', () => {
-  // إرسال أمر لإخفاء جاري الكتابة
   socket.emit('stopTyping', playerName);
 
   if (typingMessages[playerName]) {
@@ -469,12 +453,11 @@ chatForm.addEventListener('submit', () => {
     delete typingMessages[playerName];
   }
 });
-    
-                                  // ==========================================
+
+// ==========================================
 //   استوديو نزار المطور (V2 - Gallery Fix)
 // ==========================================
 
-// متغيرات الحالة (خارج النطاق لضمان الاستمرارية)
 let persistentCanvasData = null; 
 let isSoloMode = false;
 let lastX = 0;
@@ -482,7 +465,6 @@ let lastY = 0;
 let undoStack = []; 
 let galleryData = JSON.parse(localStorage.getItem('myArtGallery')) || [];
 
-// دالة تحديث واجهة المعرض (متاحة عالمياً)
 function updateGalleryUI() {
     const miniGallery = document.getElementById('art-mini-gallery');
     if(!miniGallery) return;
@@ -502,7 +484,6 @@ function updateGalleryUI() {
     });
 }
 
-// دالات المعرض (Global) - تم التعديل هنا لحل مشكلة القص
 window.loadToCanvas = (idx) => {
     const canvas = document.getElementById('main-canvas');
     const ctx = canvas.getContext('2d');
@@ -513,10 +494,7 @@ window.loadToCanvas = (idx) => {
         ctx.globalAlpha = 1.0;
         ctx.globalCompositeOperation = 'source-over';
         ctx.clearRect(0, 0, canvas.width, canvas.height);
-        
-        // التعديل السحري: رسم الصورة بأبعاد اللوحة الحالية كاملة
         ctx.drawImage(img, 0, 0, canvas.width, canvas.height);
-        
         ctx.restore();
         if(!isSoloMode) socket.emit('load-gallery-all', canvas.toDataURL());
     };
@@ -530,7 +508,6 @@ window.deleteGalleryItem = (idx) => {
     }
 };
 
-// منطق الاستوديو الأساسي
 const initStudio = () => {
     const canvas = document.getElementById('main-canvas');
     if (!canvas) return;
@@ -640,8 +617,7 @@ const initStudio = () => {
         }
         ctx.restore();
 
-
-              if (!isSoloMode) {
+        if (!isSoloMode) {
             socket.emit('draw-data', {
                 x: x / canvas.width,
                 y: y / canvas.height,
@@ -697,7 +673,6 @@ const initStudio = () => {
             ctx.save();
             ctx.globalAlpha = 1.0;
             ctx.clearRect(0, 0, canvas.width, canvas.height);
-            // تم التعديل هنا أيضاً لضمان التوافق عند الاستقبال عن بعد
             ctx.drawImage(img, 0, 0, canvas.width, canvas.height);
             ctx.restore();
         };
@@ -755,4 +730,3 @@ const initStudio = () => {
 };
 
 initStudio();
-              
