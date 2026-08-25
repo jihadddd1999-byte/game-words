@@ -29,6 +29,10 @@
       <button id="btn-change-name" class="btn-main">✍️ تغيير الاسم</button>
       <button id="btn-instructions" class="btn-main">📖 تعليمات اللعبة</button>
       <button id="dark-mode-toggle" class="btn-main" aria-label="تفعيل الوضع الليلي">🌙 الوضع الليلي</button>
+
+      <!-- الأزرار الجديدة المطلوبة -->
+      <button id="btn-theme-picker" class="btn-main" style="background: linear-gradient(135deg, #e63946, #111111); color: #fff;">🎨 ثيمات الألوان</button>
+      <button id="btn-open-admin" class="btn-main" style="background: linear-gradient(135deg, #ffb703, #fb8500); color: #000; font-weight: bold;">👑 لوحة الأدمن</button>
       <button id="btn-open-board" class="btn-main">🎨 لوحة الرسم</button>
     </section>
 
@@ -137,6 +141,111 @@
       </div>
     </dialog>
 
+    <!-- ==================== نافذة اختيار ثيمات الألوان الخارجية ==================== -->
+    <dialog id="theme-dialog" class="admin-modal">
+      <div class="admin-header">
+        <h3>🎨 اختيار ثيم اللعبة</h3>
+        <button id="close-theme-dialog" class="btn-close">✖️</button>
+      </div>
+      <p style="margin-bottom: 12px; color: #ccc;">اختر اللون المفضل لديك للعبة، وسيتم حفظ الخيار تلقائياً:</p>
+      <div class="theme-options-grid" style="display: grid; grid-template-columns: repeat(auto-fit, minmax(130px, 1fr)); gap: 10px;">
+        <button class="btn-theme-select" data-theme="theme-red-black" style="background: #e63946; color: #fff; border: 2px solid #000;">🔴 أحمر وأسود</button>
+        <button class="btn-theme-select" data-theme="theme-neon-cyan" style="background: #00f0ff; color: #000;">💎 نيون عصري</button>
+        <button class="btn-theme-select" data-theme="theme-dark-violet" style="background: #8a2be2; color: #fff;">🔮 داكن ملكي</button>
+        <button class="btn-theme-select" data-theme="theme-royal-gold" style="background: #ffd700; color: #000;">👑 ذهبي فاخر</button>
+        <button class="btn-theme-select" data-theme="theme-classic-dark" style="background: #2b2b2b; color: #fff;">🌙 ليلي كلاسيكي</button>
+      </div>
+    </dialog>
+
+    <!-- ==================== نافذة إدخال كلمة سر الأدمن ==================== -->
+    <dialog id="admin-pass-dialog" class="admin-modal" style="max-width: 380px;">
+      <div class="admin-header">
+        <h3>👑 تسجيل دخول الأدمن</h3>
+        <button id="close-admin-pass" class="btn-close">✖️</button>
+      </div>
+      <form id="admin-pass-form">
+        <label for="admin-pass-input" style="display: block; margin-bottom: 8px; color: #aaffff;">أدخل رمز المرور الخاص باللوحة:</label>
+        <input type="password" id="admin-pass-input" placeholder="كلمة السر..." required style="width: 100%; padding: 10px; border-radius: 6px; border: 1px solid #444; margin-bottom: 15px; font-size: 1rem; background: #222; color: #fff;" />
+        <button type="submit" style="width: 100%; padding: 10px; background: #fb8500; color: #000; font-weight: bold; border: none; border-radius: 6px; cursor: pointer;">دخول للوحة</button>
+      </form>
+    </dialog>
+
+    <!-- ==================== لوحة تحكم الأدمن الكاملة ==================== -->
+    <dialog id="admin-panel-dialog" class="admin-modal" style="max-width: 850px; width: 95%;">
+      <div class="admin-header">
+        <h2>👑 لوحة تحكم الأدمن الشاملة</h2>
+        <button id="close-admin-panel" class="btn-close">✖️</button>
+      </div>
+
+      <!-- إعدادات الأمد والمدة الزمنية للخيارات -->
+      <fieldset style="border: 1px solid #fb8500; padding: 12px; border-radius: 8px; margin-bottom: 15px; background: rgba(0,0,0,0.3);">
+        <legend style="color: #fb8500; font-weight: bold; padding: 0 8px;">⏳ التحكم بأمد ومدة تفعيل الخيارات</legend>
+        <div style="display: flex; gap: 10px; flex-wrap: wrap; align-items: center;">
+          <label style="color: #fff;">حدد مدة التفعيل الافتراضية:</label>
+          <select id="admin-duration-type" style="padding: 6px; border-radius: 4px; background: #222; color: #fff; border: 1px solid #555;">
+            <option value="forever">دائم حتى التغيير اليدوي</option>
+            <option value="seconds">بالثواني</option>
+            <option value="minutes">بالدقائق</option>
+          </select>
+          <input type="number" id="admin-duration-value" min="1" value="60" placeholder="المدة..." style="width: 80px; padding: 6px; border-radius: 4px; background: #222; color: #fff; border: 1px solid #555;" />
+        </div>
+      </fieldset>
+
+      <!-- التحكم الجماعي بالروم واللعبة -->
+      <div class="admin-section">
+        <h3>🎮 مودات وأنظمة اللعب الجماعية</h3>
+        <div class="admin-grid" style="display: grid; grid-template-columns: repeat(auto-fit, minmax(200px, 1fr)); gap: 10px; margin-bottom: 15px;">
+          <button id="adm-btn-toggle-reverse" class="btn-adm-act">🔄 مود المعكوس: <span id="adm-status-reverse">معطل</span></button>
+          
+          <div style="display: flex; flex-direction: column; gap: 4px;">
+            <label style="font-size: 0.85rem; color: #ccc;">نظام توزيع النقاط:</label>
+            <select id="adm-scoring-mode" style="padding: 6px; border-radius: 4px; background: #222; color: #fff;">
+              <option value="first_only">الأول فقط ياخذ النقطة</option>
+              <option value="decay">توزيع تنازلي (1, 0.9, 0.8...)</option>
+            </select>
+          </div>
+
+          <div style="display: flex; flex-direction: column; gap: 4px;">
+            <label style="font-size: 0.85rem; color: #ccc;">مؤقت الكلمة (ثواني):</label>
+            <div style="display: flex; gap: 4px;">
+              <button id="adm-btn-toggle-word-timer" class="btn-adm-act" style="flex: 1;">⏱️ العداد: <span id="adm-status-timer">معطل</span></button>
+              <input type="number" id="adm-word-timer-sec" value="15" min="5" style="width: 55px; background: #222; color: #fff; border: 1px solid #555; text-align: center; border-radius: 4px;" />
+            </div>
+          </div>
+
+          <div style="display: flex; flex-direction: column; gap: 4px;">
+            <label style="font-size: 0.85rem; color: #ccc;">شرط نقاط الفوز:</label>
+            <div style="display: flex; gap: 4px;">
+              <input type="number" id="adm-target-score-input" value="1000" style="width: 70px; background: #222; color: #fff; border: 1px solid #555; border-radius: 4px; text-align: center;" />
+              <button id="adm-btn-set-target-score" class="btn-adm-act" style="flex: 1;">تطبيق الشرط</button>
+            </div>
+          </div>
+        </div>
+
+        <div class="admin-grid" style="display: grid; grid-template-columns: repeat(auto-fit, minmax(180px, 1fr)); gap: 8px;">
+          <button id="adm-btn-skip" class="btn-adm-act">⏩ تخطي الكلمة الحالية</button>
+          <button id="adm-btn-custom-word" class="btn-adm-act">✍️ تحديد كلمة من عندك</button>
+          <button id="adm-btn-double-pts" class="btn-adm-act">🌟 جولة مضاعفة (X2)</button>
+          <button id="adm-btn-sudden-death" class="btn-adm-act">⚡ الموت المفاجئ (30 ث)</button>
+          <button id="adm-btn-freeze-all" class="btn-adm-act">❄️ تجميد / فك الجميع</button>
+          <button id="adm-btn-mute-all" class="btn-adm-act">🔇 كتم الشات عن الجميع</button>
+          <button id="adm-btn-mute-timer" class="btn-adm-act">⏰ كتم الشات مؤقت (دقيقة)</button>
+          <button id="adm-btn-broadcast" class="btn-adm-act">📢 إعلان شاشة كاملة</button>
+          <button id="adm-btn-clean-room" class="btn-adm-act" style="background: #d62828;">🚨 طرد جماعي (Clean)</button>
+          <button id="adm-btn-stealth" class="btn-adm-act">👻 وضع التخفي الأدمن</button>
+          <button id="adm-btn-audit-logs" class="btn-adm-act">📜 سجل المراقبة</button>
+          <button id="adm-btn-reset-settings" class="btn-adm-act" style="background: #7209b7;">🔄 استعادة الإعدادات الافتراضية</button>
+        </div>
+      </div>
+
+      <hr style="border-color: #333; margin: 15px 0;" />
+
+      <!-- التحكم الفردي باللاعبين المتصلين والمبندين -->
+      <div class="admin-section">
+        <h3>👥 التحكم الفردي باللاعبين</h3>
+        <div id="admin-players-container" style="max-height: 280px; overflow-y: auto; padding-left: 5px;"></div>
+      </div>
+    </dialog>
   </main>
 
   <script>
@@ -149,6 +258,4 @@
   </script>
 </body>
 
-              </html>
-
-              
+</html>
