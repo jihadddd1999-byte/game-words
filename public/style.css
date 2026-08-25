@@ -875,4 +875,394 @@ select {
     border-radius: 10px !important;
     padding: 8px !important;
 }
+/* ==========================================
+   الثيمات الـ 5 المزدوجة والمطورة بالكامل شاملة الأدمن
+   ========================================== */
+
+/* ------------------------------------------
+   1. ثيم الوردي والنيون الفاقع (Neon Pink & Cyber Purple)
+   ------------------------------------------ */
+body.theme-pink {
+  background: linear-gradient(135deg, #2b0826 0%, #681652 50%, #a81c7d 100%) !important;
+  color: #ffd6f5 !important;
+}
+body.theme-pink #app-container {
+  background: rgba(43, 8, 38, 0.9) !important;
+  box-shadow: 0 0 25px #ff2a8d88, inset 0 0 15px #ff2a8d33 !important;
+  border: 1px solid #ff2a8daa !important;
+}
+body.theme-pink .word-box {
+  background: linear-gradient(145deg, #a81c7d, #ff2a8d) !important;
+  color: #ffffff !important;
+  text-shadow: 0 0 15px #ffffff, 0 0 25px #ff71bd !important;
+  box-shadow: 0 0 30px #ff2a8d99 !important;
+}
+body.theme-pink #input-answer {
+  background: linear-gradient(135deg, #ffe0f4, #ffb3e6) !important;
+  color: #4a0033 !important;
+  box-shadow: inset 0 0 10px #ff2a8daa, 0 0 15px #ff2a8dcc !important;
+}
+body.theme-pink .btn-main {
+  background: linear-gradient(135deg, #ff2a8d 0%, #9a12b3 100%) !important;
+  color: #ffffff !important;
+  box-shadow: 0 0 15px #ff2a8daa, inset 0 -3px 8px #52003d !important;
+  border: 1px solid #ff71bd !important;
+}
+body.theme-pink .btn-main:hover, 
+body.theme-pink .btn-main:active {
+  background: linear-gradient(135deg, #ff71bd 0%, #ff2a8d 100%) !important;
+  box-shadow: 0 0 25px #ff71bdee !important;
+}
+body.theme-pink .chat-container, 
+body.theme-pink .players-list-container,
+body.theme-pink #answers-display,
+body.theme-pink dialog#change-name-dialog,
+body.theme-pink dialog#instructions-dialog,
+body.theme-pink dialog#admin-dialog {
+  background: rgba(43, 8, 38, 0.95) !important;
+  color: #ffd6f5 !important;
+  border: 2px solid #ff2a8d88 !important;
+  box-shadow: 0 0 25px #ff2a8d66 !important;
+}
+body.theme-pink .chat-header,
+body.theme-pink .admin-modal h2 {
+  background: linear-gradient(90deg, #681652, #a81c7d) !important;
+  color: #ffffff !important;
+}
+body.theme-pink #btn-send-chat,
+body.theme-pink dialog button,
+body.theme-pink .admin-controls-grid button {
+  background: linear-gradient(135deg, #ff2a8d, #9a12b3) !important;
+  color: #fff !important;
+  box-shadow: 0 0 12px #ff2a8daa !important;
+}
+
+/* زر الأدمن - ثيم الوردي */
+body.theme-pink .btn-admin,
+body.theme-pink #admin-btn {
+  background: linear-gradient(135deg, #ff0055 0%, #ff5252 100%) !important;
+  color: #ffffff !important;
+  border: 2px solid #ff71bd !important;
+  box-shadow: 0 0 20px rgba(255, 0, 85, 0.8), inset 0 -3px 8px rgba(0, 0, 0, 0.4) !important;
+  padding: 11px 24px !important;
+  font-size: 1.1rem !important;
+  border-radius: 40px !important;
+}
+body.theme-pink .btn-admin:hover,
+body.theme-pink #admin-btn:hover {
+  background: linear-gradient(135deg, #ff5252 0%, #ff71bd 100%) !important;
+  box-shadow: 0 0 30px rgba(255, 113, 189, 0.9) !important;
+  transform: scale(1.06) !important;
+}
+
+/* ------------------------------------------
+   2. ثيم النيون السيبراني (Cyber Neon & Electric Blue)
+   ------------------------------------------ */
+body.theme-neon {
+  background: linear-gradient(135deg, #020b14 0%, #00334e 50%, #005b82 100%) !important;
+  color: #a6f6ff !important;
+}
+body.theme-neon #app-container {
+  background: rgba(2, 11, 20, 0.92) !important;
+  box-shadow: 0 0 30px #00f0ffaa, inset 0 0 15px #00f0ff33 !important;
+  border: 1px solid #00f0ffaa !important;
+}
+body.theme-neon .word-box {
+  background: linear-gradient(145deg, #005b82, #00b4d8) !important;
+  color: #00f0ff !important;
+  text-shadow: 0 0 15px #00f0ff, 0 0 30px #00f0ff !important;
+  box-shadow: 0 0 30px #00f0ff88 !important;
+}
+body.theme-neon #input-answer {
+  background: linear-gradient(135deg, #d8f8ff, #70e000) !important;
+  color: #002432 !important;
+  box-shadow: inset 0 0 10px #00f0ffaa, 0 0 18px #70e000cc !important;
+}
+body.theme-neon .btn-main {
+  background: linear-gradient(135deg, #00f0ff 0%, #70e000 100%) !important;
+  color: #002432 !important;
+  font-weight: 900 !important;
+  box-shadow: 0 0 18px #00f0ffbb, inset 0 -3px 8px #005b82 !important;
+  border: 1px solid #70e000 !important;
+}
+body.theme-neon .btn-main:hover, 
+body.theme-neon .btn-main:active {
+  background: linear-gradient(135deg, #70e000 0%, #00f0ff 100%) !important;
+  box-shadow: 0 0 28px #70e000ff !important;
+}
+body.theme-neon .chat-container, 
+body.theme-neon .players-list-container,
+body.theme-neon #answers-display,
+body.theme-neon dialog#change-name-dialog,
+body.theme-neon dialog#instructions-dialog,
+body.theme-neon dialog#admin-dialog {
+  background: rgba(2, 11, 20, 0.95) !important;
+  color: #a6f6ff !important;
+  border: 2px solid #00f0ffaa !important;
+  box-shadow: 0 0 25px #00f0ff66 !important;
+}
+body.theme-neon .chat-header,
+body.theme-neon .admin-modal h2 {
+  background: linear-gradient(90deg, #00334e, #00b4d8) !important;
+  color: #00f0ff !important;
+}
+body.theme-neon #btn-send-chat,
+body.theme-neon dialog button,
+body.theme-neon .admin-controls-grid button {
+  background: linear-gradient(135deg, #00f0ff, #70e000) !important;
+  color: #002432 !important;
+  box-shadow: 0 0 12px #00f0ffaa !important;
+}
+
+/* زر الأدمن - ثيم النيون */
+body.theme-neon .btn-admin,
+body.theme-neon #admin-btn {
+  background: linear-gradient(135deg, #ff0055 0%, #ff5e00 100%) !important;
+  color: #ffffff !important;
+  border: 2px solid #00f0ff !important;
+  box-shadow: 0 0 22px #ff0055aa, 0 0 10px #00f0ff !important;
+  padding: 11px 24px !important;
+  font-size: 1.1rem !important;
+  border-radius: 40px !important;
+}
+body.theme-neon .btn-admin:hover,
+body.theme-neon #admin-btn:hover {
+  background: linear-gradient(135deg, #ff5e00 0%, #ff0055 100%) !important;
+  box-shadow: 0 0 32px #ff5e00ff !important;
+  transform: scale(1.06) !important;
+}
+
+/* ------------------------------------------
+   3. ثيم الأرجواني الملكي والذهبي (Royal Purple & Gold Flame)
+   ------------------------------------------ */
+body.theme-purple {
+  background: linear-gradient(135deg, #18002e 0%, #3a0066 50%, #6a00b8 100%) !important;
+  color: #f1d6ff !important;
+}
+body.theme-purple #app-container {
+  background: rgba(24, 0, 46, 0.92) !important;
+  box-shadow: 0 0 30px #c77dff88, inset 0 0 15px #ffd70033 !important;
+  border: 1px solid #c77dffaa !important;
+}
+body.theme-purple .word-box {
+  background: linear-gradient(145deg, #5a189a, #7b2cbf) !important;
+  color: #ffea00 !important;
+  text-shadow: 0 0 15px #ffea00, 0 0 25px #c77dff !important;
+  box-shadow: 0 0 30px #7b2cbfaa !important;
+}
+body.theme-purple #input-answer {
+  background: linear-gradient(135deg, #f7d6ff, #ffd700) !important;
+  color: #240046 !important;
+  box-shadow: inset 0 0 10px #7b2cbfaa, 0 0 15px #ffd700cc !important;
+}
+body.theme-purple .btn-main {
+  background: linear-gradient(135deg, #9d4edd 0%, #ffaa00 100%) !important;
+  color: #18002e !important;
+  font-weight: 800 !important;
+  box-shadow: 0 0 18px #9d4eddcc, inset 0 -3px 8px #3a0066 !important;
+  border: 1px solid #ffea00 !important;
+}
+body.theme-purple .btn-main:hover, 
+body.theme-purple .btn-main:active {
+  background: linear-gradient(135deg, #ffaa00 0%, #c77dff 100%) !important;
+  box-shadow: 0 0 28px #ffaa00ff !important;
+}
+body.theme-purple .chat-container, 
+body.theme-purple .players-list-container,
+body.theme-purple #answers-display,
+body.theme-purple dialog#change-name-dialog,
+body.theme-purple dialog#instructions-dialog,
+body.theme-purple dialog#admin-dialog {
+  background: rgba(24, 0, 46, 0.95) !important;
+  color: #f1d6ff !important;
+  border: 2px solid #9d4edd88 !important;
+  box-shadow: 0 0 25px #9d4edd66 !important;
+}
+body.theme-purple .chat-header,
+body.theme-purple .admin-modal h2 {
+  background: linear-gradient(90deg, #3a0066, #7b2cbf) !important;
+  color: #ffea00 !important;
+}
+body.theme-purple #btn-send-chat,
+body.theme-purple dialog button,
+body.theme-purple .admin-controls-grid button {
+  background: linear-gradient(135deg, #9d4edd, #ffaa00) !important;
+  color: #18002e !important;
+  box-shadow: 0 0 12px #9d4eddaa !important;
+}
+
+/* زر الأدمن - ثيم الأرجواني الملكي */
+body.theme-purple .btn-admin,
+body.theme-purple #admin-btn {
+  background: linear-gradient(135deg, #d00000 0%, #ff4800 100%) !important;
+  color: #ffffff !important;
+  border: 2px solid #ffea00 !important;
+  box-shadow: 0 0 22px rgba(255, 72, 0, 0.8), inset 0 -3px 8px rgba(0, 0, 0, 0.5) !important;
+  padding: 11px 24px !important;
+  font-size: 1.1rem !important;
+  border-radius: 40px !important;
+}
+body.theme-purple .btn-admin:hover,
+body.theme-purple #admin-btn:hover {
+  background: linear-gradient(135deg, #ff4800 0%, #ffea00 100%) !important;
+  color: #18002e !important;
+  box-shadow: 0 0 32px rgba(255, 234, 0, 0.9) !important;
+  transform: scale(1.06) !important;
+}
+
+/* ------------------------------------------
+   4. ثيم الأخضر والزمرد الخيالي (Emerald & Mint Blaze)
+   ------------------------------------------ */
+body.theme-emerald {
+  background: linear-gradient(135deg, #01281f 0%, #04523e 50%, #098a68 100%) !important;
+  color: #d1fbf0 !important;
+}
+body.theme-emerald #app-container {
+  background: rgba(1, 40, 31, 0.92) !important;
+  box-shadow: 0 0 30px #10b98188, inset 0 0 15px #00ffb733 !important;
+  border: 1px solid #10b981aa !important;
+}
+body.theme-emerald .word-box {
+  background: linear-gradient(145deg, #046c4e, #0f9f75) !important;
+  color: #00ffb7 !important;
+  text-shadow: 0 0 15px #00ffb7, 0 0 25px #10b981 !important;
+  box-shadow: 0 0 30px #0f9f75aa !important;
+}
+body.theme-emerald #input-answer {
+  background: linear-gradient(135deg, #e0fff7, #34d399) !important;
+  color: #01281f !important;
+  box-shadow: inset 0 0 10px #04523eaa, 0 0 15px #00ffb7cc !important;
+}
+body.theme-emerald .btn-main {
+  background: linear-gradient(135deg, #10b981 0%, #00ffb7 100%) !important;
+  color: #01281f !important;
+  font-weight: 800 !important;
+  box-shadow: 0 0 18px #10b981cc, inset 0 -3px 8px #01281f !important;
+  border: 1px solid #00ffb7 !important;
+}
+body.theme-emerald .btn-main:hover, 
+body.theme-emerald .btn-main:active {
+  background: linear-gradient(135deg, #00ffb7 0%, #34d399 100%) !important;
+  box-shadow: 0 0 28px #00ffb7ff !important;
+}
+body.theme-emerald .chat-container, 
+body.theme-emerald .players-list-container,
+body.theme-emerald #answers-display,
+body.theme-emerald dialog#change-name-dialog,
+body.theme-emerald dialog#instructions-dialog,
+body.theme-emerald dialog#admin-dialog {
+  background: rgba(1, 40, 31, 0.95) !important;
+  color: #d1fbf0 !important;
+  border: 2px solid #10b98188 !important;
+  box-shadow: 0 0 25px #10b98166 !important;
+}
+body.theme-emerald .chat-header,
+body.theme-emerald .admin-modal h2 {
+  background: linear-gradient(90deg, #04523e, #0f9f75) !important;
+  color: #00ffb7 !important;
+}
+body.theme-emerald #btn-send-chat,
+body.theme-emerald dialog button,
+body.theme-emerald .admin-controls-grid button {
+  background: linear-gradient(135deg, #10b981, #00ffb7) !important;
+  color: #01281f !important;
+  box-shadow: 0 0 12px #10b981aa !important;
+}
+
+/* زر الأدمن - ثيم الزمرد */
+body.theme-emerald .btn-admin,
+body.theme-emerald #admin-btn {
+  background: linear-gradient(135deg, #e63946 0%, #ff0055 100%) !important;
+  color: #ffffff !important;
+  border: 2px solid #00ffb7 !important;
+  box-shadow: 0 0 20px rgba(230, 57, 70, 0.8), inset 0 -3px 8px rgba(0, 0, 0, 0.4) !important;
+  padding: 11px 24px !important;
+  font-size: 1.1rem !important;
+  border-radius: 40px !important;
+}
+body.theme-emerald .btn-admin:hover,
+body.theme-emerald #admin-btn:hover {
+  background: linear-gradient(135deg, #ff0055 0%, #00ffb7 100%) !important;
+  color: #01281f !important;
+  box-shadow: 0 0 30px rgba(0, 255, 183, 0.9) !important;
+  transform: scale(1.06) !important;
+}
+
+/* ------------------------------------------
+   5. ثيم الفضي والأزرق الفلزي (Silver & Deep Cyan Steel)
+   ------------------------------------------ */
+body.theme-silver {
+  background: linear-gradient(135deg, #0f172a 0%, #334155 50%, #64748b 100%) !important;
+  color: #f1f5f9 !important;
+}
+body.theme-silver #app-container {
+  background: rgba(15, 23, 42, 0.92) !important;
+  box-shadow: 0 0 30px #94a3b8aa, inset 0 0 15px #38bdf833 !important;
+  border: 1px solid #94a3b8aa !important;
+}
+body.theme-silver .word-box {
+  background: linear-gradient(145deg, #334155, #475569) !important;
+  color: #38bdf8 !important;
+  text-shadow: 0 0 15px #38bdf8, 0 0 25px #ffffff !important;
+  box-shadow: 0 0 30px #475569aa !important;
+}
+body.theme-silver #input-answer {
+  background: linear-gradient(135deg, #ffffff, #cbd5e1) !important;
+  color: #0f172a !important;
+  box-shadow: inset 0 0 10px #475569aa, 0 0 15px #38bdf8cc !important;
+}
+body.theme-silver .btn-main {
+  background: linear-gradient(135deg, #38bdf8 0%, #94a3b8 100%) !important;
+  color: #0f172a !important;
+  font-weight: 800 !important;
+  box-shadow: 0 0 18px #38bdf8aa, inset 0 -3px 8px #1e293b !important;
+  border: 1px solid #ffffff !important;
+}
+body.theme-silver .btn-main:hover, 
+body.theme-silver .btn-main:active {
+  background: linear-gradient(135deg, #ffffff 0%, #38bdf8 100%) !important;
+  box-shadow: 0 0 28px #ffffff88 !important;
+}
+body.theme-silver .chat-container, 
+body.theme-silver .players-list-container,
+body.theme-silver #answers-display,
+body.theme-silver dialog#change-name-dialog,
+body.theme-silver dialog#instructions-dialog,
+body.theme-silver dialog#admin-dialog {
+  background: rgba(15, 23, 42, 0.95) !important;
+  color: #f1f5f9 !important;
+  border: 2px solid #94a3b888 !important;
+  box-shadow: 0 0 25px #94a3b866 !important;
+}
+body.theme-silver .chat-header,
+body.theme-silver .admin-modal h2 {
+  background: linear-gradient(90deg, #1e293b, #475569) !important;
+  color: #38bdf8 !important;
+}
+body.theme-silver #btn-send-chat,
+body.theme-silver dialog button,
+body.theme-silver .admin-controls-grid button {
+  background: linear-gradient(135deg, #38bdf8, #94a3b8) !important;
+  color: #0f172a !important;
+  box-shadow: 0 0 12px #38bdf8aa !important;
+}
+
+/* زر الأدمن - ثيم الفضي */
+body.theme-silver .btn-admin,
+body.theme-silver #admin-btn {
+  background: linear-gradient(135deg, #ef4444 0%, #f97316 100%) !important;
+  color: #ffffff !important;
+  border: 2px solid #38bdf8 !important;
+  box-shadow: 0 0 20px rgba(239, 68, 68, 0.8), inset 0 -3px 8px rgba(0, 0, 0, 0.4) !important;
+  padding: 11px 24px !important;
+  font-size: 1.1rem !important;
+  border-radius: 40px !important;
+}
+body.theme-silver .btn-admin:hover,
+body.theme-silver #admin-btn:hover {
+  background: linear-gradient(135deg, #f97316 0%, #38bdf8 100%) !important;
+  color: #0f172a !important;
+  box-shadow: 0 0 30px rgba(56, 189, 248, 0.9) !important;
+  transform: scale(1.06) !important;
+}
 
