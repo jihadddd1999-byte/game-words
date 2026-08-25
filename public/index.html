@@ -3,7 +3,7 @@
 
 <head>
   <meta charset="UTF-8" />
-  <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0" />
+  <meta name="viewport" content="width=device-width, initial-scale=1, maximum-scale=1" />
   <title>لعبة الكلمات السريعة</title>
   <link rel="stylesheet" href="style.css" />
   <script src="/socket.io/socket.io.js" defer></script>
@@ -12,111 +12,74 @@
 
 <body>
   <main id="app-container">
-    <header class="main-header">
-      <h1 id="game-timer">12:00</h1>
+    <header>
+      <h1>12:00</h1>
     </header>
 
     <section class="game-section">
-      <div id="typingIndicator" class="typing-indicator" aria-live="polite"></div>
-      <div id="current-word" class="word-box" aria-live="polite" aria-atomic="true">جاري التحميل...</div>
-      
-      <div class="input-wrapper">
-        <input 
-          type="text" 
-          id="input-answer" 
-          placeholder="اكتب الكلمة هنا..." 
-          autocomplete="off" 
-          spellcheck="false" 
-          aria-label="حقل إدخال الإجابة" 
-        />
-      </div>
-
+      <div id="typingIndicator"></div>
+      <div class="word-box" aria-live="polite" aria-atomic="true" id="current-word">جاري التحميل...</div>
+      <input type="text" id="input-answer" placeholder="اكتب الكلمة هنا" autocomplete="off" spellcheck="false" aria-label="حقل إدخال الإجابة" />
       <div id="answer-time" class="answer-time"></div>
       <div id="points-display" class="points-display">النقاط: 0</div>
     </section>
 
-    <!-- أزرار التحكم الرئيسية + زر الثيمات + زر الأدمن المستقلين -->
-    <section class="controls" aria-label="أزرار التحكم باللعبة">
+    <section class="controls">
       <button id="btn-chat" class="btn-main" aria-expanded="false" aria-controls="chat-container">💬 الشات</button>
       <button id="btn-change-name" class="btn-main">✍️ تغيير الاسم</button>
       <button id="btn-instructions" class="btn-main">📖 تعليمات اللعبة</button>
       <button id="dark-mode-toggle" class="btn-main" aria-label="تفعيل الوضع الليلي">🌙 الوضع الليلي</button>
       <button id="btn-open-board" class="btn-main">🎨 لوحة الرسم</button>
-      
-      <!-- الأزرار الخارجية المستقلة -->
-      <button id="btn-theme-picker" class="btn-main btn-theme">🎨 ثيمات الألوان</button>
-      <button id="btn-open-admin" class="btn-main btn-admin">👑 لوحة الأدمن</button>
     </section>
 
-    <!-- قائمة اللاعبين المتصدرين -->
     <section id="players-list-container" class="players-list-container" aria-label="قائمة اللاعبين">
       <h2>🏆 المتصدرون</h2>
       <ul id="players-list" role="list"></ul>
     </section>
 
-    <!-- الشات الجانبي -->
     <aside id="chat-container" class="chat-container" aria-live="polite" aria-atomic="true" hidden>
       <header class="chat-header">
-        <h3>الشات المباشر</h3>
-        <button id="btn-close-chat" class="btn-close" aria-label="إغلاق الشات">✖️</button>
+        <h3>الشات</h3>
+        <button id="btn-close-chat" aria-label="إغلاق الشات">✖️</button>
       </header>
       <section id="chat-messages" class="chat-messages" role="log" aria-live="polite"></section>
       <form id="chat-form" class="chat-form" aria-label="إرسال رسالة شات">
-        <input 
-          type="text" 
-          id="chat-input" 
-          placeholder="اكتب رسالة..." 
-          autocomplete="off" 
-          spellcheck="false" 
-          aria-label="نص الرسالة" 
-          required 
-          maxlength="10000" 
-        />
+        <input type="text" id="chat-input" placeholder="اكتب رسالة..." autocomplete="off" spellcheck="false" aria-label="نص الرسالة" required maxlength="10000" />
         <button type="submit" id="btn-send-chat" class="btn-send">إرسال</button>
       </form>
     </aside>
 
-    <!-- ==================== النوافذ المنبثقة (Modals & Dialogs) ==================== -->
-
-    <!-- 1. نافذة تغيير الاسم واللون -->
     <dialog id="change-name-dialog" aria-modal="true" aria-labelledby="change-name-title">
       <form method="dialog" id="change-name-form">
-        <h3 id="change-name-title">تغيير الاسم واللون</h3>
-        <div class="form-group">
-          <label for="input-name">الاسم الجديد:</label>
-          <input type="text" id="input-name" placeholder="اكتب اسمك الجديد" autocomplete="off" spellcheck="false" maxlength="20" required />
-        </div>
-        <div class="form-group">
-          <label for="input-color">اختر لون الاسم في الشات:</label>
-          <input type="color" id="input-color" value="#00e5ff" aria-label="لون الاسم" />
-        </div>
-        <div class="dialog-actions">
-          <button id="cancel-name" type="reset" class="btn-secondary">إلغاء</button>
-          <button id="confirm-name" type="submit" class="btn-primary">تأكيد</button>
-        </div>
+        <h3 id="change-name-title">تغيير الاسم</h3>
+        <input type="text" id="input-name" placeholder="اكتب اسمك الجديد" autocomplete="off" spellcheck="false" maxlength="20" required aria-label="اسم جديد" />
+        <label for="input-color" style="margin-top: 12px; font-weight: 700; color: #aaffff; display: block;">
+          اختر لون الاسم:
+        </label>
+        <input type="color" id="input-color" value="#00e5ff" aria-label="لون الاسم" style="width: 100%; height: 35px; border-radius: 8px; border: none; cursor: pointer;" />
+        <menu style="margin-top: 20px;">
+          <button id="cancel-name" type="reset">إلغاء</button>
+          <button id="confirm-name" type="submit">تأكيد</button>
+        </menu>
       </form>
     </dialog>
 
-    <!-- 2. نافذة تعليمات اللعبة -->
     <dialog id="instructions-dialog" aria-modal="true" aria-labelledby="instructions-title">
-      <h3 id="instructions-title">📖 تعليمات اللعبة</h3>
+      <h3 id="instructions-title">تعليمات اللعبة</h3>
       <div class="instructions-content">
         <ol>
           <li>تظهر كلمة على الشاشة، اكتبها بأسرع وقت ممكن واضغط Enter.</li>
-          <li>كل إجابة صحيحة تمنحك نقاطاً حسَب نظام التوزيع المعتمد.</li>
-          <li>اللاعب الذي يصل إلى الهدف المحدد للفوز يربح الجولة.</li>
-          <li>يمكنك والتواصل والتفاعل مع اللاعبين عبر الشات المباشر.</li>
-          <li>استخدم زر "تغيير الاسم" لتعديل اسمك ولون ظهورك.</li>
-          <li>استخدم "لوحة الرسم" لمشاركة رسوماتك المباشرة مع الجميع!</li>
+          <li>كل إجابة صحيحة تمنحك نقطة.</li>
+          <li>اللاعب الذي يصل إلى 1000 نقطة يفوز باللعبة.</li>
+          <li>يمكنك التواصل مع اللاعبين الآخرين عبر الشات.</li>
+          <li>استخدم زر "تغيير الاسم" لتعديل اسمك في اللعبة.</li>
+          <li>استخدم "لوحة الرسم" لمشاركة رسوماتك مباشرة مع الجميع!</li>
         </ol>
       </div>
-      <div class="dialog-actions">
-        <button id="close-instructions" type="button" class="btn-primary">إغلاق</button>
-      </div>
+      <button id="close-instructions" type="button">إغلاق</button>
     </dialog>
 
-    <!-- 3. استوديو الرسم المباشر -->
-    <dialog id="board-dialog" class="studio-popup" aria-label="استوديو الرسم">
+    <dialog id="board-dialog" class="studio-popup">
       <div class="studio-header">
         <div class="header-left">
           <h3>🎨 استوديو الرسم المباشر</h3>
@@ -124,7 +87,7 @@
         </div>
         <div class="header-actions">
           <button id="art-btn-undo" title="تراجع">↩️</button>
-          <button id="art-btn-close-board" aria-label="إغلاق لوحة الرسم">✖️</button>
+          <button id="art-btn-close-board">✖️</button>
         </div>
       </div>
 
@@ -135,14 +98,14 @@
       <div class="studio-controls">
         <div class="control-group">
           <div class="item">
-            <label for="art-brush-color">الفرشاة</label>
+            <label>الفرشاة</label>
             <input type="color" id="art-brush-color" value="#ffd700">
           </div>
           <div class="item">
-            <label for="art-bg-color">الخلفية</label>
+            <label>الخلفية</label>
             <input type="color" id="art-bg-color" value="#1a140a">
           </div>
-          <select id="art-brush-type" aria-label="نوع الفرشاة">
+          <select id="art-brush-type">
             <option value="round">🖌️ ريشة</option>
             <option value="spray">💨 بخاخ</option>
             <option value="eraser">🧽 ممحاة</option>
@@ -151,176 +114,41 @@
 
         <div class="control-group">
           <div class="range-box">
-            <label for="art-brush-size">الحجم</label>
+            <span>الحجم</span>
             <input type="range" id="art-brush-size" min="1" max="60" value="5">
           </div>
           <div class="range-box">
-            <label for="art-brush-opacity">الشفافية</label>
+            <span>الشفافية</span>
             <input type="range" id="art-brush-opacity" min="0.1" max="1" step="0.1" value="1">
           </div>
         </div>
 
         <div class="control-group buttons">
-          <button id="art-btn-solo-mode" type="button">🔐 وضع منفرد</button>
-          <button id="art-btn-clear-canvas" type="button">🗑️ مسح الكل</button>
+          <button id="art-btn-solo-mode">🔐 وضع منفرد</button>
+          <button id="art-btn-clear-canvas">🗑️ مسح الكل</button>
         </div>
 
         <hr class="divider">
         <div class="gallery-header">
           <h4 id="art-gallery-count">📸 المعرض (0/30)</h4>
-          <button id="art-btn-save-to-gallery" type="button">📸 حفظ</button>
+          <button id="art-btn-save-to-gallery">📸 حفظ</button>
         </div>
         <div id="art-mini-gallery" class="gallery-grid"></div>
       </div>
     </dialog>
 
-    <!-- 4. نافذة اختيار ثيمات الألوان (مستقلة خارج لوحة الأدمن مع الحفظ) -->
-    <dialog id="theme-dialog" class="admin-modal" aria-labelledby="theme-dialog-title">
-      <div class="admin-header">
-        <h3 id="theme-dialog-title">🎨 اختيار ثيم اللعبة</h3>
-        <button id="close-theme-dialog" class="btn-close" aria-label="إغلاق">✖️</button>
-      </div>
-      <p class="dialog-desc">اختر اللون المفضل لديك للعبة، وسيتم حفظ الخيار تلقائياً حتى عند إعادة الفتح:</p>
-      <div class="theme-options-grid">
-        <button class="btn-theme-select theme-red" data-theme="theme-red-black">🔴 أحمر وأسود</button>
-        <button class="btn-theme-select theme-cyan" data-theme="theme-neon-cyan">💎 نيون عصري</button>
-        <button class="btn-theme-select theme-violet" data-theme="theme-dark-violet">🔮 داكن ملكي</button>
-        <button class="btn-theme-select theme-gold" data-theme="theme-royal-gold">👑 ذهبي فاخر</button>
-        <button class="btn-theme-select theme-classic" data-theme="theme-classic-dark">🌙 ليلي كلاسيكي</button>
-      </div>
-    </dialog>
-
-    <!-- 5. نافذة تسجيل دخول الأدمن (كلمة السر) -->
-    <dialog id="admin-pass-dialog" class="admin-modal dialog-sm" aria-labelledby="admin-pass-title">
-      <div class="admin-header">
-        <h3 id="admin-pass-title">👑 تسجيل دخول الأدمن</h3>
-        <button id="close-admin-pass" class="btn-close" aria-label="إغلاق">✖️</button>
-      </div>
-      <form id="admin-pass-form">
-        <div class="form-group">
-          <label for="admin-pass-input">أدخل رمز المرور الخاص باللوحة:</label>
-          <input type="password" id="admin-pass-input" placeholder="كلمة السر..." required />
-        </div>
-        <button type="submit" class="btn-submit-admin">دخول للوحة</button>
-      </form>
-    </dialog>
-
-    <!-- 6. لوحة تحكم الأدمن الشاملة (جميع المزايا الجماعية والفردية) -->
-    <dialog id="admin-panel-dialog" class="admin-modal dialog-lg" aria-labelledby="admin-panel-title">
-      <div class="admin-header">
-        <h2 id="admin-panel-title">👑 لوحة تحكم الأدمن الشاملة</h2>
-        <button id="close-admin-panel" class="btn-close" aria-label="إغلاق">✖️</button>
-      </div>
-
-      <!-- إعدادات الأمد والمدة الزمنية للخيارات -->
-      <fieldset class="admin-fieldset">
-        <legend>⏳ التحكم بأمد ومدة تفعيل الخيارات</legend>
-        <div class="flex-row">
-          <label for="admin-duration-type">مدة التفعيل الافتراضية:</label>
-          <select id="admin-duration-type">
-            <option value="forever">دائم حتى التغيير اليدوي</option>
-            <option value="seconds">بالثواني</option>
-            <option value="minutes">بالدقائق</option>
-          </select>
-          <input type="number" id="admin-duration-value" min="1" value="60" placeholder="المدة..." />
-        </div>
-      </fieldset>
-
-      <!-- قسم 1: التحكم الجماعي بالروم واللعبة (شامل المزايا الجديدة والمعدلة) -->
-      <div class="admin-section">
-        <h3>🎮 مودات وأنظمة اللعب الجماعية</h3>
-        
-        <!-- التحكم بالأنظمة وإعدادات المودات -->
-        <div class="admin-grid-top">
-          <!-- مود الكلمات المعكوسة -->
-          <button id="adm-btn-toggle-reverse" class="btn-adm-act">🔄 مود المعكوس: <span id="adm-status-reverse">معطل</span></button>
-
-          <!-- مود الكلمات المخفية Blur Mode -->
-          <button id="adm-btn-toggle-blur" class="btn-adm-act">🎭 مود الضبابي (Blur): <span id="adm-status-blur">معطل</span></button>
-          
-          <!-- نظام توزيع النقاط (الأول فقط vs تنازلي) -->
-          <div class="form-field">
-            <label for="adm-scoring-mode">نظام توزيع النقاط:</label>
-            <select id="adm-scoring-mode">
-              <option value="first_only">الأول فقط ياخذ النقطة</option>
-              <option value="decay">توزيع تنازلي (1, 0.9, 0.8...)</option>
-            </select>
-          </div>
-
-          <!-- شرط نقاط الفوز (Set Win Score) -->
-          <div class="form-field">
-            <label for="adm-target-score-input">هدف نقاط الفوز:</label>
-            <div class="input-inline">
-              <input type="number" id="adm-target-score-input" value="1000" />
-              <button id="adm-btn-set-target-score" class="btn-adm-act">تطبيق</button>
-            </div>
-          </div>
-        </div>
-
-        <!-- أزرار الإجراءات الجماعية الفورية -->
-        <div class="admin-grid-actions">
-          <button id="adm-btn-skip" class="btn-adm-act">⏩ تخطي الكلمة الحالية</button>
-          <button id="adm-btn-custom-word" class="btn-adm-act">✍️ تحديد كلمة من عندك</button>
-          <button id="adm-btn-double-pts" class="btn-adm-act">🌟 جولة مضاعفة (X2)</button>
-          <button id="adm-btn-sudden-death" class="btn-adm-act">⚡ الموت المفاجئ (30 ث)</button>
-          <button id="adm-btn-freeze-all" class="btn-adm-act">❄️ تجميد / فك الجميع</button>
-          <button id="adm-btn-mute-all" class="btn-adm-act">🔇 كتم الشات عن الجميع</button>
-          <button id="adm-btn-mute-timer" class="btn-adm-act">⏰ كتم المؤقت (دقيقة)</button>
-          <button id="adm-btn-broadcast" class="btn-adm-act">📢 إعلان شاشات</button>
-          <button id="adm-btn-lock-room" class="btn-adm-act">🔒 قفل / فتح الروم</button>
-          <button id="adm-btn-reset-game" class="btn-adm-act">🏆 إعادة تعيين المسابقة</button>
-          <button id="adm-btn-stealth" class="btn-adm-act">👻 وضع التخفي الأدمن</button>
-          <button id="adm-btn-audit-logs" class="btn-adm-act">📜 سجل المراقبة</button>
-          <button id="adm-btn-clean-room" class="btn-adm-act btn-danger">🚨 طرد جماعي (Clean)</button>
-          <button id="adm-btn-reset-settings" class="btn-adm-act btn-purple">🔄 استعادة الإعدادات الافتراضية</button>
-        </div>
-      </div>
-
-      <hr class="divider" />
-
-      <!-- قسم 2: التحكم الفردي باللاعبين المباشر -->
-      <div class="admin-section">
-        <h3>👥 التحكم الفردي باللاعبين المتصلين</h3>
-        <div id="admin-players-container" class="admin-players-list">
-          <p class="empty-msg">جاري تحميل قائمة اللاعبين...</p>
-        </div>
-      </div>
-    </dialog>
-
-    <!-- 7. نافذة إعلان الشاشة الجماعي (Broadcast Popup) -->
-    <dialog id="broadcast-dialog" class="admin-modal dialog-sm">
-      <div class="broadcast-body">
-        <span class="broadcast-icon">📢</span>
-        <h3>تنبيه هائم من الأدمن</h3>
-        <p id="broadcast-message-text"></p>
-        <button id="close-broadcast-dialog" class="btn-primary">حسناً</button>
-      </div>
-    </dialog>
-
-    <!-- 8. نافذة عرض سجل المراقبة (Admin Audit Logs) -->
-    <dialog id="audit-logs-dialog" class="admin-modal dialog-lg">
-      <div class="admin-header">
-        <h3>📜 سجل المراقبة والأحداث</h3>
-        <button id="close-audit-logs" class="btn-close" aria-label="إغلاق">✖️</button>
-      </div>
-      <div class="audit-logs-body">
-        <ul id="audit-logs-list" class="audit-list">
-          <li>جاري تحميل السجلات...</li>
-        </ul>
-      </div>
-    </dialog>
   </main>
 
   <script>
-    document.addEventListener('DOMContentLoaded', () => {
-      const darkModeBtn = document.getElementById('dark-mode-toggle');
-      if (darkModeBtn) {
-        darkModeBtn.addEventListener('click', () => {
-          document.body.classList.toggle('dark-mode');
-        });
-      }
-    });
+    const darkModeBtn = document.getElementById('dark-mode-toggle');
+    if (darkModeBtn) {
+      darkModeBtn.addEventListener('click', () => {
+        document.body.classList.toggle('dark-mode');
+      });
+    }
   </script>
 </body>
 
-</html>
+              </html>
+
+              
