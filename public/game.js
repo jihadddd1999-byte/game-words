@@ -265,10 +265,11 @@ closeInstructionsBtn.addEventListener('click', () => {
   instructionsDialog.close();
 });
 
+// في جزء التعامل مع Enter في inputAnswer:
 inputAnswer.addEventListener('keydown', e => {
   if (e.key === 'Enter') {
     if (!canAnswer) return;
-    const answer = inputAnswer.value.trim();
+    const answer = String(inputAnswer.value).trim();
     if (!answer) return;
 
     canAnswer = false;
@@ -277,6 +278,7 @@ inputAnswer.addEventListener('keydown', e => {
     inputAnswer.value = '';
   }
 });
+
 
 socket.on('newWord', word => {
   currentWord = word;
