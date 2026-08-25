@@ -53,7 +53,6 @@ let currentWord = '';
 let wordTimer = null;
 const typingUsers = new Set();
 
-// ======== دوال مساعدة ========
 function chooseNewWord() {
   const idx = Math.floor(Math.random() * words.length);
   currentWord = words[idx];
@@ -62,11 +61,14 @@ function chooseNewWord() {
 
 function updatePlayersList() {
   players.sort((a, b) => b.score - a.score);
+  // نرسل تفاصيل اللاعبين كاملة لتحديث اللوحة بما فيها حالات المنع وإخفاء الشات
   io.emit('updatePlayers', players.map(p => ({
     id: p.id,
     name: p.name,
     score: p.score,
-    color: specialNamesColors[p.name] || p.color || null
+    color: specialNamesColors[p.name] || p.color || null,
+    isMuted: p.isMuted,
+    canSeeChat: p.canSeeChat
   })));
 }
 
@@ -74,7 +76,6 @@ function sendSystemMessage(message) {
   io.emit('chatMessage', { system: true, message });
 }
 
-// ======== اتصال اللاعبين ========
 io.on('connection', socket => {
   if (players.length >= MAX_PLAYERS) {
     socket.emit('chatMessage', { system: true, message: 'عذراً، عدد اللاعبين وصل للحد الأقصى.' });
@@ -88,7 +89,9 @@ io.on('connection', socket => {
     score: 0,
     wins: 0,
     canAnswer: true,
-    color: '#00e5ff'
+    color: '#00e5ff',
+    isMuted: false,       // ممنوع من الكتابة أم لا
+    canSeeChat: true      // يقدر يشوف الشات أم لا
   };
   players.push(newPlayer);
 
@@ -102,28 +105,18 @@ io.on('connection', socket => {
     socket.emit('updateScore', newPlayer.score);
   }
 
-  // ==========================================
-  //    نظام استوديو نزار المطور (الرسم المشترك)
-  // ==========================================
-
-  // 1 & 2. استقبال بيانات الرسم وتوزيعها (بخاخ، ريشة، ممحاة)
+  // الرسم المشترك
   socket.on('draw-data', (data) => {
     socket.broadcast.emit('draw-remote', data);
   });
 
-  // 3 & 4. مسح اللوحة وتغيير الخلفية فوراً عند الجميع
   socket.on('clear-board-all', (data) => {
-    // نرسل الـ data كاملة لأنها تحتوي على اللون المختار
     io.emit('clear-board-remote', data);
   });
 
-  // 5. التراجع (Undo) وتزامن الصور من المعرض
   socket.on('load-gallery-all', (imgData) => {
     socket.broadcast.emit('load-remote', imgData);
   });
-
-  // ميزة 6 "الوضع المنفرد" تُدار في المتصفح تلقائياً
-  // ==========================================
 
   socket.on('setName', data => {
     if (!data || typeof data.name !== 'string') return;
@@ -139,20 +132,73 @@ io.on('connection', socket => {
 
     updatePlayersList();
     sendSystemMessage(`${oldName} غير اسمه إلى ${player.name}`);
-
-    if (player.name === "كول") {
-      socket.emit('chatMessage', { system: true, message: "🌸 أهلاً كول! نورتِ اللعبة، وجودك يضيف للمكان جمال 🤍" });
-    }
   });
 
+  // إدارة الشات مع التحقق من حالات المنع
   socket.on('sendMessage', msg => {
     const player = players.find(p => p.id === socket.id);
     if (!player) return;
+
+    if (player.isMuted) {
+      socket.emit('chatMessage', { system: true, message: 'أنت ممنوع من الكتابة في الشات حالياً بواسطة الأدمن.' });
+      return;
+    }
+
     const message = msg.trim();
     if (!message) return;
 
-    io.emit('chatMessage', { name: player.name, message, system: false, color: player.color });
+    // إرسال الرسالة فقط للاعبين الذين مسموح لهم برؤية الشات
+    players.forEach(p => {
+      if (p.canSeeChat) {
+        io.to(p.id).emit('chatMessage', { name: player.name, message, system: false, color: player.color });
+      }
+    });
   });
+
+  // ==========================================
+  //         أوامر لوحة الأدمن الكاملة
+  // ==========================================
+
+  // 1. طرد لاعب
+  socket.on('kickPlayer', targetId => {
+    if (players.length > 0 && socket.id === players[0].id) {
+      const index = players.findIndex(p => p.id === targetId);
+      if (index !== -1) {
+        const kicked = players.splice(index, 1)[0];
+        io.to(kicked.id).emit('kicked');
+        io.emit('chatMessage', { system: true, message: `${kicked.name} تم طرده من اللعبة.` });
+        updatePlayersList();
+        io.sockets.sockets.get(kicked.id)?.disconnect(true);
+      }
+    }
+  });
+
+  // 2. منع / إلغاء منع الكتابة
+  socket.on('admin_toggle_mute', targetId => {
+    // التأكد أن المرسل هو الأدمن (أول شخص بالقائمة)
+    if (players.length > 0 && socket.id === players[0].id) {
+      const player = players.find(p => p.id === targetId);
+      if (player) {
+        player.isMuted = !player.isMuted;
+        io.to(targetId).emit('update_mute_status', player.isMuted);
+        updatePlayersList();
+      }
+    }
+  });
+
+  // 3. إخفاء / إظهار الشات
+  socket.on('admin_toggle_chat_view', targetId => {
+    if (players.length > 0 && socket.id === players[0].id) {
+      const player = players.find(p => p.id === targetId);
+      if (player) {
+        player.canSeeChat = !player.canSeeChat;
+        io.to(targetId).emit('update_chat_view_status', player.canSeeChat);
+        updatePlayersList();
+      }
+    }
+  });
+
+  // ==========================================
 
   socket.on('typing', () => {
     const player = players.find(p => p.id === socket.id);
@@ -203,19 +249,6 @@ io.on('connection', socket => {
     }
   });
 
-  socket.on('kickPlayer', targetId => {
-    if (players.length > 0 && socket.id === players[0].id) {
-      const index = players.findIndex(p => p.id === targetId);
-      if (index !== -1) {
-        const kicked = players.splice(index, 1)[0];
-        io.to(kicked.id).emit('kicked');
-        io.emit('chatMessage', { system: true, message: `${kicked.name} تم طرده من اللعبة.` });
-        updatePlayersList();
-        io.sockets.sockets.get(kicked.id)?.disconnect(true);
-      }
-    }
-  });
-
   socket.on('disconnect', () => {
     const player = players.find(p => p.id === socket.id);
     if (player && player.name) typingUsers.delete(player.name);
@@ -238,4 +271,3 @@ app.get("/ping", (req, res) => res.status(200).send("alive"));
 
 const PORT = process.env.PORT || 10000;
 server.listen(PORT, () => console.log(`Server running on port ${PORT}`));
-                                
