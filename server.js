@@ -1,5 +1,5 @@
 /* ==========================================================================
-   🛡️ سيرفر لعبة الكلمات السريعة - النسخة الكاملة والمصلحة
+   🛡️ سيرفر لعبة الكلمات السريعة - النسخة الكاملة الشاملة والمنقحة
    كلمة السر: 20018151070792005932
    ========================================================================== */
 
@@ -201,9 +201,10 @@ io.on('connection', (socket) => {
     return;
   }
 
+  // إنشاء بيانات لاعب بدون اسم افتراضي لتجنب اليوزرات المزدوجة
   const newPlayer = {
     id: socket.id,
-    name: `لاعب_${socket.id.substring(0, 4)}`,
+    name: '',
     score: 0,
     wins: 0,
     canAnswer: true,
@@ -231,8 +232,6 @@ io.on('connection', (socket) => {
     socket.emit('updateScore', newPlayer.score);
   }
 
-  updatePlayersList();
-
   socket.on('draw-data', (data) => {
     const player = players.get(socket.id);
     if (player && player.canDraw) socket.broadcast.emit('draw-remote', data);
@@ -248,6 +247,7 @@ io.on('connection', (socket) => {
     if (player && player.canDraw) socket.broadcast.emit('load-remote', imgData);
   });
 
+  // تعيين الاسم وتحديث القائمة بدون إنشاء يوزر شبح إضافي
   socket.on('setName', (data) => {
     if (!data || typeof data.name !== 'string') return;
     const player = players.get(socket.id);
@@ -263,19 +263,21 @@ io.on('connection', (socket) => {
     } else player.color = '#00e5ff';
 
     updatePlayersList();
-    sendSystemMessage(`${oldName} غير اسمه إلى ${player.name}`);
+    if (oldName) {
+      sendSystemMessage(`${oldName} غير اسمه إلى ${player.name}`);
+    }
   });
 
   socket.on('typing', () => {
     const player = players.get(socket.id);
-    if (!player) return;
+    if (!player || !player.name) return;
     typingUsers.add(player.name);
     io.emit('typing', [...typingUsers]);
   });
 
   socket.on('stopTyping', () => {
     const player = players.get(socket.id);
-    if (!player) return;
+    if (!player || !player.name) return;
     typingUsers.delete(player.name);
     io.emit('typing', [...typingUsers]);
   });
@@ -293,7 +295,7 @@ io.on('connection', (socket) => {
       
       player.score += addedPoints;
       socket.emit('updateScore', player.score);
-      io.emit('chatMessage', { system: true, message: `✅ ${player.name} أجاب بشكل صحيح في ${timeUsed} ثانية!` });
+      io.emit('chatMessage', { system: true, message: `✅ ${player.name || 'لاعب'} أجاب بشكل صحيح في ${timeUsed} ثانية!` });
       socket.emit('correctAnswer', { timeUsed });
       updatePlayersList();
 
@@ -452,19 +454,18 @@ io.on('connection', (socket) => {
     }
   });
 
+  // نظام الهمس المباشر والخاص
   socket.on('admin:player:whisper', (data) => {
     if (!authenticatedAdmins.has(socket.id)) return;
     const sender = players.get(socket.id);
     const target = players.get(data.playerId);
 
     if (target) {
-      io.to(data.playerId).emit('chatMessage', {
-        system: false,
-        isWhisper: true,
-        name: sender ? sender.name : 'الأدمن',
-        message: data.message,
-        color: '#ffcc00'
+      io.to(data.playerId).emit('whisperReceived', {
+        from: sender && sender.name ? sender.name : 'الأدمن',
+        message: data.message
       });
+      socket.emit('chatMessage', { system: true, message: `💬 تم إرسال الهمس إلى (${target.name}) بنجاح.` });
       logToAudit(data.message, sender ? sender.name : 'الأدمن', target.name);
     }
   });
@@ -531,9 +532,9 @@ io.on('connection', (socket) => {
     const message = msg.trim();
     if (!message) return;
 
-    let displayName = player.name;
+    let displayName = player.name || 'لاعب';
     if (player.isAdmin && !player.hideAdminBadge) {
-      displayName = `[الأدمن] ${player.name}`;
+      displayName = `[الأدمن] ${displayName}`;
     }
 
     io.emit('chatMessage', { name: displayName, message, system: false, color: player.color });
@@ -542,9 +543,11 @@ io.on('connection', (socket) => {
   socket.on('disconnect', () => {
     const player = players.get(socket.id);
     if (player) {
-      typingUsers.delete(player.name);
-      io.emit('typing', [...typingUsers]);
-      sendSystemMessage(`${player.name} خرج من اللعبة.`);
+      if (player.name) {
+        typingUsers.delete(player.name);
+        io.emit('typing', [...typingUsers]);
+        sendSystemMessage(`${player.name} خرج من اللعبة.`);
+      }
       players.delete(socket.id);
     }
 
