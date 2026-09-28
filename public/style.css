@@ -1375,3 +1375,439 @@ body.theme-stealth #close-instructions {
   color: #ffffff !important;
   box-shadow: none !important;
 }
+
+/* ==========================================================================
+   👑 قسم أدمن اللعبة - التنسيقات الملكية الشاملة (Admin Panel Styles)
+   ========================================================================== */
+
+/* 1️⃣ زر فتح الأدمن الفخم */
+.btn-admin {
+  background: linear-gradient(135deg, #1f082e 0%, #3a0066 50%, #6a00b8 100%) !important;
+  color: #e0b0ff !important;
+  border: 1px solid #a855f7 !important;
+  box-shadow: 0 0 12px rgba(168, 85, 247, 0.4), inset 0 0 6px rgba(255, 255, 255, 0.2);
+  font-weight: 800 !important;
+  letter-spacing: 0.5px;
+  position: relative;
+  overflow: hidden;
+  transition: all 0.3s cubic-bezier(0.175, 0.885, 0.32, 1.275) !important;
+}
+
+.btn-admin:hover {
+  transform: translateY(-2px) scale(1.03);
+  box-shadow: 0 0 22px rgba(168, 85, 247, 0.8), 0 0 10px rgba(236, 72, 153, 0.6) !important;
+  color: #ffffff !important;
+  border-color: #f472b6 !important;
+}
+
+.btn-admin::before {
+  content: '';
+  position: absolute;
+  top: -50%;
+  left: -50%;
+  width: 200%;
+  height: 200%;
+  background: linear-gradient(
+    60deg,
+    transparent,
+    rgba(255, 255, 255, 0.15),
+    transparent
+  );
+  transform: rotate(30deg);
+  transition: 0.6s;
+  pointer-events: none;
+}
+
+.btn-admin:hover::before {
+  left: 100%;
+}
+
+/* 2️⃣ النافذة المنبثقة للوحة التحكم (Modal Window) */
+.admin-modal {
+  width: 92%;
+  max-width: 1050px;
+  max-height: 88vh;
+  border: 1px solid rgba(168, 85, 247, 0.5);
+  border-radius: 20px;
+  background: rgba(15, 10, 26, 0.92);
+  backdrop-filter: blur(16px);
+  -webkit-backdrop-filter: blur(16px);
+  box-shadow: 0 20px 50px rgba(0, 0, 0, 0.8), 0 0 30px rgba(168, 85, 247, 0.25);
+  color: #f1f5f9;
+  padding: 0;
+  overflow: hidden;
+}
+
+.admin-modal::backdrop {
+  background: rgba(5, 2, 10, 0.75);
+  backdrop-filter: blur(5px);
+}
+
+/* الهيدر الأنيق للوحة */
+.admin-modal-header {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  padding: 16px 24px;
+  background: linear-gradient(90deg, rgba(30, 11, 54, 0.9), rgba(67, 20, 100, 0.9));
+  border-bottom: 1px solid rgba(168, 85, 247, 0.3);
+}
+
+.admin-modal-header h2 {
+  margin: 0;
+  font-size: 1.35rem;
+  color: #e9d5ff;
+  text-shadow: 0 0 10px rgba(168, 85, 247, 0.6);
+  display: flex;
+  align-items: center;
+  gap: 8px;
+}
+
+.admin-modal-header .btn-close {
+  background: rgba(255, 255, 255, 0.08);
+  border: 1px solid rgba(255, 255, 255, 0.15);
+  color: #f472b6;
+  border-radius: 10px;
+  padding: 6px 12px;
+  cursor: pointer;
+  transition: 0.2s;
+}
+
+.admin-modal-header .btn-close:hover {
+  background: #ef4444;
+  color: #fff;
+  border-color: #ef4444;
+}
+
+/* جسم اللوحة والسكرول */
+.admin-modal-body {
+  padding: 20px 24px;
+  max-height: calc(88vh - 70px);
+  overflow-y: auto;
+  display: flex;
+  flex-direction: column;
+  gap: 20px;
+}
+
+/* تخصيص شريط التمرير (Scrollbar) */
+.admin-modal-body::-webkit-scrollbar {
+  width: 7px;
+}
+.admin-modal-body::-webkit-scrollbar-thumb {
+  background: #a855f7;
+  border-radius: 10px;
+}
+.admin-modal-body::-webkit-scrollbar-track {
+  background: rgba(15, 10, 26, 0.5);
+}
+
+/* 3️⃣ تقسيم القطاعات (Fieldsets) */
+.admin-section {
+  border: 1px solid rgba(168, 85, 247, 0.25);
+  border-radius: 14px;
+  padding: 16px 20px;
+  background: rgba(26, 17, 43, 0.4);
+  box-shadow: inset 0 0 15px rgba(0, 0, 0, 0.2);
+}
+
+.admin-section legend {
+  padding: 4px 14px;
+  color: #c084fc;
+  font-weight: 700;
+  font-size: 0.95rem;
+  background: rgba(45, 22, 77, 0.8);
+  border: 1px solid rgba(168, 85, 247, 0.4);
+  border-radius: 20px;
+  box-shadow: 0 0 8px rgba(168, 85, 247, 0.3);
+}
+
+/* 4️⃣ شبكة الإحصائيات (Stats Grid) */
+.stats-grid {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(180px, 1fr));
+  gap: 12px;
+}
+
+.stat-card {
+  background: rgba(38, 22, 64, 0.6);
+  border: 1px solid rgba(192, 132, 252, 0.2);
+  padding: 12px 16px;
+  border-radius: 12px;
+  font-size: 0.88rem;
+  color: #cbd5e1;
+}
+
+.stat-card strong {
+  display: block;
+  font-size: 1.25rem;
+  color: #38bdf8;
+  margin-top: 4px;
+  text-shadow: 0 0 8px rgba(56, 189, 248, 0.4);
+}
+
+/* 5️⃣ أزرار التحكم الجماعية */
+.admin-grid-buttons {
+  display: grid;
+  grid-template-columns: repeat(auto-fill, minmax(170px, 1fr));
+  gap: 10px;
+}
+
+.admin-grid-buttons button,
+.admin-sub-controls button {
+  background: linear-gradient(135deg, #2e1065 0%, #3b0764 100%);
+  color: #f3e8ff;
+  border: 1px solid rgba(192, 132, 252, 0.3);
+  padding: 10px 14px;
+  border-radius: 10px;
+  font-size: 0.88rem;
+  font-weight: 600;
+  cursor: pointer;
+  transition: all 0.2s ease;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  gap: 6px;
+}
+
+.admin-grid-buttons button:hover,
+.admin-sub-controls button:hover {
+  background: linear-gradient(135deg, #581c87 0%, #6b21a8 100%);
+  border-color: #a855f7;
+  box-shadow: 0 0 12px rgba(168, 85, 247, 0.4);
+  transform: translateY(-1px);
+}
+
+.btn-danger {
+  background: linear-gradient(135deg, #7f1d1d 0%, #991b1b 100%) !important;
+  border-color: #ef4444 !important;
+  color: #fecdd3 !important;
+}
+
+.btn-danger:hover {
+  background: linear-gradient(135deg, #991b1b 0%, #dc2626 100%) !important;
+  box-shadow: 0 0 12px rgba(239, 68, 68, 0.5) !important;
+}
+
+/* 6️⃣ أدوات الإدخال والتحكم التفصيلية */
+.admin-sub-controls {
+  display: flex;
+  flex-direction: column;
+  gap: 12px;
+}
+
+.control-row {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  flex-wrap: wrap;
+  background: rgba(15, 10, 26, 0.5);
+  padding: 8px 12px;
+  border-radius: 10px;
+  border: 1px solid rgba(255, 255, 255, 0.05);
+}
+
+.row-label {
+  min-width: 170px;
+  font-size: 0.88rem;
+  font-weight: 700;
+  color: #e2e8f0;
+}
+
+.admin-modal input[type="text"],
+.admin-modal input[type="number"],
+.admin-modal select {
+  background: rgba(10, 6, 18, 0.8);
+  border: 1px solid rgba(168, 85, 247, 0.4);
+  color: #f8fafc;
+  padding: 8px 12px;
+  border-radius: 8px;
+  font-size: 0.88rem;
+  outline: none;
+  flex: 1;
+  min-width: 120px;
+  transition: 0.2s;
+}
+
+.admin-modal input:focus,
+.admin-modal select:focus {
+  border-color: #38bdf8;
+  box-shadow: 0 0 8px rgba(56, 189, 248, 0.4);
+}
+
+.admin-divider {
+  border: 0;
+  height: 1px;
+  background: linear-gradient(90deg, transparent, rgba(168, 85, 247, 0.4), transparent);
+  margin: 10px 0;
+}
+
+.checkbox-options-grid {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(220px, 1fr));
+  gap: 10px;
+}
+
+.checkbox-options-grid label {
+  font-size: 0.85rem;
+  color: #cbd5e1;
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  cursor: pointer;
+  background: rgba(30, 18, 51, 0.4);
+  padding: 8px 12px;
+  border-radius: 8px;
+  border: 1px solid rgba(168, 85, 247, 0.15);
+}
+
+/* 7️⃣ جدول التحكم الفردي باللاعبين */
+.admin-table-container {
+  overflow-x: auto;
+  border-radius: 10px;
+  border: 1px solid rgba(168, 85, 247, 0.2);
+  margin-top: 10px;
+}
+
+.admin-table {
+  width: 100%;
+  border-collapse: collapse;
+  font-size: 0.85rem;
+  text-align: right;
+}
+
+.admin-table th {
+  background: rgba(45, 22, 77, 0.9);
+  color: #d8b4fe;
+  padding: 10px 12px;
+  border-bottom: 1px solid rgba(168, 85, 247, 0.3);
+}
+
+.admin-table td {
+  padding: 10px 12px;
+  border-bottom: 1px solid rgba(255, 255, 255, 0.05);
+  background: rgba(18, 11, 33, 0.4);
+}
+
+.admin-table tr:hover td {
+  background: rgba(38, 22, 64, 0.6);
+}
+
+/* أزرار الإجراءات الفردية الصغيرة */
+.btn-sm {
+  padding: 4px 8px !important;
+  font-size: 0.78rem !important;
+  border-radius: 6px !important;
+  margin: 2px !important;
+}
+
+.input-sm-name, .input-sm-pts, .input-sm-whisper {
+  padding: 4px 6px !important;
+  font-size: 0.78rem !important;
+  width: 85px !important;
+  min-width: unset !important;
+}
+
+/* 8️⃣ قائمة المحظورين وسجل المراقبة */
+.unban-panel-box {
+  background: rgba(20, 10, 35, 0.6);
+  padding: 10px 14px;
+  border-radius: 10px;
+  border: 1px dashed rgba(239, 68, 68, 0.4);
+  margin-bottom: 12px;
+}
+
+.unban-panel-box h4 {
+  margin: 0 0 8px 0;
+  font-size: 0.88rem;
+  color: #fca5a5;
+}
+
+.banned-tags-container {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 8px;
+}
+
+.banned-tag {
+  background: rgba(127, 29, 29, 0.8);
+  color: #fecdd3;
+  padding: 4px 10px;
+  border-radius: 15px;
+  font-size: 0.78rem;
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  border: 1px solid #ef4444;
+}
+
+.banned-tag button {
+  background: none;
+  border: none;
+  color: #fff;
+  cursor: pointer;
+  font-weight: bold;
+  padding: 0 2px;
+}
+
+.audit-logs-box {
+  background: rgba(8, 4, 15, 0.8);
+  border: 1px solid rgba(168, 85, 247, 0.2);
+  border-radius: 10px;
+  height: 110px;
+  overflow-y: auto;
+  padding: 8px 12px;
+  font-family: monospace;
+  font-size: 0.8rem;
+  display: flex;
+  flex-direction: column;
+  gap: 4px;
+}
+
+.log-item {
+  color: #a7f3d0;
+}
+.log-item.warn { color: #fde047; }
+.log-item.danger { color: #fca5a5; }
+
+/* 9️⃣ الشريط الإخباري (Ticker Banner) */
+.ticker-banner {
+  width: 100%;
+  background: linear-gradient(90deg, #1e0038, #4c0082, #1e0038);
+  color: #f0abfc;
+  border-bottom: 1px solid #a855f7;
+  overflow: hidden;
+  white-space: nowrap;
+  box-sizing: border-box;
+  padding: 8px 0;
+  font-weight: 700;
+  box-shadow: 0 2px 10px rgba(168, 85, 247, 0.3);
+}
+
+.ticker-content {
+  display: inline-block;
+  padding-right: 100%;
+  animation: ticker-scroll 25s linear infinite;
+}
+
+@keyframes ticker-scroll {
+  0% { transform: translate3d(0, 0, 0); }
+  100% { transform: translate3d(100%, 0, 0); }
+}
+
+/* 📱 تجاوب اللوحة مع شاشات الهواتف المحمولة */
+@media (max-width: 600px) {
+  .admin-modal {
+    width: 96%;
+    max-height: 94vh;
+  }
+  .admin-grid-buttons {
+    grid-template-columns: repeat(2, 1fr);
+  }
+  .control-row {
+    flex-direction: column;
+    align-items: stretch;
+  }
+  .row-label {
+    min-width: 100%;
+  }
+}
