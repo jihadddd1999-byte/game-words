@@ -1359,3 +1359,71 @@ document.addEventListener('DOMContentLoaded', () => {
     });
   }
 });
+
+// استقبال وحفظ الحالة المباشرة ومزامنة الأزرار مع مؤشرات ON/OFF
+socket.on('roomState:sync', (state) => {
+  updateStatusBadge('btn-mute-all', state.isMutedAll);
+  updateStatusBadge('btn-lock-room', state.isLocked);
+  updateStatusBadge('btn-double-round', state.isDoubleRound);
+  updateStatusBadge('btn-notify-points', state.notifyPointChanges);
+});
+
+function updateStatusBadge(btnId, isActive) {
+  const btn = document.getElementById(btnId);
+  if (!btn) return;
+  let badge = btn.querySelector('.status-badge');
+  if (!badge) {
+    badge = document.createElement('span');
+    btn.appendChild(badge);
+  }
+  badge.className = `status-badge ${isActive ? 'on' : 'off'}`;
+  badge.innerText = isActive ? 'ON' : 'OFF';
+}
+
+// استقبال طلبات الاستئذان للدخول
+socket.on('admin:join_request', (data) => {
+  if (confirm(`طلب دخول جديد من اللاعب: ${data.name} (IP: ${data.ip})\nهل تريد الموافقة؟`)) {
+    socket.emit('admin:handle_join_request', { requestId: data.requestId, approve: true });
+  } else {
+    socket.emit('admin:handle_join_request', { requestId: data.requestId, approve: false });
+  }
+});
+
+// استقبال رد الاستئذان للاعبين
+socket.on('joinPermissionResponse', (data) => {
+  if (data.approved) {
+    alert('تمت الموافقة على دخولك! جاري الاتصال...');
+    window.location.reload();
+  } else {
+    alert(data.message || 'تم رفض طلبك.');
+  }
+});
+
+// استقبال قوائم العقوبات لفك الحظر/الطرد
+socket.on('admin:punishment_lists', (data) => {
+  renderPunishmentTable('banned-list-container', data.banned, 'unban');
+  renderPunishmentTable('kicked-list-container', data.kicked, 'unkick');
+});
+
+function renderPunishmentTable(containerId, list, actionType) {
+  const container = document.getElementById(containerId);
+  if (!container) return;
+  
+  if (list.length === 0) {
+    container.innerHTML = '<p class="empty-msg">لا يوجد عناصر في القائمة</p>';
+    return;
+  }
+
+  let html = '<table class="admin-table"><tr><th>الاسم/IP</th><th>الإجراء</th></tr>';
+  list.forEach(item => {
+    html += `<tr>
+      <td>${item.name || item.ip}</td>
+      <td><button onclick="${actionType === 'unban' ? `unbanIp('${item.ip}')` : `unkickIp('${item.ip}')`}">فك الحظر</button></td>
+    </tr>`;
+  });
+  html += '</table>';
+  container.innerHTML = html;
+}
+
+function unbanIp(ip) { socket.emit('admin:unban_ip', ip); }
+function unkickIp(ip) { socket.emit('admin:unkick_ip', ip); }
