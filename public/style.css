@@ -1377,437 +1377,748 @@ body.theme-stealth #close-instructions {
 }
 
 /* ==========================================================================
-   👑 قسم أدمن اللعبة - التنسيقات الملكية الشاملة (Admin Panel Styles)
+   🛡️ نظام تصميم زر الأدمن واللوحة المتقدمة (Matte & Glassmorphism Design)
+   تصميم حديث، ألوان طافية ومريحة للعين مع دعم التفاعل الكامل
    ========================================================================== */
 
-/* 1️⃣ زر فتح الأدمن الفخم */
-.btn-admin {
-  background: linear-gradient(135deg, #1f082e 0%, #3a0066 50%, #6a00b8 100%) !important;
-  color: #e0b0ff !important;
-  border: 1px solid #a855f7 !important;
-  box-shadow: 0 0 12px rgba(168, 85, 247, 0.4), inset 0 0 6px rgba(255, 255, 255, 0.2);
-  font-weight: 800 !important;
-  letter-spacing: 0.5px;
+:root {
+  /* ألوان زر الأدمن واللوحة - درجات طافية ومظلمة مريحة للعين */
+  --admin-bg-base: rgba(22, 27, 34, 0.85);
+  --admin-bg-hover: rgba(33, 38, 45, 0.95);
+  --admin-bg-card: rgba(18, 22, 28, 0.9);
+  --admin-border-matte: rgba(255, 255, 255, 0.08);
+  --admin-border-focus: rgba(88, 166, 255, 0.4);
+  
+  /* ألوان التمييز والنصوص (غير صارخة) */
+  --admin-accent-blue: #58a6ff;
+  --admin-accent-green: #3fb950;
+  --admin-accent-warning: #d29922;
+  --admin-accent-danger: #f85149;
+  --admin-accent-purple: #bc8cff;
+  
+  --admin-text-main: #c9d1d9;
+  --admin-text-muted: #8b949e;
+  --admin-text-bright: #f0f6fc;
+  
+  /* التأثيرات والظلال */
+  --admin-glass-blur: blur(16px) saturate(180%);
+  --admin-shadow-soft: 0 8px 32px 0 rgba(0, 0, 0, 0.37);
+  --admin-shadow-glow: 0 0 20px rgba(88, 166, 255, 0.15);
+  --admin-radius-lg: 16px;
+  --admin-radius-md: 10px;
+  --admin-radius-sm: 6px;
+  --admin-transition: all 0.3s cubic-bezier(0.25, 0.8, 0.25, 1);
+}
+
+/* ==========================================================================
+   🔘 1. زر الأدمن الرئيسي (Floating Admin Button)
+   ========================================================================== */
+
+.btn-admin-floating {
   position: relative;
-  overflow: hidden;
-  transition: all 0.3s cubic-bezier(0.175, 0.885, 0.32, 1.275) !important;
-}
-
-.btn-admin:hover {
-  transform: translateY(-2px) scale(1.03);
-  box-shadow: 0 0 22px rgba(168, 85, 247, 0.8), 0 0 10px rgba(236, 72, 153, 0.6) !important;
-  color: #ffffff !important;
-  border-color: #f472b6 !important;
-}
-
-.btn-admin::before {
-  content: '';
-  position: absolute;
-  top: -50%;
-  left: -50%;
-  width: 200%;
-  height: 200%;
-  background: linear-gradient(
-    60deg,
-    transparent,
-    rgba(255, 255, 255, 0.15),
-    transparent
-  );
-  transform: rotate(30deg);
-  transition: 0.6s;
-  pointer-events: none;
-}
-
-.btn-admin:hover::before {
-  left: 100%;
-}
-
-/* 2️⃣ النافذة المنبثقة للوحة التحكم (Modal Window) */
-.admin-modal {
-  width: 92%;
-  max-width: 1050px;
-  max-height: 88vh;
-  border: 1px solid rgba(168, 85, 247, 0.5);
-  border-radius: 20px;
-  background: rgba(15, 10, 26, 0.92);
-  backdrop-filter: blur(16px);
-  -webkit-backdrop-filter: blur(16px);
-  box-shadow: 0 20px 50px rgba(0, 0, 0, 0.8), 0 0 30px rgba(168, 85, 247, 0.25);
-  color: #f1f5f9;
-  padding: 0;
-  overflow: hidden;
-}
-
-.admin-modal::backdrop {
-  background: rgba(5, 2, 10, 0.75);
-  backdrop-filter: blur(5px);
-}
-
-/* الهيدر الأنيق للوحة */
-.admin-modal-header {
-  display: flex;
-  justify-content: space-between;
+  display: inline-flex;
   align-items: center;
-  padding: 16px 24px;
-  background: linear-gradient(90deg, rgba(30, 11, 54, 0.9), rgba(67, 20, 100, 0.9));
-  border-bottom: 1px solid rgba(168, 85, 247, 0.3);
-}
-
-.admin-modal-header h2 {
-  margin: 0;
-  font-size: 1.35rem;
-  color: #e9d5ff;
-  text-shadow: 0 0 10px rgba(168, 85, 247, 0.6);
-  display: flex;
-  align-items: center;
-  gap: 8px;
-}
-
-.admin-modal-header .btn-close {
-  background: rgba(255, 255, 255, 0.08);
-  border: 1px solid rgba(255, 255, 255, 0.15);
-  color: #f472b6;
-  border-radius: 10px;
-  padding: 6px 12px;
-  cursor: pointer;
-  transition: 0.2s;
-}
-
-.admin-modal-header .btn-close:hover {
-  background: #ef4444;
-  color: #fff;
-  border-color: #ef4444;
-}
-
-/* جسم اللوحة والسكرول */
-.admin-modal-body {
-  padding: 20px 24px;
-  max-height: calc(88vh - 70px);
-  overflow-y: auto;
-  display: flex;
-  flex-direction: column;
-  gap: 20px;
-}
-
-/* تخصيص شريط التمرير (Scrollbar) */
-.admin-modal-body::-webkit-scrollbar {
-  width: 7px;
-}
-.admin-modal-body::-webkit-scrollbar-thumb {
-  background: #a855f7;
-  border-radius: 10px;
-}
-.admin-modal-body::-webkit-scrollbar-track {
-  background: rgba(15, 10, 26, 0.5);
-}
-
-/* 3️⃣ تقسيم القطاعات (Fieldsets) */
-.admin-section {
-  border: 1px solid rgba(168, 85, 247, 0.25);
-  border-radius: 14px;
-  padding: 16px 20px;
-  background: rgba(26, 17, 43, 0.4);
-  box-shadow: inset 0 0 15px rgba(0, 0, 0, 0.2);
-}
-
-.admin-section legend {
-  padding: 4px 14px;
-  color: #c084fc;
-  font-weight: 700;
-  font-size: 0.95rem;
-  background: rgba(45, 22, 77, 0.8);
-  border: 1px solid rgba(168, 85, 247, 0.4);
-  border-radius: 20px;
-  box-shadow: 0 0 8px rgba(168, 85, 247, 0.3);
-}
-
-/* 4️⃣ شبكة الإحصائيات (Stats Grid) */
-.stats-grid {
-  display: grid;
-  grid-template-columns: repeat(auto-fit, minmax(180px, 1fr));
-  gap: 12px;
-}
-
-.stat-card {
-  background: rgba(38, 22, 64, 0.6);
-  border: 1px solid rgba(192, 132, 252, 0.2);
-  padding: 12px 16px;
-  border-radius: 12px;
-  font-size: 0.88rem;
-  color: #cbd5e1;
-}
-
-.stat-card strong {
-  display: block;
-  font-size: 1.25rem;
-  color: #38bdf8;
-  margin-top: 4px;
-  text-shadow: 0 0 8px rgba(56, 189, 248, 0.4);
-}
-
-/* 5️⃣ أزرار التحكم الجماعية */
-.admin-grid-buttons {
-  display: grid;
-  grid-template-columns: repeat(auto-fill, minmax(170px, 1fr));
+  justify-content: center;
   gap: 10px;
-}
-
-.admin-grid-buttons button,
-.admin-sub-controls button {
-  background: linear-gradient(135deg, #2e1065 0%, #3b0764 100%);
-  color: #f3e8ff;
-  border: 1px solid rgba(192, 132, 252, 0.3);
-  padding: 10px 14px;
-  border-radius: 10px;
-  font-size: 0.88rem;
+  padding: 10px 18px;
+  background: var(--admin-bg-base);
+  backdrop-filter: var(--admin-glass-blur);
+  -webkit-backdrop-filter: var(--admin-glass-blur);
+  border: 1px solid var(--admin-border-matte);
+  border-radius: var(--admin-radius-md);
+  color: var(--admin-text-main);
+  font-size: 0.95rem;
   font-weight: 600;
   cursor: pointer;
-  transition: all 0.2s ease;
+  overflow: hidden;
+  transition: var(--admin-transition);
+  box-shadow: var(--admin-shadow-soft);
+  outline: none;
+  user-select: none;
+}
+
+/* حركة الماوس على الزر (Hover) */
+.btn-admin-floating:hover {
+  background: var(--admin-bg-hover);
+  color: var(--admin-text-bright);
+  border-color: var(--admin-border-focus);
+  transform: translateY(-2px);
+  box-shadow: var(--admin-shadow-glow), var(--admin-shadow-soft);
+}
+
+/* عند الضغط على الزر (Active) */
+.btn-admin-floating:active {
+  transform: translateY(0) scale(0.98);
+}
+
+/* أيقونة الزر */
+.btn-admin-floating .admin-btn-icon {
+  font-size: 1.1rem;
+  filter: opacity(0.85);
+  transition: var(--admin-transition);
+}
+
+.btn-admin-floating:hover .admin-btn-icon {
+  filter: opacity(1);
+  transform: scale(1.1);
+}
+
+/* شارة الحالة الخفيفة للزر (Badge) */
+.admin-btn-badge {
+  font-size: 0.72rem;
+  padding: 2px 7px;
+  border-radius: 20px;
+  background: rgba(63, 185, 80, 0.15);
+  color: var(--admin-accent-green);
+  border: 1px solid rgba(63, 185, 80, 0.3);
+  font-weight: 500;
+  letter-spacing: 0.3px;
+  transition: var(--admin-transition);
+}
+
+.btn-admin-floating:hover .admin-btn-badge {
+  background: rgba(63, 185, 80, 0.25);
+  border-color: var(--admin-accent-green);
+}
+
+/* ==========================================================================
+   📢 2. الشريط الإخباري العائم أعلى الشاشة (Floating Ticker Bar)
+   ========================================================================== */
+
+.ticker-floating-bar {
+  position: fixed;
+  top: 12px;
+  left: 50%;
+  transform: translateX(-50%);
+  width: 90%;
+  max-width: 900px;
+  z-index: 9999;
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  padding: 8px 16px;
+  background: var(--admin-bg-base);
+  backdrop-filter: var(--admin-glass-blur);
+  -webkit-backdrop-filter: var(--admin-glass-blur);
+  border: 1px solid var(--admin-border-matte);
+  border-radius: var(--admin-radius-lg);
+  box-shadow: var(--admin-shadow-soft);
+  animation: fadeInDown 0.4s ease-out;
+}
+
+.ticker-badge {
+  background: rgba(210, 153, 34, 0.15);
+  color: var(--admin-accent-warning);
+  border: 1px solid rgba(210, 153, 34, 0.3);
+  padding: 4px 10px;
+  border-radius: var(--admin-radius-sm);
+  font-size: 0.8rem;
+  font-weight: 700;
+  white-space: nowrap;
+}
+
+.ticker-content-wrapper {
+  flex: 1;
+  overflow: hidden;
+  position: relative;
+}
+
+.ticker-content {
+  display: inline-block;
+  white-space: nowrap;
+  color: var(--admin-text-main);
+  font-size: 0.9rem;
+  animation: tickerScroll 25s linear infinite;
+}
+
+.ticker-content:hover {
+  animation-play-state: paused;
+}
+
+.ticker-close-btn {
+  background: transparent;
+  border: none;
+  color: var(--admin-text-muted);
+  font-size: 1.2rem;
+  cursor: pointer;
+  padding: 0 4px;
+  transition: var(--admin-transition);
+}
+
+.ticker-close-btn:hover {
+  color: var(--admin-accent-danger);
+  transform: scale(1.15);
+}
+
+/* ==========================================================================
+   🖼️ 3. النوافذ المنبثقة والخلفيات المظلمة (Modals Overlay)
+   ========================================================================== */
+
+.custom-modal-overlay {
+  position: fixed;
+  top: 0;
+  left: 0;
+  width: 100vw;
+  height: 100vh;
+  background: rgba(0, 0, 0, 0.75);
+  backdrop-filter: blur(8px);
+  -webkit-backdrop-filter: blur(8px);
+  z-index: 10000;
   display: flex;
   align-items: center;
   justify-content: center;
-  gap: 6px;
+  padding: 20px;
+  opacity: 0;
+  animation: modalFadeIn 0.3s cubic-bezier(0.16, 1, 0.3, 1) FORWARDS;
 }
 
-.admin-grid-buttons button:hover,
-.admin-sub-controls button:hover {
-  background: linear-gradient(135deg, #581c87 0%, #6b21a8 100%);
-  border-color: #a855f7;
-  box-shadow: 0 0 12px rgba(168, 85, 247, 0.4);
-  transform: translateY(-1px);
+.custom-modal-card {
+  background: var(--admin-bg-card);
+  border: 1px solid var(--admin-border-matte);
+  border-radius: var(--admin-radius-lg);
+  box-shadow: var(--admin-shadow-soft);
+  color: var(--admin-text-main);
+  width: 100%;
+  max-width: 500px;
+  overflow: hidden;
+  transform: scale(0.95);
+  animation: modalScaleUp 0.3s cubic-bezier(0.16, 1, 0.3, 1) FORWARDS;
 }
 
-.btn-danger {
-  background: linear-gradient(135deg, #7f1d1d 0%, #991b1b 100%) !important;
-  border-color: #ef4444 !important;
-  color: #fecdd3 !important;
-}
-
-.btn-danger:hover {
-  background: linear-gradient(135deg, #991b1b 0%, #dc2626 100%) !important;
-  box-shadow: 0 0 12px rgba(239, 68, 68, 0.5) !important;
-}
-
-/* 6️⃣ أدوات الإدخال والتحكم التفصيلية */
-.admin-sub-controls {
+/* نافذة الأدمن الكبيرة (Admin Panel Extended Window) */
+.admin-panel-card {
+  max-width: 1100px;
+  max-height: 88vh;
   display: flex;
   flex-direction: column;
+}
+
+/* ==========================================================================
+   🔑 4. نافذة دخول الأدمن (Admin Login Screen)
+   ========================================================================== */
+
+.login-card {
+  padding: 30px;
+}
+
+.modal-header {
+  text-align: center;
+  margin-bottom: 24px;
+}
+
+.modal-icon-wrap {
+  font-size: 2.5rem;
+  margin-bottom: 10px;
+  opacity: 0.9;
+}
+
+.modal-header h3 {
+  color: var(--admin-text-bright);
+  font-size: 1.4rem;
+  margin-bottom: 6px;
+}
+
+.modal-subtitle {
+  color: var(--admin-text-muted);
+  font-size: 0.85rem;
+}
+
+.input-group {
+  margin-bottom: 20px;
+}
+
+.input-group label {
+  display: block;
+  font-size: 0.85rem;
+  color: var(--admin-text-main);
+  margin-bottom: 8px;
+}
+
+.input-with-icon {
+  position: relative;
+  display: flex;
+  align-items: center;
+}
+
+.custom-input {
+  width: 100%;
+  padding: 11px 14px;
+  background: rgba(0, 0, 0, 0.3);
+  border: 1px solid var(--admin-border-matte);
+  border-radius: var(--admin-radius-md);
+  color: var(--admin-text-bright);
+  font-size: 0.9rem;
+  transition: var(--admin-transition);
+  outline: none;
+}
+
+.custom-input:focus {
+  border-color: var(--admin-accent-blue);
+  background: rgba(0, 0, 0, 0.5);
+  box-shadow: 0 0 0 3px rgba(88, 166, 255, 0.15);
+}
+
+.input-icon {
+  position: absolute;
+  left: 12px;
+  opacity: 0.5;
+  font-size: 0.9rem;
+}
+
+/* ==========================================================================
+   ⚙️ 5. لوحة التحكم المتقدمة للأدمن (Admin Panel Interior)
+   ========================================================================== */
+
+.admin-panel-header {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  padding: 18px 24px;
+  background: rgba(255, 255, 255, 0.02);
+  border-bottom: 1px solid var(--admin-border-matte);
+}
+
+.admin-header-title {
+  display: flex;
+  align-items: center;
   gap: 12px;
 }
 
-.control-row {
+.header-icon {
+  font-size: 1.6rem;
+  opacity: 0.85;
+}
+
+.admin-header-title h2 {
+  font-size: 1.2rem;
+  color: var(--admin-text-bright);
+  margin: 0;
+}
+
+.header-sub {
+  font-size: 0.8rem;
+  color: var(--admin-text-muted);
+}
+
+.admin-header-actions {
   display: flex;
   align-items: center;
-  gap: 10px;
-  flex-wrap: wrap;
-  background: rgba(15, 10, 26, 0.5);
-  padding: 8px 12px;
-  border-radius: 10px;
-  border: 1px solid rgba(255, 255, 255, 0.05);
+  gap: 15px;
 }
 
-.row-label {
-  min-width: 170px;
-  font-size: 0.88rem;
-  font-weight: 700;
-  color: #e2e8f0;
-}
-
-.admin-modal input[type="text"],
-.admin-modal input[type="number"],
-.admin-modal select {
-  background: rgba(10, 6, 18, 0.8);
-  border: 1px solid rgba(168, 85, 247, 0.4);
-  color: #f8fafc;
-  padding: 8px 12px;
-  border-radius: 8px;
-  font-size: 0.88rem;
-  outline: none;
-  flex: 1;
-  min-width: 120px;
-  transition: 0.2s;
-}
-
-.admin-modal input:focus,
-.admin-modal select:focus {
-  border-color: #38bdf8;
-  box-shadow: 0 0 8px rgba(56, 189, 248, 0.4);
-}
-
-.admin-divider {
-  border: 0;
-  height: 1px;
-  background: linear-gradient(90deg, transparent, rgba(168, 85, 247, 0.4), transparent);
-  margin: 10px 0;
-}
-
-.checkbox-options-grid {
-  display: grid;
-  grid-template-columns: repeat(auto-fit, minmax(220px, 1fr));
-  gap: 10px;
-}
-
-.checkbox-options-grid label {
-  font-size: 0.85rem;
-  color: #cbd5e1;
-  display: flex;
-  align-items: center;
-  gap: 8px;
-  cursor: pointer;
-  background: rgba(30, 18, 51, 0.4);
-  padding: 8px 12px;
-  border-radius: 8px;
-  border: 1px solid rgba(168, 85, 247, 0.15);
-}
-
-/* 7️⃣ جدول التحكم الفردي باللاعبين */
-.admin-table-container {
-  overflow-x: auto;
-  border-radius: 10px;
-  border: 1px solid rgba(168, 85, 247, 0.2);
-  margin-top: 10px;
-}
-
-.admin-table {
-  width: 100%;
-  border-collapse: collapse;
-  font-size: 0.85rem;
-  text-align: right;
-}
-
-.admin-table th {
-  background: rgba(45, 22, 77, 0.9);
-  color: #d8b4fe;
-  padding: 10px 12px;
-  border-bottom: 1px solid rgba(168, 85, 247, 0.3);
-}
-
-.admin-table td {
-  padding: 10px 12px;
-  border-bottom: 1px solid rgba(255, 255, 255, 0.05);
-  background: rgba(18, 11, 33, 0.4);
-}
-
-.admin-table tr:hover td {
-  background: rgba(38, 22, 64, 0.6);
-}
-
-/* أزرار الإجراءات الفردية الصغيرة */
-.btn-sm {
-  padding: 4px 8px !important;
-  font-size: 0.78rem !important;
-  border-radius: 6px !important;
-  margin: 2px !important;
-}
-
-.input-sm-name, .input-sm-pts, .input-sm-whisper {
-  padding: 4px 6px !important;
-  font-size: 0.78rem !important;
-  width: 85px !important;
-  min-width: unset !important;
-}
-
-/* 8️⃣ قائمة المحظورين وسجل المراقبة */
-.unban-panel-box {
-  background: rgba(20, 10, 35, 0.6);
-  padding: 10px 14px;
-  border-radius: 10px;
-  border: 1px dashed rgba(239, 68, 68, 0.4);
-  margin-bottom: 12px;
-}
-
-.unban-panel-box h4 {
-  margin: 0 0 8px 0;
-  font-size: 0.88rem;
-  color: #fca5a5;
-}
-
-.banned-tags-container {
-  display: flex;
-  flex-wrap: wrap;
-  gap: 8px;
-}
-
-.banned-tag {
-  background: rgba(127, 29, 29, 0.8);
-  color: #fecdd3;
-  padding: 4px 10px;
-  border-radius: 15px;
+.status-indicator {
   font-size: 0.78rem;
+  padding: 4px 10px;
+  border-radius: 20px;
   display: flex;
   align-items: center;
   gap: 6px;
-  border: 1px solid #ef4444;
 }
 
-.banned-tag button {
-  background: none;
+.status-indicator.online {
+  background: rgba(63, 185, 80, 0.1);
+  color: var(--admin-accent-green);
+  border: 1px solid rgba(63, 185, 80, 0.2);
+}
+
+.status-indicator.online::before {
+  content: '';
+  width: 6px;
+  height: 6px;
+  border-radius: 50%;
+  background: var(--admin-accent-green);
+  box-shadow: 0 0 8px var(--admin-accent-green);
+}
+
+.btn-close-icon {
+  background: transparent;
   border: none;
-  color: #fff;
+  color: var(--admin-text-muted);
+  font-size: 1.5rem;
   cursor: pointer;
-  font-weight: bold;
-  padding: 0 2px;
+  transition: var(--admin-transition);
+  line-height: 1;
 }
 
-.audit-logs-box {
-  background: rgba(8, 4, 15, 0.8);
-  border: 1px solid rgba(168, 85, 247, 0.2);
-  border-radius: 10px;
-  height: 110px;
+.btn-close-icon:hover {
+  color: var(--admin-accent-danger);
+  transform: rotate(90deg);
+}
+
+/* جسم اللوحة والمحتوى الداخلي */
+.admin-panel-body {
+  padding: 24px;
   overflow-y: auto;
-  padding: 8px 12px;
-  font-family: monospace;
-  font-size: 0.8rem;
+  display: flex;
+  flex-direction: column;
+  gap: 24px;
+}
+
+/* الأقسام (Sections) */
+.admin-section {
+  background: rgba(255, 255, 255, 0.015);
+  border: 1px solid var(--admin-border-matte);
+  border-radius: var(--admin-radius-md);
+  padding: 18px;
+}
+
+.section-header {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  margin-bottom: 12px;
+}
+
+.section-title {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+}
+
+.sec-icon {
+  font-size: 1.1rem;
+}
+
+.section-title h3 {
+  font-size: 1rem;
+  color: var(--admin-text-bright);
+  margin: 0;
+}
+
+.section-hint {
+  font-size: 0.82rem;
+  color: var(--admin-text-muted);
+  margin-bottom: 16px;
+}
+
+/* ==========================================================================
+   👥 6. بطاقات اللاعبين الفردية (Player Admin Cards Grid)
+   ========================================================================== */
+
+.players-cards-grid {
+  display: grid;
+  grid-template-columns: repeat(auto-fill, minmax(320px, 1fr));
+  gap: 16px;
+}
+
+.player-admin-card {
+  background: rgba(0, 0, 0, 0.25);
+  border: 1px solid var(--admin-border-matte);
+  border-radius: var(--admin-radius-md);
+  padding: 14px;
+  display: flex;
+  flex-direction: column;
+  gap: 12px;
+  transition: var(--admin-transition);
+}
+
+.player-admin-card:hover {
+  border-color: rgba(255, 255, 255, 0.15);
+  background: rgba(0, 0, 0, 0.35);
+}
+
+.player-card-header {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  padding-bottom: 8px;
+  border-bottom: 1px solid rgba(255, 255, 255, 0.05);
+}
+
+.player-info {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+}
+
+.player-card-name {
+  font-weight: 600;
+  color: var(--admin-text-bright);
+  font-size: 0.92rem;
+}
+
+.vip-badge {
+  font-size: 0.68rem;
+  padding: 2px 6px;
+  border-radius: 4px;
+  background: rgba(188, 140, 255, 0.15);
+  color: var(--admin-accent-purple);
+  border: 1px solid rgba(188, 140, 255, 0.3);
+}
+
+.player-card-score {
+  font-size: 0.85rem;
+  color: var(--admin-accent-blue);
+  font-weight: 700;
+}
+
+.player-custom-controls {
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+}
+
+.input-inline-group {
   display: flex;
   flex-direction: column;
   gap: 4px;
 }
 
+.input-inline-group label {
+  font-size: 0.78rem;
+  color: var(--admin-text-muted);
+}
+
+.checkbox-group label {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  cursor: pointer;
+  color: var(--admin-text-main);
+  font-size: 0.8rem;
+}
+
+/* أزرار الإجراءات الفردية لكل لاعب */
+.player-actions-grid {
+  display: grid;
+  grid-template-columns: repeat(3, 1fr);
+  gap: 6px;
+}
+
+/* ==========================================================================
+   🎯 7. أزرار التحكم والإجراءات العامة (Action Buttons)
+   ========================================================================== */
+
+.global-actions-grid {
+  display: grid;
+  grid-template-columns: repeat(auto-fill, minmax(160px, 1fr));
+  gap: 10px;
+}
+
+.btn-action {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  padding: 9px 12px;
+  background: rgba(255, 255, 255, 0.03);
+  border: 1px solid var(--admin-border-matte);
+  border-radius: var(--admin-radius-sm);
+  color: var(--admin-text-main);
+  font-size: 0.85rem;
+  cursor: pointer;
+  transition: var(--admin-transition);
+}
+
+.btn-action:hover {
+  background: rgba(255, 255, 255, 0.08);
+  border-color: rgba(255, 255, 255, 0.2);
+  color: var(--admin-text-bright);
+}
+
+/* تنوع ألوان الأزرار بطريقة هادئة ومطفية */
+.btn-action.highlight:hover {
+  border-color: var(--admin-accent-purple);
+  background: rgba(188, 140, 255, 0.1);
+  color: var(--admin-accent-purple);
+}
+
+.btn-action.warning:hover {
+  border-color: var(--admin-accent-warning);
+  background: rgba(210, 153, 34, 0.1);
+  color: var(--admin-accent-warning);
+}
+
+.btn-action.danger:hover {
+  border-color: var(--admin-accent-danger);
+  background: rgba(248, 81, 73, 0.1);
+  color: var(--admin-accent-danger);
+}
+
+.tooltip-icon {
+  font-size: 0.75rem;
+  opacity: 0.4;
+  cursor: help;
+  transition: var(--admin-transition);
+}
+
+.btn-action:hover .tooltip-icon {
+  opacity: 0.9;
+}
+
+/* ==========================================================================
+   ✍️ 8. عناصر الإدخال والأزرار المخصصة (Custom Inputs & Buttons)
+   ========================================================================== */
+
+.global-controls-form {
+  display: flex;
+  flex-direction: column;
+  gap: 14px;
+}
+
+.control-card-row {
+  display: flex;
+  flex-direction: column;
+  gap: 6px;
+}
+
+.control-label-wrap {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  font-size: 0.85rem;
+  color: var(--admin-text-main);
+}
+
+.input-with-btn {
+  display: flex;
+  gap: 8px;
+}
+
+.input-with-btn.multi {
+  flex-wrap: wrap;
+}
+
+.input-with-btn .custom-input {
+  flex: 1;
+}
+
+.btn-custom {
+  padding: 8px 16px;
+  border-radius: var(--admin-radius-sm);
+  font-size: 0.85rem;
+  font-weight: 600;
+  cursor: pointer;
+  border: 1px solid transparent;
+  transition: var(--admin-transition);
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  gap: 6px;
+}
+
+.btn-primary {
+  background: rgba(88, 166, 255, 0.15);
+  color: var(--admin-accent-blue);
+  border-color: rgba(88, 166, 255, 0.3);
+}
+
+.btn-primary:hover {
+  background: rgba(88, 166, 255, 0.25);
+  border-color: var(--admin-accent-blue);
+  color: var(--admin-text-bright);
+}
+
+.btn-secondary {
+  background: rgba(255, 255, 255, 0.05);
+  color: var(--admin-text-main);
+  border-color: var(--admin-border-matte);
+}
+
+.btn-secondary:hover {
+  background: rgba(255, 255, 255, 0.1);
+  color: var(--admin-text-bright);
+}
+
+.btn-sm {
+  padding: 4px 10px;
+  font-size: 0.78rem;
+}
+
+.input-sm {
+  padding: 6px 10px;
+  font-size: 0.8rem;
+}
+
+/* ==========================================================================
+   📜 9. سجل الأنشطة والتحركات (Audit Logs Box)
+   ========================================================================== */
+
+.audit-logs-box {
+  background: rgba(0, 0, 0, 0.4);
+  border: 1px solid var(--admin-border-matte);
+  border-radius: var(--admin-radius-sm);
+  padding: 12px;
+  height: 120px;
+  overflow-y: auto;
+  font-family: monospace;
+  font-size: 0.8rem;
+  display: flex;
+  flex-direction: column;
+  gap: 6px;
+}
+
 .log-item {
-  color: #a7f3d0;
-}
-.log-item.warn { color: #fde047; }
-.log-item.danger { color: #fca5a5; }
-
-/* 9️⃣ الشريط الإخباري (Ticker Banner) */
-.ticker-banner {
-  width: 100%;
-  background: linear-gradient(90deg, #1e0038, #4c0082, #1e0038);
-  color: #f0abfc;
-  border-bottom: 1px solid #a855f7;
-  overflow: hidden;
-  white-space: nowrap;
-  box-sizing: border-box;
-  padding: 8px 0;
-  font-weight: 700;
-  box-shadow: 0 2px 10px rgba(168, 85, 247, 0.3);
+  color: var(--admin-text-muted);
+  line-height: 1.4;
 }
 
-.ticker-content {
-  display: inline-block;
-  padding-right: 100%;
-  animation: ticker-scroll 25s linear infinite;
+.log-item.info {
+  color: var(--admin-accent-blue);
 }
 
-@keyframes ticker-scroll {
-  0% { transform: translate3d(0, 0, 0); }
-  100% { transform: translate3d(100%, 0, 0); }
+.log-item.warning {
+  color: var(--admin-accent-warning);
 }
 
-/* 📱 تجاوب اللوحة مع شاشات الهواتف المحمولة */
-@media (max-width: 600px) {
-  .admin-modal {
-    width: 96%;
-    max-height: 94vh;
+.log-item.danger {
+  color: var(--admin-accent-danger);
+}
+
+.btn-small-refresh,
+.btn-small-clear {
+  background: transparent;
+  border: none;
+  color: var(--admin-text-muted);
+  font-size: 0.78rem;
+  cursor: pointer;
+  transition: var(--admin-transition);
+}
+
+.btn-small-refresh:hover,
+.btn-small-clear:hover {
+  color: var(--admin-text-bright);
+}
+
+.players-count-tag {
+  font-size: 0.8rem;
+  color: var(--admin-accent-blue);
+  background: rgba(88, 166, 255, 0.1);
+  padding: 2px 8px;
+  border-radius: 12px;
+}
+
+/* ==========================================================================
+   ✨ 10. التحرّك والحركات الانسيابية (Animations)
+   ========================================================================== */
+
+@keyframes fadeInDown {
+  from {
+    opacity: 0;
+    transform: translate(-50%, -15px);
   }
-  .admin-grid-buttons {
-    grid-template-columns: repeat(2, 1fr);
+  to {
+    opacity: 1;
+    transform: translate(-50%, 0);
   }
-  .control-row {
-    flex-direction: column;
-    align-items: stretch;
+}
+
+@keyframes modalFadeIn {
+  to {
+    opacity: 1;
   }
-  .row-label {
-    min-width: 100%;
+}
+
+@keyframes modalScaleUp {
+  to {
+    transform: scale(1);
+  }
+}
+
+@keyframes tickerScroll {
+  0% {
+    transform: translateX(100%);
+  }
+  100% {
+    transform: translateX(-100%);
   }
 }
