@@ -239,3 +239,367 @@ app.get("/ping", (req, res) => res.status(200).send("alive"));
 const PORT = process.env.PORT || 10000;
 server.listen(PORT, () => console.log(`Server running on port ${PORT}`));
                                 
+/* ==========================================================================
+   ⚙️ محرك سيرفر الأدمن والحفظ الدائم (Admin Server Controller)
+   ========================================================================== */
+
+const fs = require('fs');
+const path = require('path');
+
+// 🔑 كلمة السر للتحقق من صلاحيات الأدمن
+const ADMIN_PASSWORD_SERVERSIDE = "20018151070792005932";
+
+// 📁 مسار ملف الحفظ التلقائي على السيرفر
+const SETTINGS_FILE_PATH = path.join(__dirname, 'admin-settings.json');
+
+// 1️⃣ الحالة العامة للإعدادات القابلة للحفظ
+let adminData = {
+  winScore: 100,
+  pointSystem: 'speed', // 'speed', 'fixed', 'draw'
+  isRoomLocked: false,
+  isGlobalMute: false,
+  tickerText: "أهلاً بكم في لعبة الكلمات السريعة!",
+  isTickerVisible: true,
+  modes: {
+    reverseWord: false,
+    blurMode: false,
+    missingLetter: false,
+    reverseInput: false
+  },
+  bannedIPs: [] // قائمة عناوين الـ IP المحظورة دائماً
+};
+
+// 2️⃣ قائمة بحالات اللاعبين الميدانية (كتم، منع رسم، عمياء، VIP)
+let activePlayerStates = new Map(); // socketId -> { isMuted, isDrawLocked, isBlind, isVip, tempName }
+
+// 3️⃣ دوال قراءة وحفظ البيانات من وإلى ملف JSON
+function loadAdminSettings() {
+  try {
+    if (fs.existsSync(SETTINGS_FILE_PATH)) {
+      const rawData = fs.readFileSync(SETTINGS_FILE_PATH, 'utf8');
+      adminData = { ...adminData, ...JSON.parse(rawData) };
+      console.log('✅ [Admin] تم تحميل إعدادات الأدمن والحظر المحفوظة.');
+    }
+  } catch (err) {
+    console.error('❌ [Admin] خطأ في قراءة ملف admin-settings.json:', err);
+  }
+}
+
+function saveAdminSettings() {
+  try {
+    fs.writeFileSync(SETTINGS_FILE_PATH, JSON.stringify(adminData, null, 2), 'utf8');
+  } catch (err) {
+    console.error('❌ [Admin] خطأ في حفظ الإعدادات على القرص:', err);
+  }
+}
+
+// قراءة الإعدادات فور تشغيل السيرفر
+loadAdminSettings();
+
+// 4️⃣ فحص حظر الـ IP والقفل العام قبل إتمام اتصال اللاعب باللعبة
+io.use((socket, next) => {
+  const clientIP = socket.handshake.address;
+
+  // فحص الحظر الدائم
+  if (adminData.bannedIPs.includes(clientIP)) {
+    return next(new Error("banned"));
+  }
+
+  // فحص قفل الروم أمام الانضمام الجديد
+  if (adminData.isRoomLocked) {
+    return next(new Error("room_locked"));
+  }
+
+  next();
+});
+
+// 5️⃣ دالة مساعدة لضمان حماية أوامر الأدمن
+function verifyAdmin(pass) {
+  return pass === ADMIN_PASSWORD_SERVERSIDE;
+}
+
+// 6️⃣ الاستماع لأحداث الأدمن عند الاتصال بالـ Socket
+io.on('connection', (socket) => {
+  const clientIP = socket.handshake.address;
+
+  // تهيئة كائن حالة اللاعب
+  activePlayerStates.set(socket.id, {
+    isMuted: false,
+    isDrawLocked: false,
+    isBlind: false,
+    isVip: false,
+    ip: clientIP
+  });
+
+  // 📊 طلب تحديث بيانات اللوحة من الأدمن
+  socket.on('admin_get_stats', (data) => {
+    if (!verifyAdmin(data.adminPassword)) return;
+
+    const allSockets = Array.from(io.sockets.sockets.values());
+    const playersList = allSockets.map(s => {
+      const state = activePlayerStates.get(s.id) || {};
+      return {
+        socketId: s.id,
+        name: s.username || state.tempName || "لاعب جديد",
+        score: s.score || 0,
+        isVip: state.isVip || false,
+        ip: s.handshake.address
+      };
+    });
+
+    const bannedListFormatted = adminData.bannedIPs.map(ip => ({ ip, name: `IP (${ip})` }));
+
+    socket.emit('admin_stats_response', {
+      onlineCount: io.engine.clientsCount || playersList.length,
+      avgSpeed: 2.5, // قيمة تقريبية للمتوسط
+      totalAnswers: global.totalAnswersCounter || 0,
+      activePlayer: global.currentDrawerName || "لا يوجد",
+      players: playersList,
+      bannedList: bannedListFormatted,
+      settings: adminData
+    });
+  });
+
+  // ❌ / ⏳ / 🔇 / 🔒 إجراءات التحكم الفردي باللاعبين
+  socket.on('admin_player_action', (data) => {
+    if (!verifyAdmin(data.adminPassword)) return;
+
+    const targetSocket = io.sockets.sockets.get(data.targetSocketId);
+    const playerState = activePlayerStates.get(data.targetSocketId) || {};
+
+    switch (data.actionType) {
+      case 'ban': // حظر دائم بالـ IP
+        if (targetSocket) {
+          const targetIP = targetSocket.handshake.address;
+          if (!adminData.bannedIPs.includes(targetIP)) {
+            adminData.bannedIPs.push(targetIP);
+            saveAdminSettings(); // 👈 حفظ دائم في الملف
+          }
+          targetSocket.emit('kicked_event', { reason: 'تم حظرك بشكل دائم من قبل الأدمن.' });
+          targetSocket.disconnect(true);
+        }
+        break;
+
+      case 'tempban': // طرد فقط (Kick)
+        if (targetSocket) {
+          targetSocket.emit('kicked_event', { reason: 'تم طردك من الروم بواسطة الأدمن.' });
+          targetSocket.disconnect(true);
+        }
+        break;
+
+      case 'mute': // كتم الشات عن اللاعب
+        playerState.isMuted = !playerState.isMuted;
+        activePlayerStates.set(data.targetSocketId, playerState);
+        if (targetSocket) {
+          targetSocket.emit('system_message', {
+            text: playerState.isMuted ? "🔇 تم كتم الشات عنك بواسطة الأدمن." : "🔊 تم إلغاء الكتم عنك."
+          });
+        }
+        break;
+
+      case 'drawlock': // منع من الرسم
+        playerState.isDrawLocked = !playerState.isDrawLocked;
+        activePlayerStates.set(data.targetSocketId, playerState);
+        if (targetSocket) {
+          targetSocket.emit('system_message', {
+            text: playerState.isDrawLocked ? "🔒 تم منعك من الرسم." : "🔓 تم السماح لك بالرسم مجدداً."
+          });
+        }
+        break;
+
+      case 'blind': // وضع الشاشة العمياء
+        playerState.isBlind = !playerState.isBlind;
+        activePlayerStates.set(data.targetSocketId, playerState);
+        if (targetSocket) {
+          targetSocket.emit('toggle_blind_mode', { enabled: playerState.isBlind });
+        }
+        break;
+
+      case 'vip': // منح شارة VIP
+        playerState.isVip = !playerState.isVip;
+        activePlayerStates.set(data.targetSocketId, playerState);
+        io.emit('update_players_list');
+        break;
+
+      case 'warn': // إرسال تحذير
+        if (targetSocket) {
+          targetSocket.emit('receive_broadcast', { message: "⚠️ تحذير رسمي من الأدمن: يُرجى الالتزام بالقوانين!" });
+        }
+        break;
+
+      case 'reset_score': // تصفير النقاط
+        if (targetSocket) {
+          targetSocket.score = 0;
+          io.emit('update_players_list');
+        }
+        break;
+    }
+  });
+
+  // ✖️ إلغاء حظر الـ IP
+  socket.on('admin_unban_player', (data) => {
+    if (!verifyAdmin(data.adminPassword)) return;
+
+    adminData.bannedIPs = adminData.bannedIPs.filter(ip => ip !== data.ip);
+    saveAdminSettings(); // 👈 حفظ وتحديث الملف فوراً
+  });
+
+  // ✏️ تغيير اسم لاعب
+  socket.on('admin_change_player_name', (data) => {
+    if (!verifyAdmin(data.adminPassword)) return;
+
+    const targetSocket = io.sockets.sockets.get(data.targetSocketId);
+    if (targetSocket && data.newName) {
+      targetSocket.username = data.newName;
+      io.emit('update_players_list');
+    }
+  });
+
+  // ➕ / ➖ تعديل نقاط لاعب
+  socket.on('admin_adjust_player_points', (data) => {
+    if (!verifyAdmin(data.adminPassword)) return;
+
+    const targetSocket = io.sockets.sockets.get(data.targetSocketId);
+    if (targetSocket) {
+      targetSocket.score = (targetSocket.score || 0) + (data.pointsDelta || 0);
+      io.emit('update_players_list');
+    }
+  });
+
+  // 🤫 همس خاص للاعب
+  socket.on('admin_whisper_player', (data) => {
+    if (!verifyAdmin(data.adminPassword)) return;
+
+    const targetSocket = io.sockets.sockets.get(data.targetSocketId);
+    if (targetSocket && data.whisperMessage) {
+      targetSocket.emit('receive_whisper', {
+        sender: '👑 الأدمن (همس خاص)',
+        message: data.whisperMessage
+      });
+    }
+  });
+
+  // ⏩ تخطي الكلمة الحالية
+  socket.on('admin_skip_word', (data) => {
+    if (!verifyAdmin(data.adminPassword)) return;
+    if (typeof global.nextRound === 'function') {
+      global.nextRound();
+    } else {
+      io.emit('word_skipped', { message: "تم تخطي الكلمة الحالية من قبل الأدمن." });
+    }
+  });
+
+  // ✖️2 جولة مضاعفة
+  socket.on('admin_double_round', (data) => {
+    if (!verifyAdmin(data.adminPassword)) return;
+    io.emit('system_message', { text: "⚡ جولة نقاط مضاعفة X2 مفعلة الآن!" });
+  });
+
+  // 💀 الموت المفاجئ
+  socket.on('admin_sudden_death', (data) => {
+    if (!verifyAdmin(data.adminPassword)) return;
+    io.emit('start_sudden_death', { duration: data.duration || 30 });
+  });
+
+  // 🧊 تجميد الجميع
+  socket.on('admin_freeze_all', (data) => {
+    if (!verifyAdmin(data.adminPassword)) return;
+    io.emit('toggle_freeze_all', { duration: data.duration });
+  });
+
+  // 🔇 كتم الشات عن الجميع
+  socket.on('admin_mute_all', (data) => {
+    if (!verifyAdmin(data.adminPassword)) return;
+
+    adminData.isGlobalMute = !adminData.isGlobalMute;
+    saveAdminSettings(); // 👈 حفظ دائم
+    io.emit('chat_mute_status', { isMuted: adminData.isGlobalMute });
+  });
+
+  // 🔒 قفل الروم
+  socket.on('admin_toggle_lock_room', (data) => {
+    if (!verifyAdmin(data.adminPassword)) return;
+
+    adminData.isRoomLocked = !adminData.isRoomLocked;
+    saveAdminSettings(); // 👈 حفظ دائم
+  });
+
+  // 🧹 clean room (طرد الجميع)
+  socket.on('admin_clean_room', (data) => {
+    if (!verifyAdmin(data.adminPassword)) return;
+
+    const allSockets = Array.from(io.sockets.sockets.values());
+    allSockets.forEach(s => {
+      if (s.id !== socket.id) { // عدم طرد الأدمن نفسه
+        s.emit('kicked_event', { reason: 'تم إخلاء الروم بواسطة الأدمن.' });
+        s.disconnect(true);
+      }
+    });
+  });
+
+  // ✍️ كلمة مخصصة
+  socket.on('admin_set_custom_word', (data) => {
+    if (!verifyAdmin(data.adminPassword)) return;
+    if (data.word) {
+      global.currentWord = data.word;
+      io.emit('system_message', { text: `🎯 الأدمن قام بتعيين كلمة جديدة للRound الحالي!` });
+    }
+  });
+
+  // 🎯 هدف الفوز
+  socket.on('admin_set_win_score', (data) => {
+    if (!verifyAdmin(data.adminPassword)) return;
+
+    adminData.winScore = data.winScore;
+    saveAdminSettings(); // 👈 حفظ دائم
+    io.emit('update_win_score', { winScore: adminData.winScore });
+  });
+
+  // 📢 إعلان الشاشات العام
+  socket.on('admin_send_broadcast', (data) => {
+    if (!verifyAdmin(data.adminPassword)) return;
+    if (data.message) {
+      io.emit('receive_broadcast', { message: data.message });
+    }
+  });
+
+  // 📢 الشريط الإخباري
+  socket.on('admin_set_ticker_text', (data) => {
+    if (!verifyAdmin(data.adminPassword)) return;
+
+    adminData.tickerText = data.text;
+    saveAdminSettings(); // 👈 حفظ دائم
+    io.emit('update_ticker', { text: adminData.tickerText, visible: adminData.isTickerVisible });
+  });
+
+  socket.on('admin_toggle_ticker', (data) => {
+    if (!verifyAdmin(data.adminPassword)) return;
+
+    adminData.isTickerVisible = !adminData.isTickerVisible;
+    saveAdminSettings(); // 👈 حفظ دائم
+    io.emit('update_ticker', { text: adminData.tickerText, visible: adminData.isTickerVisible });
+  });
+
+  // 🔄 الأوضاع المتقدمة (Checkboxes)
+  const modeEvents = [
+    { event: 'admin_toggle_reverse_word', key: 'reverseWord' },
+    { event: 'admin_toggle_blur_mode', key: 'blurMode' },
+    { event: 'admin_toggle_missing_letter', key: 'missingLetter' },
+    { event: 'admin_toggle_reverse_input', key: 'reverseInput' }
+  ];
+
+  modeEvents.forEach(m => {
+    socket.on(m.event, (data) => {
+      if (!verifyAdmin(data.adminPassword)) return;
+
+      adminData.modes[m.key] = data.enabled;
+      saveAdminSettings(); // 👈 حفظ دائم
+      io.emit('update_game_modes', { modes: adminData.modes });
+    });
+  });
+
+  // تنظيف حالة اللاعب عند المغادرة
+  socket.on('disconnect', () => {
+    activePlayerStates.delete(socket.id);
+  });
+});
