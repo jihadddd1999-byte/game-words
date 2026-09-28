@@ -875,3 +875,503 @@ select {
     border-radius: 10px !important;
     padding: 8px !important;
 }
+
+/* ==========================================================================
+   4 ثيمات متكاملة جديدة (تُستدعى عبر إضافة الكلاس لـ body)
+   ========================================================================== */
+
+/* --------------------------------------------------------------------------
+   1. 🟣 البنفسجي الطافي وليد نيون (theme-violet)
+   -------------------------------------------------------------------------- */
+body.theme-violet {
+  background: #090510 !important;
+  color: #e2d9f3 !important;
+}
+
+body.theme-violet #app-container {
+  background: rgba(21, 11, 36, 0.9) !important;
+  box-shadow: 0 0 15px #a855f7aa, 0 0 35px #a855f744 !important;
+}
+
+body.theme-violet header h1 {
+  color: #c084fc !important;
+  text-shadow: 0 0 12px #a855f7cc, 0 0 25px #c084fcaa !important;
+}
+
+body.theme-violet .word-box {
+  background: linear-gradient(145deg, #1f0b38, #3b1466) !important;
+  color: #f3e8ff !important;
+  text-shadow: 0 0 20px #a855f7bb !important;
+  box-shadow: 0 0 25px #a855f7aa !important;
+}
+
+body.theme-violet #input-answer {
+  background: #190930 !important;
+  color: #f3e8ff !important;
+  border: 1px solid #a855f7 !important;
+  box-shadow: inset 0 0 12px #a855f766, 0 0 12px #a855f7aa !important;
+}
+
+body.theme-violet #input-answer:focus {
+  box-shadow: inset 0 0 18px #c084fccc, 0 0 18px #c084fccc !important;
+}
+
+body.theme-violet .answer-time {
+  color: #e2d9f3 !important;
+}
+
+body.theme-violet #answers-display {
+  background: rgba(25, 12, 42, 0.85) !important;
+  color: #f3e8ff !important;
+  box-shadow: 0 0 10px #a855f766 !important;
+}
+
+body.theme-violet .btn-main {
+  background: linear-gradient(135deg, #581c87, #9333ea) !important;
+  color: #f3e8ff !important;
+  box-shadow: 0 0 15px #a855f7cc, inset 0 -3px 10px #581c87aa !important;
+}
+
+body.theme-violet .btn-main:hover,
+body.theme-violet .btn-main:focus {
+  background: linear-gradient(135deg, #7e22ce, #a855f7) !important;
+}
+
+body.theme-violet #dark-mode-toggle {
+  background: linear-gradient(135deg, #3b0764, #6b21a8) !important;
+  color: #e2d9f3 !important;
+  box-shadow: 0 0 12px #a855f788 !important;
+}
+
+body.theme-violet #dark-mode-toggle:hover {
+  background: linear-gradient(135deg, #6b21a8, #a855f7) !important;
+}
+
+body.theme-violet .players-list-container {
+  background: rgba(25, 12, 42, 0.9) !important;
+  box-shadow: 0 0 20px #a855f788 !important;
+}
+
+body.theme-violet .players-list-container h2 {
+  color: #c084fc !important;
+}
+
+body.theme-violet #players-list li {
+  border-bottom: 1px solid #a855f744 !important;
+}
+
+body.theme-violet .chat-container {
+  background: rgba(21, 11, 36, 0.98) !important;
+  border: 1px solid #a855f7 !important;
+}
+
+body.theme-violet .chat-header {
+  background: #2e1052 !important;
+  color: #c084fc !important;
+}
+
+body.theme-violet .chat-header button {
+  color: #c084fc !important;
+}
+
+body.theme-violet .chat-messages {
+  color: #e2d9f3 !important;
+}
+
+body.theme-violet .chat-name {
+  color: #c084fc !important;
+}
+
+body.theme-violet #chat-input {
+  background: rgba(168, 85, 247, 0.15) !important;
+  color: #f3e8ff !important;
+  border: 1px solid #a855f766 !important;
+}
+
+body.theme-violet #btn-send-chat {
+  background: linear-gradient(135deg, #6b21a8, #a855f7) !important;
+  color: #f3e8ff !important;
+}
+
+body.theme-violet dialog#change-name-dialog,
+body.theme-violet dialog#instructions-dialog {
+  background: linear-gradient(145deg, #1f0b38, #3b1466) !important;
+  color: #c084fc !important;
+  box-shadow: 0 0 25px #a855f7cc, inset 0 0 40px #581c87aa !important;
+}
+
+body.theme-violet dialog#change-name-dialog input,
+body.theme-violet dialog#instructions-dialog button,
+body.theme-violet dialog#change-name-dialog button,
+body.theme-violet #close-instructions {
+  background: linear-gradient(135deg, #581c87, #9333ea) !important;
+  color: #f3e8ff !important;
+  box-shadow: 0 0 12px #a855f7bb, inset 0 -3px 6px #3b0764aa !important;
+}
+
+
+/* --------------------------------------------------------------------------
+   2. ❄️ الأزرق الزجاجي (theme-glass)
+   -------------------------------------------------------------------------- */
+body.theme-glass {
+  background: linear-gradient(135deg, #0b1329, #1a233a) !important;
+  color: #e2e8f0 !important;
+}
+
+body.theme-glass #app-container {
+  background: rgba(15, 23, 42, 0.75) !important;
+  backdrop-filter: blur(12px) !important;
+  border: 1px solid rgba(56, 189, 248, 0.3) !important;
+  box-shadow: 0 0 20px rgba(56, 189, 248, 0.25) !important;
+}
+
+body.theme-glass header h1 {
+  color: #38bdf8 !important;
+  text-shadow: 0 0 12px rgba(56, 189, 248, 0.6) !important;
+}
+
+body.theme-glass .word-box {
+  background: rgba(30, 41, 59, 0.8) !important;
+  color: #f0f9ff !important;
+  border: 1px solid #38bdf8 !important;
+  text-shadow: 0 0 15px rgba(56, 189, 248, 0.8) !important;
+  box-shadow: 0 0 20px rgba(56, 189, 248, 0.3) !important;
+}
+
+body.theme-glass #input-answer {
+  background: rgba(15, 23, 42, 0.85) !important;
+  color: #f8fafc !important;
+  border: 1px solid #0284c7 !important;
+  box-shadow: inset 0 0 10px rgba(56, 189, 248, 0.2), 0 0 10px rgba(56, 189, 248, 0.3) !important;
+}
+
+body.theme-glass #input-answer:focus {
+  box-shadow: inset 0 0 15px rgba(56, 189, 248, 0.6), 0 0 15px rgba(56, 189, 248, 0.6) !important;
+}
+
+body.theme-glass .answer-time {
+  color: #e2e8f0 !important;
+}
+
+body.theme-glass #answers-display {
+  background: rgba(30, 41, 59, 0.7) !important;
+  color: #e0f2fe !important;
+  border: 1px solid rgba(56, 189, 248, 0.2) !important;
+  box-shadow: 0 0 10px rgba(56, 189, 248, 0.2) !important;
+}
+
+body.theme-glass .btn-main {
+  background: linear-gradient(135deg, #0284c7, #38bdf8) !important;
+  color: #0f172a !important;
+  box-shadow: 0 0 12px rgba(56, 189, 248, 0.4) !important;
+}
+
+body.theme-glass .btn-main:hover,
+body.theme-glass .btn-main:focus {
+  background: linear-gradient(135deg, #38bdf8, #7dd3fc) !important;
+}
+
+body.theme-glass #dark-mode-toggle {
+  background: linear-gradient(135deg, #0f172a, #1e293b) !important;
+  color: #38bdf8 !important;
+  border: 1px solid #0284c7 !important;
+  box-shadow: 0 0 10px rgba(56, 189, 248, 0.2) !important;
+}
+
+body.theme-glass .players-list-container {
+  background: rgba(30, 41, 59, 0.8) !important;
+  border: 1px solid rgba(56, 189, 248, 0.2) !important;
+  box-shadow: 0 0 15px rgba(56, 189, 248, 0.2) !important;
+}
+
+body.theme-glass .players-list-container h2 {
+  color: #38bdf8 !important;
+}
+
+body.theme-glass #players-list li {
+  border-bottom: 1px solid rgba(56, 189, 248, 0.2) !important;
+}
+
+body.theme-glass .chat-container {
+  background: rgba(15, 23, 42, 0.95) !important;
+  border: 1px solid #38bdf8 !important;
+}
+
+body.theme-glass .chat-header {
+  background: #1e293b !important;
+  color: #38bdf8 !important;
+}
+
+body.theme-glass .chat-name {
+  color: #38bdf8 !important;
+}
+
+body.theme-glass #chat-input {
+  background: rgba(30, 41, 59, 0.8) !important;
+  color: #f8fafc !important;
+  border: 1px solid rgba(56, 189, 248, 0.3) !important;
+}
+
+body.theme-glass #btn-send-chat {
+  background: linear-gradient(135deg, #0284c7, #38bdf8) !important;
+  color: #0f172a !important;
+}
+
+body.theme-glass dialog#change-name-dialog,
+body.theme-glass dialog#instructions-dialog {
+  background: #1e293b !important;
+  color: #38bdf8 !important;
+  border: 1px solid #38bdf8 !important;
+  box-shadow: 0 0 25px rgba(56, 189, 248, 0.4) !important;
+}
+
+body.theme-glass dialog#change-name-dialog input,
+body.theme-glass dialog#instructions-dialog button,
+body.theme-glass dialog#change-name-dialog button,
+body.theme-glass #close-instructions {
+  background: linear-gradient(135deg, #0284c7, #38bdf8) !important;
+  color: #0f172a !important;
+}
+
+
+/* --------------------------------------------------------------------------
+   3. 🟢 الزمردي المظلم (theme-emerald)
+   -------------------------------------------------------------------------- */
+body.theme-emerald {
+  background: linear-gradient(135deg, #022018, #05382b) !important;
+  color: #d1fae5 !important;
+}
+
+body.theme-emerald #app-container {
+  background: rgba(6, 44, 34, 0.9) !important;
+  box-shadow: 0 0 15px #10b98166, 0 0 35px #10b98133 !important;
+}
+
+body.theme-emerald header h1 {
+  color: #34d399 !important;
+  text-shadow: 0 0 12px #10b981aa, 0 0 25px #34d39988 !important;
+}
+
+body.theme-emerald .word-box {
+  background: linear-gradient(145deg, #022c22, #065f46) !important;
+  color: #a7f3d0 !important;
+  text-shadow: 0 0 20px #10b981aa !important;
+  box-shadow: 0 0 25px #10b98188 !important;
+}
+
+body.theme-emerald #input-answer {
+  background: #022c22 !important;
+  color: #ecfdf5 !important;
+  border: 1px solid #10b981 !important;
+  box-shadow: inset 0 0 12px #10b98144, 0 0 12px #10b98188 !important;
+}
+
+body.theme-emerald #input-answer:focus {
+  box-shadow: inset 0 0 18px #34d399cc, 0 0 18px #34d399cc !important;
+}
+
+body.theme-emerald .answer-time {
+  color: #d1fae5 !important;
+}
+
+body.theme-emerald #answers-display {
+  background: rgba(2, 44, 34, 0.85) !important;
+  color: #a7f3d0 !important;
+  box-shadow: 0 0 10px #10b98144 !important;
+}
+
+body.theme-emerald .btn-main {
+  background: linear-gradient(135deg, #047857, #10b981) !important;
+  color: #022c22 !important;
+  box-shadow: 0 0 15px #10b981aa, inset 0 -3px 10px #064e3baa !important;
+}
+
+body.theme-emerald .btn-main:hover,
+body.theme-emerald .btn-main:focus {
+  background: linear-gradient(135deg, #10b981, #34d399) !important;
+}
+
+body.theme-emerald #dark-mode-toggle {
+  background: linear-gradient(135deg, #022c22, #047857) !important;
+  color: #d1fae5 !important;
+  box-shadow: 0 0 12px #10b98166 !important;
+}
+
+body.theme-emerald .players-list-container {
+  background: rgba(2, 44, 34, 0.9) !important;
+  box-shadow: 0 0 20px #10b98166 !important;
+}
+
+body.theme-emerald .players-list-container h2 {
+  color: #34d399 !important;
+}
+
+body.theme-emerald #players-list li {
+  border-bottom: 1px solid #10b98133 !important;
+}
+
+body.theme-emerald .chat-container {
+  background: rgba(6, 44, 34, 0.98) !important;
+  border: 1px solid #10b981 !important;
+}
+
+body.theme-emerald .chat-header {
+  background: #064e3b !important;
+  color: #34d399 !important;
+}
+
+body.theme-emerald .chat-name {
+  color: #34d399 !important;
+}
+
+body.theme-emerald #chat-input {
+  background: rgba(16, 185, 129, 0.15) !important;
+  color: #ecfdf5 !important;
+  border: 1px solid #10b98155 !important;
+}
+
+body.theme-emerald #btn-send-chat {
+  background: linear-gradient(135deg, #047857, #10b981) !important;
+  color: #022c22 !important;
+}
+
+body.theme-emerald dialog#change-name-dialog,
+body.theme-emerald dialog#instructions-dialog {
+  background: linear-gradient(145deg, #022c22, #065f46) !important;
+  color: #34d399 !important;
+  box-shadow: 0 0 25px #10b981bb, inset 0 0 40px #064e3baa !important;
+}
+
+body.theme-emerald dialog#change-name-dialog input,
+body.theme-emerald dialog#instructions-dialog button,
+body.theme-emerald dialog#change-name-dialog button,
+body.theme-emerald #close-instructions {
+  background: linear-gradient(135deg, #047857, #10b981) !important;
+  color: #022c22 !important;
+}
+
+
+/* --------------------------------------------------------------------------
+   4. ⚪ السايبر المظلم (theme-stealth)
+   -------------------------------------------------------------------------- */
+body.theme-stealth {
+  background: #09090b !important;
+  color: #f4f4f5 !important;
+}
+
+body.theme-stealth #app-container {
+  background: #18181b !important;
+  border: 1px solid #3f3f46 !important;
+  box-shadow: 0 0 20px rgba(255, 255, 255, 0.08) !important;
+}
+
+body.theme-stealth header h1 {
+  color: #ffffff !important;
+  text-shadow: 0 0 10px rgba(255, 255, 255, 0.3) !important;
+}
+
+body.theme-stealth .word-box {
+  background: #09090b !important;
+  color: #ffffff !important;
+  border: 1px solid #52525b !important;
+  text-shadow: none !important;
+  box-shadow: 0 0 15px rgba(255, 255, 255, 0.1) !important;
+}
+
+body.theme-stealth #input-answer {
+  background: #27272a !important;
+  color: #ffffff !important;
+  border: 1px solid #52525b !important;
+  box-shadow: none !important;
+}
+
+body.theme-stealth #input-answer:focus {
+  border-color: #ffffff !important;
+  box-shadow: 0 0 10px rgba(255, 255, 255, 0.2) !important;
+}
+
+body.theme-stealth .answer-time {
+  color: #a1a1aa !important;
+}
+
+body.theme-stealth #answers-display {
+  background: #27272a !important;
+  color: #f4f4f5 !important;
+  border: 1px solid #3f3f46 !important;
+  box-shadow: none !important;
+}
+
+body.theme-stealth .btn-main {
+  background: #27272a !important;
+  color: #ffffff !important;
+  border: 1px solid #52525b !important;
+  box-shadow: 0 0 8px rgba(255, 255, 255, 0.1) !important;
+}
+
+body.theme-stealth .btn-main:hover,
+body.theme-stealth .btn-main:focus {
+  background: #3f3f46 !important;
+  border-color: #ffffff !important;
+}
+
+body.theme-stealth #dark-mode-toggle {
+  background: #18181b !important;
+  color: #ffffff !important;
+  border: 1px solid #52525b !important;
+}
+
+body.theme-stealth .players-list-container {
+  background: #18181b !important;
+  border: 1px solid #3f3f46 !important;
+  box-shadow: none !important;
+}
+
+body.theme-stealth .players-list-container h2 {
+  color: #ffffff !important;
+}
+
+body.theme-stealth #players-list li {
+  border-bottom: 1px solid #27272a !important;
+}
+
+body.theme-stealth .chat-container {
+  background: #18181b !important;
+  border: 1px solid #52525b !important;
+}
+
+body.theme-stealth .chat-header {
+  background: #27272a !important;
+  color: #ffffff !important;
+}
+
+body.theme-stealth .chat-name {
+  color: #e4e4e7 !important;
+}
+
+body.theme-stealth #chat-input {
+  background: #27272a !important;
+  color: #ffffff !important;
+  border: 1px solid #3f3f46 !important;
+}
+
+body.theme-stealth #btn-send-chat {
+  background: #3f3f46 !important;
+  color: #ffffff !important;
+}
+
+body.theme-stealth dialog#change-name-dialog,
+body.theme-stealth dialog#instructions-dialog {
+  background: #18181b !important;
+  color: #ffffff !important;
+  border: 1px solid #52525b !important;
+  box-shadow: 0 0 20px rgba(0,0,0,0.8) !important;
+}
+
+body.theme-stealth dialog#change-name-dialog input,
+body.theme-stealth dialog#instructions-dialog button,
+body.theme-stealth dialog#change-name-dialog button,
+body.theme-stealth #close-instructions {
+  background: #3f3f46 !important;
+  color: #ffffff !important;
+  box-shadow: none !important;
+}
