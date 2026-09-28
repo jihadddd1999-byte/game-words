@@ -778,471 +778,584 @@ initStudio();
 })();
 
 /* ==========================================================================
-   ⚙️ نظام لوحة التحكم بالأدمن والربط التفاعلي (Admin JS Controller)
+   🛡️ نظام الأدمن المتقدم للعبة الكلمات السريعة - game.js
+   إدارة كاملة للاعبين، العقوبات الحية مع مؤقتات، الإعلانات، الأحداث والسجلات
    ========================================================================== */
 
-// 1️⃣ المتغيرات والعناصر الأساسية للوحة الأدمن
-const ADMIN_CORRECT_PASS = "20018151070792005932";
-let currentAdminPassword = ""; // تُحفظ عند تسجيل الدخول الناجح
+document.addEventListener('DOMContentLoaded', () => {
+  // ==========================================================================
+  // 🔌 1. تهيئة الاتصال وعناصر واجهة الأدمن
+  // ==========================================================================
+  const socket = typeof io !== 'undefined' ? io() : null;
 
-// المودالات والنوافذ
-const adminAuthBtn = document.getElementById("btn-admin-auth");
-const adminLoginDialog = document.getElementById("admin-login-dialog");
-const adminLoginForm = document.getElementById("admin-login-form");
-const adminPasswordInput = document.getElementById("admin-password-input");
-const btnCancelAdminLogin = document.getElementById("btn-cancel-admin-login");
+  // عناصر واجهة الأدمن والنوافذ المنبثقة
+  const btnAdminAuth = document.getElementById('btn-admin-auth');
+  const adminLoginModal = document.getElementById('admin-login-modal');
+  const adminLoginForm = document.getElementById('admin-login-form');
+  const adminPasswordInput = document.getElementById('admin-password-input');
+  const btnCancelAdminLogin = document.getElementById('btn-cancel-admin-login');
 
-const adminPanelDialog = document.getElementById("admin-panel-dialog");
-const btnCloseAdminPanel = document.getElementById("btn-close-admin-panel");
+  const adminPanelModal = document.getElementById('admin-panel-modal');
+  const btnCloseAdminPanel = document.getElementById('btn-close-admin-panel');
+  const adminPlayersContainer = document.getElementById('admin-players-container');
+  const adminPlayersCount = document.getElementById('admin-players-count');
+  const btnRefreshPlayers = document.getElementById('btn-refresh-players');
+  const adminAuditLogs = document.getElementById('admin-audit-logs');
+  const btnClearAuditLogs = document.getElementById('btn-clear-audit-logs');
 
-// 2️⃣ فتح نافذة تسجيل دخول الأدمن
-if (adminAuthBtn) {
-  adminAuthBtn.addEventListener("click", () => {
-    if (currentAdminPassword === ADMIN_CORRECT_PASS) {
-      // إذا كان قد سجل دخوله سابقاً بنجاح، افتح اللوحة مباشرة
-      openAdminPanel();
-    } else {
-      adminPasswordInput.value = "";
-      if (typeof adminLoginDialog.showModal === "function") {
-        adminLoginDialog.showModal();
+  // عناصر الشريط الإخباري والإعلانات
+  const tickerBanner = document.getElementById('ticker-banner');
+  const tickerText = document.getElementById('ticker-text');
+  const btnCloseTickerView = document.getElementById('btn-close-ticker-view');
+  const broadcastModal = document.getElementById('broadcast-modal');
+  const broadcastMessageText = document.getElementById('broadcast-message-text');
+  const btnCloseBroadcast = document.getElementById('btn-close-broadcast');
+
+  // عناصر التحكم بالإعلانات والكلمات في اللوحة
+  const admBroadcastInput = document.getElementById('adm-broadcast-input');
+  const admBtnSendBroadcast = document.getElementById('adm-btn-send-broadcast');
+  const admTickerInput = document.getElementById('adm-ticker-input');
+  const admBtnSetTicker = document.getElementById('adm-btn-set-ticker');
+  const admBtnToggleTicker = document.getElementById('adm-btn-toggle-ticker');
+  const admCustomWordInput = document.getElementById('adm-custom-word-input');
+  const admBtnSetCustomWord = document.getElementById('adm-btn-set-custom-word');
+
+  // الأزرار الجماعية
+  const admBtnSkipWord = document.getElementById('adm-btn-skip-word');
+  const admBtnDoubleRound = document.getElementById('adm-btn-double-round');
+  const admBtnSuddenDeath = document.getElementById('adm-btn-sudden-death');
+  const admBtnFreezeAll = document.getElementById('adm-btn-freeze-all');
+  const admBtnMuteAll = document.getElementById('adm-btn-mute-all');
+  const admBtnLockRoom = document.getElementById('adm-btn-lock-room');
+  const admBtnResetGame = document.getElementById('adm-btn-reset-game');
+  const admBtnCleanRoom = document.getElementById('adm-btn-clean-room');
+
+  // حالة الجلسة المحلية للأدمن
+  let isAdminAuthenticated = false;
+  let activePlayersList = [];
+
+  // ==========================================================================
+  // 🔐 2. نظام تسجيل الدخول وفتح/إغلاق اللوحة
+  // ==========================================================================
+
+  // فتح نافذة الدخول أو اللوحة مباشرة إذا كان مسجلاً
+  if (btnAdminAuth) {
+    btnAdminAuth.addEventListener('click', () => {
+      if (isAdminAuthenticated) {
+        openAdminPanel();
       } else {
-        adminLoginDialog.style.display = "block";
+        openAdminLoginModal();
       }
-    }
-  });
-}
-
-// إلغاء نافذة الدخول
-if (btnCancelAdminLogin) {
-  btnCancelAdminLogin.addEventListener("click", () => {
-    closeDialog(adminLoginDialog);
-  });
-}
-
-// تأكيد كلمة سر الأدمن
-if (adminLoginForm) {
-  adminLoginForm.addEventListener("submit", (e) => {
-    e.preventDefault();
-    const enteredPass = adminPasswordInput.value.trim();
-
-    if (enteredPass === ADMIN_CORRECT_PASS) {
-      currentAdminPassword = enteredPass;
-      closeDialog(adminLoginDialog);
-      openAdminPanel();
-      appendAuditLog("تم تسجيل دخول الأدمن بنجاح.", "info");
-    } else {
-      alert("❌ كلمة السر غير صحيحة!");
-      adminPasswordInput.value = "";
-    }
-  });
-}
-
-// إغلاق لوحة الأدمن الرئيسية
-if (btnCloseAdminPanel) {
-  btnCloseAdminPanel.addEventListener("click", () => {
-    closeDialog(adminPanelDialog);
-  });
-}
-
-function openAdminPanel() {
-  if (typeof adminPanelDialog.showModal === "function") {
-    adminPanelDialog.showModal();
-  } else {
-    adminPanelDialog.style.display = "block";
-  }
-  // طلب تحديث إحصائيات الروم وقائمة اللاعبين من السيرفر
-  requestAdminStatsUpdate();
-}
-
-function closeDialog(dialogElement) {
-  if (dialogElement) {
-    if (typeof dialogElement.close === "function") {
-      dialogElement.close();
-    } else {
-      dialogElement.style.display = "none";
-    }
-  }
-}
-
-// 3️⃣ دالة إضافة السجلات إلى سجل المراقبة (Audit Logs)
-function appendAuditLog(message, type = "info") {
-  const auditContainer = document.getElementById("admin-audit-logs");
-  if (!auditContainer) return;
-
-  const logItem = document.createElement("div");
-  const currentTime = new Date().toLocaleTimeString("ar-EG");
-  logItem.className = `log-item ${type}`;
-  logItem.textContent = `[${currentTime}] ${message}`;
-
-  auditContainer.appendChild(logItem);
-  auditContainer.scrollTop = auditContainer.scrollHeight;
-}
-
-// 4️⃣ ربط أزرار التحكم الجماعي بالروم
-function setupAdminGlobalControls() {
-  // دالة مساعدة لاستخراج المدة المحددة من اللوحة
-  const getSelectedDuration = () => {
-    const type = document.getElementById("admin-duration-type").value;
-    const val = parseInt(document.getElementById("admin-duration-value").value) || 30;
-    return { type, val };
-  };
-
-  // زر تخطي الكلمة
-  bindAdminBtn("adm-btn-skip-word", () => {
-    emitAdminAction("admin_skip_word", {});
-    appendAuditLog("تم إرسال أمر: تخطي الكلمة الحالية", "warn");
-  });
-
-  // جولة مضاعفة X2
-  bindAdminBtn("adm-btn-double-round", () => {
-    emitAdminAction("admin_double_round", {});
-    appendAuditLog("تم تفعيل جولة النقاط المضاعفة (X2)", "info");
-  });
-
-  // الموت المفاجئ
-  bindAdminBtn("adm-btn-sudden-death", () => {
-    emitAdminAction("admin_sudden_death", { duration: 30 });
-    appendAuditLog("تم بدء جولة الموت المفاجئ (30 ثانية)", "danger");
-  });
-
-  // تجميد / فك الجميع
-  bindAdminBtn("adm-btn-freeze-all", () => {
-    const duration = getSelectedDuration();
-    emitAdminAction("admin_freeze_all", { duration });
-    appendAuditLog(`تم إرسال أمر تجميد/فك تجميد الجميع (${duration.val} ${duration.type})`, "warn");
-  });
-
-  // كتم الشات عن الجميع
-  bindAdminBtn("adm-btn-mute-all", () => {
-    emitAdminAction("admin_mute_all", {});
-    appendAuditLog("تم إرسال أمر كتم/فك كتم الشات عن الجميع", "warn");
-  });
-
-  // وضع التخفي
-  bindAdminBtn("adm-btn-stealth", () => {
-    emitAdminAction("admin_toggle_stealth", {});
-    appendAuditLog("تم تغيير حالة وضع التخفي للأدمن", "info");
-  });
-
-  // قفل / فتح الروم
-  bindAdminBtn("adm-btn-lock-room", () => {
-    emitAdminAction("admin_toggle_lock_room", {});
-    appendAuditLog("تم تغيير حالة قفل الروم أمام الانضمام الجديد", "warn");
-  });
-
-  // إعادة تعيين المسابقة
-  bindAdminBtn("adm-btn-reset-game", () => {
-    if (confirm("هل أنت تأكد من إعادة تعيين النقاط والمسابقة للجميع؟")) {
-      emitAdminAction("admin_reset_game", {});
-      appendAuditLog("تم إعادة تعيين نقاط المسابقة للجميع", "danger");
-    }
-  });
-
-  // طرد جماعي (Clean Room)
-  bindAdminBtn("adm-btn-clean-room", () => {
-    if (confirm("⚠️ تنبيه: هل تريد حقاً طرد كافة اللاعبين من الروم؟")) {
-      emitAdminAction("admin_clean_room", {});
-      appendAuditLog("تم تنظيف الروم وطرد كافة اللاعبين المتصلين", "danger");
-    }
-  });
-
-  // ✍️ إرسال كلمة مخصصة
-  bindAdminBtn("adm-btn-set-custom-word", () => {
-    const wordInput = document.getElementById("adm-custom-word-input");
-    const customWord = wordInput ? wordInput.value.trim() : "";
-    if (customWord) {
-      emitAdminAction("admin_set_custom_word", { word: customWord });
-      appendAuditLog(`تم تعيين كلمة مخصصة: "${customWord}"`, "info");
-      wordInput.value = "";
-    }
-  });
-
-  // ⏰ كتم الشات المؤقت
-  bindAdminBtn("adm-btn-mute-timer", () => {
-    const secondsInput = document.getElementById("adm-mute-timer-input");
-    const seconds = parseInt(secondsInput ? secondsInput.value : 0);
-    if (seconds > 0) {
-      emitAdminAction("admin_mute_timer", { durationSeconds: seconds });
-      appendAuditLog(`تم تطبيق كتم مؤقت للشات لمدة ${seconds} ثانية`, "warn");
-    }
-  });
-
-  // 🎯 حفظ هدف الفوز
-  bindAdminBtn("adm-btn-set-win-score", () => {
-    const winScore = parseInt(document.getElementById("adm-win-score-input").value);
-    if (winScore > 0) {
-      emitAdminAction("admin_set_win_score", { winScore });
-      appendAuditLog(`تم تحديد هدف الفوز بـ: ${winScore} نقطة`, "info");
-    }
-  });
-
-  // 🎯 تأكيد نظام توزيع النقاط
-  bindAdminBtn("adm-btn-save-point-system", () => {
-    const system = document.getElementById("adm-point-system").value;
-    emitAdminAction("admin_set_point_system", { system });
-    appendAuditLog(`تم تغيير نظام توزيع النقاط إلى: ${system}`, "info");
-  });
-
-  // 📢 إرسال إعلان شاشات
-  bindAdminBtn("adm-btn-send-broadcast", () => {
-    const broadcastInput = document.getElementById("adm-broadcast-input");
-    const msg = broadcastInput ? broadcastInput.value.trim() : "";
-    if (msg) {
-      emitAdminAction("admin_send_broadcast", { message: msg });
-      appendAuditLog(`تم إرسال إعلان عام للشاشات: "${msg}"`, "info");
-      broadcastInput.value = "";
-    }
-  });
-
-  // 📢 تحديث الشريط الإخباري
-  bindAdminBtn("adm-btn-set-ticker", () => {
-    const tickerInput = document.getElementById("adm-ticker-input");
-    const text = tickerInput ? tickerInput.value.trim() : "";
-    if (text) {
-      emitAdminAction("admin_set_ticker_text", { text });
-      appendAuditLog(`تم تحديث الشريط الإخباري: "${text}"`, "info");
-    }
-  });
-
-  // 👁️ إخفاء / إظهار الشريط الإخباري
-  bindAdminBtn("adm-btn-toggle-ticker", () => {
-    emitAdminAction("admin_toggle_ticker", {});
-    appendAuditLog("تم تغيير حالة عرض الشريط الإخباري", "info");
-  });
-
-  // ربط خانات الأوضاع الخاصة (Checkboxes)
-  const checkboxes = [
-    { id: "adm-chk-reverse-word", event: "admin_toggle_reverse_word" },
-    { id: "adm-chk-blur-mode", event: "admin_toggle_blur_mode" },
-    { id: "adm-chk-missing-letter", event: "admin_toggle_missing_letter" },
-    { id: "adm-chk-reverse-input", event: "admin_toggle_reverse_input" }
-  ];
-
-  checkboxes.forEach((item) => {
-    const chk = document.getElementById(item.id);
-    if (chk) {
-      chk.addEventListener("change", (e) => {
-        emitAdminAction(item.event, { enabled: e.target.checked });
-        appendAuditLog(`تم تغيير حالة المود (${item.id}) إلى: ${e.target.checked ? "مفعل" : "معطل"}`, "info");
-      });
-    }
-  });
-}
-
-// دالة مساعدة لربط الأزرار بحماية
-function bindAdminBtn(elementId, actionFn) {
-  const btn = document.getElementById(elementId);
-  if (btn) {
-    btn.addEventListener("click", actionFn);
-  }
-}
-
-// إرسال الأمر للسيرفر مع كلمة السر
-function emitAdminAction(eventName, payload = {}) {
-  if (typeof socket !== "undefined" && socket) {
-    socket.emit(eventName, {
-      ...payload,
-      adminPassword: currentAdminPassword
     });
   }
-}
 
-function requestAdminStatsUpdate() {
-  emitAdminAction("admin_get_stats", {});
-}
+  function openAdminLoginModal() {
+    if (adminLoginModal) adminLoginModal.style.display = 'flex';
+    if (adminPasswordInput) {
+      adminPasswordInput.value = '';
+      adminPasswordInput.focus();
+    }
+  }
 
-// 5️⃣ استقبال التحديثات والأنباء من السيرفر على جانب العميل
+  function closeAdminLoginModal() {
+    if (adminLoginModal) adminLoginModal.style.display = 'none';
+  }
 
-if (typeof socket !== "undefined" && socket) {
+  if (btnCancelAdminLogin) {
+    btnCancelAdminLogin.addEventListener('click', closeAdminLoginModal);
+  }
 
-  // استقبال تحديث الإحصائيات وجدول اللاعبين للوحة الأدمن
-  socket.on("admin_stats_response", (data) => {
-    if (document.getElementById("stat-online-count")) {
-      document.getElementById("stat-online-count").textContent = data.onlineCount || 0;
-      document.getElementById("stat-avg-speed").textContent = (data.avgSpeed || 0) + "ث";
-      document.getElementById("stat-total-answers").textContent = data.totalAnswers || 0;
-      document.getElementById("stat-active-player").textContent = data.activePlayer || "لا يوجد";
+  // معالجة نموذج تسجيل الدخول
+  if (adminLoginForm) {
+    adminLoginForm.addEventListener('submit', (e) => {
+      e.preventDefault();
+      const password = adminPasswordInput ? adminPasswordInput.value.trim() : '';
+
+      if (!password) {
+        alert('الرجاء إدخال كلمة المرور.');
+        return;
+      }
+
+      // إرسال طلب التحقق للباك إند عبر Socket.io
+      if (socket) {
+        socket.emit('admin:authenticate', { password }, (response) => {
+          if (response && response.success) {
+            isAdminAuthenticated = true;
+            closeAdminLoginModal();
+            openAdminPanel();
+            logAudit('تم تسجيل الدخول كأدمن بنجاح.', 'info');
+          } else {
+            alert('كلمة المرور غير صحيحة!');
+            logAudit('محاولة فاشلة لتسجيل دخول الأدمن.', 'danger');
+          }
+        });
+      } else {
+        // وضع تجريبي محلي للواجهة Frontend التجريبية
+        isAdminAuthenticated = true;
+        closeAdminLoginModal();
+        openAdminPanel();
+        logAudit('[تجريبي]: تم فتح لوحة الأدمن محلياً.', 'info');
+      }
+    });
+  }
+
+  function openAdminPanel() {
+    if (adminPanelModal) adminPanelModal.style.display = 'flex';
+    refreshPlayersData();
+  }
+
+  function closeAdminPanel() {
+    if (adminPanelModal) adminPanelModal.style.display = 'none';
+  }
+
+  if (btnCloseAdminPanel) {
+    btnCloseAdminPanel.addEventListener('click', closeAdminPanel);
+  }
+
+  // ==========================================================================
+  // 👥 3. توليد بطاقات اللاعبين وإدارة العقوبات الفردية والمؤقتات
+  // ==========================================================================
+
+  function refreshPlayersData() {
+    if (socket && isAdminAuthenticated) {
+      socket.emit('admin:get_players');
+    } else {
+      // إدخال بيانات تجريبية لعرض شكل البطاقات المفصلة
+      const mockPlayers = [
+        { id: 'p1', name: 'عبد الحميد', score: 350, isVip: true, muted: false, frozen: false },
+        { id: 'p2', name: 'أحمد علي', score: 120, isVip: false, muted: false, frozen: false },
+        { id: 'p3', name: 'خالد محمد', score: 80, isVip: false, muted: true, frozen: false }
+      ];
+      renderPlayerCards(mockPlayers);
+    }
+  }
+
+  if (btnRefreshPlayers) {
+    btnRefreshPlayers.addEventListener('click', () => {
+      refreshPlayersData();
+      logAudit('تم تحديث قائمة اللاعبين.', 'info');
+    });
+  }
+
+  function renderPlayerCards(players) {
+    activePlayersList = players;
+    if (!adminPlayersContainer) return;
+
+    adminPlayersContainer.innerHTML = '';
+    if (adminPlayersCount) adminPlayersCount.textContent = `اللاعبين: ${players.length}`;
+
+    if (players.length === 0) {
+      adminPlayersContainer.innerHTML = '<div style="color: var(--admin-text-muted); text-align: center; grid-column: 1/-1; padding: 20px;">لا يوجد لاعبون متصلون بالروم حالياً.</div>';
+      return;
     }
 
-    // بناء جدول التحكم باللاعبين
-    renderAdminPlayersTable(data.players || []);
-    // بناء قائمة المحظورين
-    renderAdminBannedList(data.bannedList || []);
-  });
+    players.forEach((player) => {
+      const card = document.createElement('div');
+      card.className = 'player-admin-card';
+      card.id = `player-card-${player.id}`;
 
-  // استقبال إعلان الشاشة العام (Broadcast)
-  socket.on("receive_broadcast", (data) => {
-    const dialog = document.getElementById("broadcast-dialog");
-    const msgText = document.getElementById("broadcast-message-text");
-    if (dialog && msgText) {
-      msgText.textContent = data.message;
-      if (typeof dialog.showModal === "function") dialog.showModal();
-      else dialog.style.display = "block";
-    }
-  });
+      card.innerHTML = `
+        <div class="player-card-header">
+          <div class="player-info">
+            <span class="player-avatar">👤</span>
+            <span class="player-card-name">${escapeHtml(player.name)}</span>
+            ${player.isVip ? '<span class="vip-badge">VIP</span>' : ''}
+          </div>
+          <span class="player-card-score">${player.score} pt</span>
+        </div>
 
-  // زر إغلاق الإعلان العام
-  const btnCloseBroadcast = document.getElementById("btn-close-broadcast");
+        <div class="player-custom-controls">
+          <div class="input-inline-group">
+            <label>⏱️ مدة العقوبة/المؤقت (بالدقائق):</label>
+            <input type="number" class="custom-input input-sm player-timer-input" id="timer-${player.id}" placeholder="مثال: 10" min="1" value="5">
+          </div>
+
+          <div class="input-inline-group checkbox-group">
+            <label>
+              <input type="checkbox" class="player-auto-reentry-check" id="auto-entry-${player.id}" checked>
+              السماح بالدخول التلقائي بعد انتهاء المدة
+            </label>
+          </div>
+        </div>
+
+        <div class="player-actions-grid">
+          <button class="btn-action danger btn-p-ban" data-id="${player.id}">
+            <span>❌ باند IP</span>
+            <span class="tooltip-icon" title="حظر اللاعب وتطبيق مؤقت الحظر بدقة">❓</span>
+          </button>
+          <button class="btn-action warning btn-p-kick" data-id="${player.id}">
+            <span>⏳ طرد</span>
+            <span class="tooltip-icon" title="إخراج اللاعب فوراً من الروم">❓</span>
+          </button>
+          <button class="btn-action btn-p-mute" data-id="${player.id}">
+            <span>${player.muted ? '🔊 فك الكتم' : '🔇 كتم'}</span>
+            <span class="tooltip-icon" title="منع/سماح بالتحدث في الشات للمدة المحددة">❓</span>
+          </button>
+          <button class="btn-action btn-p-freeze" data-id="${player.id}">
+            <span>${player.frozen ? '🔥 فك التجميد' : '🧊 تجميد'}</span>
+            <span class="tooltip-icon" title="منع اللاعب من إدخال الإجابات">❓</span>
+          </button>
+          <button class="btn-action btn-p-blind" data-id="${player.id}">
+            <span>👁️ عمياء</span>
+            <span class="tooltip-icon" title="تعتيم شاشة اللاعب بالكامل">❓</span>
+          </button>
+          <button class="btn-action btn-p-vip" data-id="${player.id}">
+            <span>👑 VIP</span>
+            <span class="tooltip-icon" title="منح أو سحب رتبة VIP">❓</span>
+          </button>
+        </div>
+
+        <div class="player-custom-controls">
+          <div class="input-inline-group">
+            <label>✏️ تغيير الاسم:</label>
+            <div class="input-with-btn">
+              <input type="text" class="custom-input input-sm" id="rename-input-${player.id}" placeholder="الاسم الجديد">
+              <button class="btn-custom btn-primary btn-sm btn-p-rename" data-id="${player.id}">حفظ</button>
+            </div>
+          </div>
+
+          <div class="input-inline-group">
+            <label>💎 تعديل النقاط:</label>
+            <div class="input-with-btn">
+              <input type="number" class="custom-input input-sm" id="score-input-${player.id}" placeholder="±50">
+              <button class="btn-custom btn-primary btn-sm btn-p-score" data-id="${player.id}">تطبيق</button>
+            </div>
+          </div>
+
+          <div class="input-inline-group">
+            <label>💬 همس خاص للاعب:</label>
+            <div class="input-with-btn">
+              <input type="text" class="custom-input input-sm" id="whisper-input-${player.id}" placeholder="رسالة سرية...">
+              <button class="btn-custom btn-secondary btn-sm btn-p-whisper" data-id="${player.id}">إرسال</button>
+            </div>
+          </div>
+        </div>
+      `;
+
+      adminPlayersContainer.appendChild(card);
+    });
+
+    // ربط أحداث أزرار البطاقات
+    bindPlayerCardEvents();
+  }
+
+  function bindPlayerCardEvents() {
+    // 1. باند IP
+    document.querySelectorAll('.btn-p-ban').forEach(btn => {
+      btn.onclick = () => {
+        const pId = btn.dataset.id;
+        const duration = getTimerValue(pId);
+        const autoReentry = getAutoReentryValue(pId);
+        emitAdminAction('player:ban', { playerId: pId, duration, autoReentry });
+        logAudit(`تم حظر اللاعب (${pId}) لمدة ${duration} دقيقة (تلقائي: ${autoReentry}).`, 'danger');
+      };
+    });
+
+    // 2. طرد
+    document.querySelectorAll('.btn-p-kick').forEach(btn => {
+      btn.onclick = () => {
+        const pId = btn.dataset.id;
+        const duration = getTimerValue(pId);
+        const autoReentry = getAutoReentryValue(pId);
+        emitAdminAction('player:kick', { playerId: pId, duration, autoReentry });
+        logAudit(`تم طرد اللاعب (${pId}) [منع عودة: ${duration} دقيقة].`, 'warning');
+      };
+    });
+
+    // 3. كتم
+    document.querySelectorAll('.btn-p-mute').forEach(btn => {
+      btn.onclick = () => {
+        const pId = btn.dataset.id;
+        const duration = getTimerValue(pId);
+        emitAdminAction('player:toggle_mute', { playerId: pId, duration });
+        logAudit(`تغيير حالة كتم الشات للاعب (${pId}) لمدة ${duration} دقيقة.`, 'warning');
+      };
+    });
+
+    // 4. تجميد
+    document.querySelectorAll('.btn-p-freeze').forEach(btn => {
+      btn.onclick = () => {
+        const pId = btn.dataset.id;
+        const duration = getTimerValue(pId);
+        emitAdminAction('player:toggle_freeze', { playerId: pId, duration });
+        logAudit(`تغيير حالة تجميد اللعب للاعب (${pId}).`, 'warning');
+      };
+    });
+
+    // 5. شاشة عمياء
+    document.querySelectorAll('.btn-p-blind').forEach(btn => {
+      btn.onclick = () => {
+        const pId = btn.dataset.id;
+        const duration = getTimerValue(pId);
+        emitAdminAction('player:toggle_blind', { playerId: pId, duration });
+        logAudit(`تفعيل/إلغاء الشاشة العمياء للاعب (${pId}).`, 'warning');
+      };
+    });
+
+    // 6. VIP
+    document.querySelectorAll('.btn-p-vip').forEach(btn => {
+      btn.onclick = () => {
+        const pId = btn.dataset.id;
+        emitAdminAction('player:toggle_vip', { playerId: pId });
+        logAudit(`تحديث حالة VIP للاعب (${pId}).`, 'info');
+      };
+    });
+
+    // 7. تغيير الاسم
+    document.querySelectorAll('.btn-p-rename').forEach(btn => {
+      btn.onclick = () => {
+        const pId = btn.dataset.id;
+        const input = document.getElementById(`rename-input-${pId}`);
+        const newName = input ? input.value.trim() : '';
+        if (newName) {
+          emitAdminAction('player:rename', { playerId: pId, newName });
+          logAudit(`تغيير اسم اللاعب (${pId}) إلى: ${newName}`, 'info');
+          input.value = '';
+        }
+      };
+    });
+
+    // 8. تعديل النقاط
+    document.querySelectorAll('.btn-p-score').forEach(btn => {
+      btn.onclick = () => {
+        const pId = btn.dataset.id;
+        const input = document.getElementById(`score-input-${pId}`);
+        const points = input ? parseInt(input.value) : 0;
+        if (!isNaN(points) && points !== 0) {
+          emitAdminAction('player:adjust_score', { playerId: pId, points });
+          logAudit(`تعديل نقاط اللاعب (${pId}) بمقدار (${points}).`, 'info');
+          input.value = '';
+        }
+      };
+    });
+
+    // 9. همس خاص
+    document.querySelectorAll('.btn-p-whisper').forEach(btn => {
+      btn.onclick = () => {
+        const pId = btn.dataset.id;
+        const input = document.getElementById(`whisper-input-${pId}`);
+        const message = input ? input.value.trim() : '';
+        if (message) {
+          emitAdminAction('player:whisper', { playerId: pId, message });
+          logAudit(`إرسال همس للاعب (${pId}): ${message}`, 'info');
+          input.value = '';
+        }
+      };
+    });
+  }
+
+  // أدوات مساعدة لجلب قيمة المؤقت والخيار
+  function getTimerValue(playerId) {
+    const timerInput = document.getElementById(`timer-${playerId}`);
+    return timerInput ? (parseInt(timerInput.value) || 5) : 5;
+  }
+
+  function getAutoReentryValue(playerId) {
+    const check = document.getElementById(`auto-entry-${playerId}`);
+    return check ? check.checked : true;
+  }
+
+  // ==========================================================================
+  // 🎯 4. التحكم الجماعي بالروم واللعبة
+  // ==========================================================================
+
+  if (admBtnSkipWord) {
+    admBtnSkipWord.onclick = () => {
+      emitAdminAction('room:skip_word');
+      logAudit('تم تخطي الكلمة الحالية بنجاح.', 'info');
+    };
+  }
+
+  if (admBtnDoubleRound) {
+    admBtnDoubleRound.onclick = () => {
+      emitAdminAction('room:toggle_double_round');
+      logAudit('تفعيل/إلغاء الجولة المضاعفة X2.', 'info');
+    };
+  }
+
+  if (admBtnSuddenDeath) {
+    admBtnSuddenDeath.onclick = () => {
+      emitAdminAction('room:trigger_sudden_death');
+      logAudit('تفعيل وضع الموت المفاجئ!', 'warning');
+    };
+  }
+
+  if (admBtnFreezeAll) {
+    admBtnFreezeAll.onclick = () => {
+      emitAdminAction('room:toggle_freeze_all');
+      logAudit('تطبيق/إلغاء تجميد كافة اللاعبين.', 'warning');
+    };
+  }
+
+  if (admBtnMuteAll) {
+    admBtnMuteAll.onclick = () => {
+      emitAdminAction('room:toggle_mute_all');
+      logAudit('قفل/فتح الشات العام للجميع.', 'warning');
+    };
+  }
+
+  if (admBtnLockRoom) {
+    admBtnLockRoom.onclick = () => {
+      emitAdminAction('room:toggle_lock');
+      logAudit('تغيير حالة قفل الغرفة من انضمام الجدد.', 'warning');
+    };
+  }
+
+  if (admBtnResetGame) {
+    admBtnResetGame.onclick = () => {
+      if (confirm('هل أنت تأكد من تصفير نتائج جميع اللاعبين؟')) {
+        emitAdminAction('room:reset_scores');
+        logAudit('تم تصفير جميع نقاط اللاعبين في الروم.', 'danger');
+      }
+    };
+  }
+
+  if (admBtnCleanRoom) {
+    admBtnCleanRoom.onclick = () => {
+      if (confirm('تحذير: هل أنت متأكد من طرد كافة اللاعبين المتصلين؟')) {
+        emitAdminAction('room:kick_all');
+        logAudit('تم تنفيذ طرد جماعي وتفريغ الروم.', 'danger');
+      }
+    };
+  }
+
+  // ==========================================================================
+  // 📢 5. الإعلانات، الشريط الإخباري والكلمات المخصصة
+  // ==========================================================================
+
+  // إرسال إعلان شاشة منبثق
+  if (admBtnSendBroadcast) {
+    admBtnSendBroadcast.onclick = () => {
+      const msg = admBroadcastInput ? admBroadcastInput.value.trim() : '';
+      if (msg) {
+        emitAdminAction('broadcast:send', { message: msg });
+        logAudit(`إرسال إعلان عام: "${msg}"`, 'info');
+        admBroadcastInput.value = '';
+      }
+    };
+  }
+
+  // تحديث نص الشريط الإخباري
+  if (admBtnSetTicker) {
+    admBtnSetTicker.onclick = () => {
+      const msg = admTickerInput ? admTickerInput.value.trim() : '';
+      if (msg) {
+        emitAdminAction('ticker:update_text', { text: msg });
+        updateTickerTextLocally(msg);
+        logAudit(`تحديث نص الشريط الإخباري: "${msg}"`, 'info');
+        admTickerInput.value = '';
+      }
+    };
+  }
+
+  // إظهار/إخفاء الشريط الإخباري
+  if (admBtnToggleTicker) {
+    admBtnToggleTicker.onclick = () => {
+      emitAdminAction('ticker:toggle_visibility');
+      if (tickerBanner) {
+        const isHidden = tickerBanner.style.display === 'none';
+        tickerBanner.style.display = isHidden ? 'flex' : 'none';
+      }
+      logAudit('تبديل حالة إظهار الشريط الإخباري.', 'info');
+    };
+  }
+
+  if (btnCloseTickerView) {
+    btnCloseTickerView.onclick = () => {
+      if (tickerBanner) tickerBanner.style.display = 'none';
+    };
+  }
+
+  // تعيين كلمة الجولة القادمة
+  if (admBtnSetCustomWord) {
+    admBtnSetCustomWord.onclick = () => {
+      const word = admCustomWordInput ? admCustomWordInput.value.trim() : '';
+      if (word) {
+        emitAdminAction('room:set_custom_word', { word });
+        logAudit(`تعيين الكلمة المخصصة للجولة القادمة: "${word}"`, 'info');
+        admCustomWordInput.value = '';
+      }
+    };
+  }
+
+  // إغلاق نافذة الإعلان العام للاعبين
   if (btnCloseBroadcast) {
-    btnCloseBroadcast.addEventListener("click", () => {
-      closeDialog(document.getElementById("broadcast-dialog"));
+    btnCloseBroadcast.onclick = () => {
+      if (broadcastModal) broadcastModal.style.display = 'none';
+    };
+  }
+
+  // ==========================================================================
+  // 📜 6. مراقبة التحركات وسجل Audit Logs
+  // ==========================================================================
+
+  function logAudit(message, type = 'info') {
+    if (!adminAuditLogs) return;
+    const time = new Date().toLocaleTimeString('ar-EG', { hour12: false });
+    const item = document.createElement('div');
+    item.className = `log-item ${type}`;
+    item.textContent = `[${time}] ${message}`;
+    adminAuditLogs.appendChild(item);
+    adminAuditLogs.scrollTop = adminAuditLogs.scrollHeight;
+  }
+
+  if (btnClearAuditLogs) {
+    btnClearAuditLogs.onclick = () => {
+      if (adminAuditLogs) adminAuditLogs.innerHTML = '';
+    };
+  }
+
+  function updateTickerTextLocally(text) {
+    if (tickerText) tickerText.textContent = text;
+    if (tickerBanner) tickerBanner.style.display = 'flex';
+  }
+
+  function escapeHtml(str) {
+    return String(str)
+      .replace(/&/g, '&amp;')
+      .replace(/</g, '&lt;')
+      .replace(/>/g, '&gt;')
+      .replace(/"/g, '&quot;');
+  }
+
+  // إرسال الإجراء إلى السيرفر
+  function emitAdminAction(eventName, data = {}) {
+    if (socket && isAdminAuthenticated) {
+      socket.emit(`admin:${eventName}`, data);
+    }
+  }
+
+  // ==========================================================================
+  // 📡 7. استقبال أحداث السيرفر (Socket Listener Responses)
+  // ==========================================================================
+
+  if (socket) {
+    // تحديث قائمة اللاعبين الحية
+    socket.on('admin:players_updated', (players) => {
+      if (isAdminAuthenticated) renderPlayerCards(players);
+    });
+
+    // استقبال إعلان الشاشة العامة من الأدمن
+    socket.on('broadcast:received', (data) => {
+      if (broadcastMessageText) broadcastMessageText.textContent = data.message;
+      if (broadcastModal) broadcastModal.style.display = 'flex';
+    });
+
+    // استقبال تحديثات الشريط الإخباري
+    socket.on('ticker:updated', (data) => {
+      if (data.text) updateTickerTextLocally(data.text);
+      if (typeof data.visible !== 'undefined' && tickerBanner) {
+        tickerBanner.style.display = data.visible ? 'flex' : 'none';
+      }
+    });
+
+    // استقبال رسائل التنبيه والهمس الخاصة للأدمن/اللاعبين
+    socket.on('admin:notify', (data) => {
+      if (data.type === 'whisper') {
+        alert(`💬 همس خاص من الأدمن: ${data.message}`);
+      } else {
+        logAudit(data.message, data.level || 'info');
+      }
     });
   }
-
-  // استقبال تحديث الشريط الإخباري
-  socket.on("update_ticker", (data) => {
-    const banner = document.getElementById("ticker-banner");
-    const textEl = document.getElementById("ticker-text");
-    if (banner && textEl) {
-      textEl.textContent = data.text;
-      banner.style.display = data.visible ? "block" : "none";
-    }
-  });
-
-  // استقبال الرسالة السرية / الهمس الخاص
-  socket.on("receive_whisper", (data) => {
-    const chatMessages = document.getElementById("chat-messages");
-    if (chatMessages) {
-      const whisperDiv = document.createElement("div");
-      whisperDiv.className = "chat-message whisper-message";
-      whisperDiv.style.background = "rgba(107, 33, 168, 0.4)";
-      whisperDiv.style.border = "1px solid #a855f7";
-      whisperDiv.style.padding = "6px 10px";
-      whisperDiv.style.borderRadius = "8px";
-      whisperDiv.style.margin = "4px 0";
-      whisperDiv.innerHTML = `<strong style="color: #f0abfc;">${data.sender}:</strong> <span style="color: #ffeb3b; font-weight: bold;">${data.message}</span>`;
-      
-      chatMessages.appendChild(whisperDiv);
-      chatMessages.scrollTop = chatMessages.scrollHeight;
-
-      // فتح الشات تلقائياً للاعب ليقرأ الهمس
-      const chatContainer = document.getElementById("chat-container");
-      if (chatContainer) chatContainer.hidden = false;
-    }
-  });
-}
-
-// 6️⃣ بناء جدول التحكم الفردي باللاعبين ديناميكياً
-function renderAdminPlayersTable(players) {
-  const tbody = document.getElementById("admin-players-table-body");
-  if (!tbody) return;
-
-  tbody.innerHTML = "";
-
-  if (players.length === 0) {
-    tbody.innerHTML = `<tr><td colspan="4" style="text-align:center; color:#94a3b8;">لا يوجد لاعبون متصلون حالياً</td></tr>`;
-    return;
-  }
-
-  players.forEach((p) => {
-    const tr = document.createElement("tr");
-
-    tr.innerHTML = `
-      <td><strong>${p.name}</strong> ${p.isVip ? '👑' : ''}</td>
-      <td>${p.score || 0}</td>
-      <td>
-        <button class="btn-sm btn-danger" onclick="adminActionPlayer('${p.socketId}', 'ban')">❌ باند</button>
-        <button class="btn-sm" onclick="adminActionPlayer('${p.socketId}', 'tempban')">⏳ طرد</button>
-        <button class="btn-sm" onclick="adminActionPlayer('${p.socketId}', 'mute')">🔇 كتم</button>
-        <button class="btn-sm" onclick="adminActionPlayer('${p.socketId}', 'drawlock')">🔒 منع الرسم</button>
-        <button class="btn-sm" onclick="adminActionPlayer('${p.socketId}', 'blind')">👁️ عمياء</button>
-        <button class="btn-sm" onclick="adminActionPlayer('${p.socketId}', 'vip')">👑 VIP</button>
-        <button class="btn-sm" onclick="adminActionPlayer('${p.socketId}', 'warn')">⚠️ تحذير</button>
-        <button class="btn-sm" onclick="adminActionPlayer('${p.socketId}', 'reset_score')">🔄 0 نقاط</button>
-      </td>
-      <td>
-        <div style="display:flex; gap:4px; align-items:center; margin-bottom:4px;">
-          <input type="text" id="name-input-${p.socketId}" placeholder="اسم جديد" class="input-sm-name" />
-          <button class="btn-sm" onclick="adminChangePlayerName('${p.socketId}')">تعديل</button>
-        </div>
-        <div style="display:flex; gap:4px; align-items:center; margin-bottom:4px;">
-          <input type="number" id="pts-input-${p.socketId}" placeholder="±نقاط" class="input-sm-pts" />
-          <button class="btn-sm" onclick="adminAddPlayerPoints('${p.socketId}')">تطبيق</button>
-        </div>
-        <div style="display:flex; gap:4px; align-items:center;">
-          <input type="text" id="whisper-input-${p.socketId}" placeholder="همس سرّي" class="input-sm-whisper" />
-          <button class="btn-sm" onclick="adminWhisperPlayer('${p.socketId}')">إرسال</button>
-        </div>
-      </td>
-    `;
-
-    tbody.appendChild(tr);
-  });
-}
-
-// 7️⃣ دوال التفاعل الفردي مع اللاعبين
-window.adminActionPlayer = function(targetSocketId, actionType) {
-  const durationType = document.getElementById("admin-duration-type").value;
-  const durationVal = parseInt(document.getElementById("admin-duration-value").value) || 30;
-
-  emitAdminAction("admin_player_action", {
-    targetSocketId,
-    actionType,
-    duration: { type: durationType, val: durationVal }
-  });
-
-  appendAuditLog(`تم تطبيق إجراء فردي (${actionType}) على اللاعب: ${targetSocketId}`, "warn");
-};
-
-window.adminChangePlayerName = function(targetSocketId) {
-  const input = document.getElementById(`name-input-${targetSocketId}`);
-  const newName = input ? input.value.trim() : "";
-  if (newName) {
-    emitAdminAction("admin_change_player_name", { targetSocketId, newName });
-    appendAuditLog(`تم تغيير اسم اللاعب إلى: "${newName}"`, "info");
-    input.value = "";
-  }
-};
-
-window.adminAddPlayerPoints = function(targetSocketId) {
-  const input = document.getElementById(`pts-input-${targetSocketId}`);
-  const pts = parseInt(input ? input.value : 0);
-  if (!isNaN(pts) && pts !== 0) {
-    emitAdminAction("admin_adjust_player_points", { targetSocketId, pointsDelta: pts });
-    appendAuditLog(`تم تعديل نقاط اللاعب بمقدار: (${pts})`, "info");
-    input.value = "";
-  }
-};
-
-window.adminWhisperPlayer = function(targetSocketId) {
-  const input = document.getElementById(`whisper-input-${targetSocketId}`);
-  const msg = input ? input.value.trim() : "";
-  if (msg) {
-    emitAdminAction("admin_whisper_player", { targetSocketId, whisperMessage: msg });
-    appendAuditLog(`تم إرسال همس خاص إلى (${targetSocketId}): "${msg}"`, "info");
-    input.value = "";
-  }
-};
-
-// 8️⃣ عرض قائمة المحظورين وإلغاء الحظر
-function renderAdminBannedList(bannedList) {
-  const container = document.getElementById("adm-banned-list");
-  if (!container) return;
-
-  container.innerHTML = "";
-
-  if (bannedList.length === 0) {
-    container.innerHTML = `<span>لا يوجد لاعبون محظورون حالياً</span>`;
-    return;
-  }
-
-  bannedList.forEach((item) => {
-    const tag = document.createElement("div");
-    tag.className = "banned-tag";
-    tag.innerHTML = `
-      <span>${item.name || item.ip}</span>
-      <button title="إلغاء الحظر" onclick="adminUnbanPlayer('${item.ip}')">✖️</button>
-    `;
-    container.appendChild(tag);
-  });
-}
-
-window.adminUnbanPlayer = function(ip) {
-  emitAdminAction("admin_unban_player", { ip });
-  appendAuditLog(`تم إلغاء الحظر عن IP: ${ip}`, "info");
-};
-
-// تهيئة اللوحة عند فتح الصفحة
-document.addEventListener("DOMContentLoaded", () => {
-  setupAdminGlobalControls();
 });
