@@ -732,3 +732,47 @@ const initStudio = () => {
 };
 
 initStudio();
+
+// ==========================================
+//     نظام تبديل الثيمات المعزول (زر 🖌️)
+// ==========================================
+(() => {
+  const customThemes = [
+    { className: '', name: 'الذهبي الأساسي' },
+    { className: 'theme-violet', name: 'البنفسجي النيون' },
+    { className: 'theme-glass', name: 'الزجاجي الأزرق' },
+    { className: 'theme-emerald', name: 'الزمردي المظلم' },
+    { className: 'theme-stealth', name: 'السايبر المظلم' }
+  ];
+
+  let currentCustomIndex = parseInt(localStorage.getItem('customThemeIndex')) || 0;
+
+  function applyCustomTheme(index) {
+    const activeTheme = customThemes[index];
+
+    // إزالة كلاسات الثيمات الأربعة فقط حتى لا نلغي كلاس dark-mode إن وجد
+    customThemes.forEach(t => {
+      if (t.className) document.body.classList.remove(t.className);
+    });
+
+    // إضافة الكلاس الجديد
+    if (activeTheme.className) {
+      document.body.classList.add(activeTheme.className);
+    }
+
+    // حفظ الاختيار
+    localStorage.setItem('customThemeIndex', index);
+  }
+
+  // تطبيق الثيم عند تحميل الصفحة
+  applyCustomTheme(currentCustomIndex);
+
+  // ربط الحدث بالزر الجديد
+  const themeBtn = document.getElementById('btn-theme-toggle');
+  if (themeBtn) {
+    themeBtn.addEventListener('click', () => {
+      currentCustomIndex = (currentCustomIndex + 1) % customThemes.length;
+      applyCustomTheme(currentCustomIndex);
+    });
+  }
+})();
