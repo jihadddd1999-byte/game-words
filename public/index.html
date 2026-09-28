@@ -11,6 +11,11 @@
 </head>
 
 <body>
+  <!-- 📢 الشريط الإخباري المتحرك أعلى الشاشة -->
+  <div id="ticker-banner" class="ticker-banner" style="display: none;">
+    <div class="ticker-content" id="ticker-text">مرحباً بكم في لعبة الكلمات السريعة!</div>
+  </div>
+
   <main id="app-container">
     <header>
       <h1>🌗🌑🌓</h1>
@@ -29,9 +34,10 @@
       <button id="btn-change-name" class="btn-main">✍️ تغيير الاسم</button>
       <button id="btn-instructions" class="btn-main">📖 تعليمات اللعبة</button>
       <button id="dark-mode-toggle" class="btn-main" aria-label="تفعيل الوضع الليلي">🌙 الوضع الليلي</button>
-      <!-- 🖌️ زر تغيير الثيمات الجديد -->
       <button id="btn-theme-toggle" class="btn-main" aria-label="تغيير ثيم اللعبة">🖌️ تغيير الثيم</button>
       <button id="btn-open-board" class="btn-main">🎨 لوحة الرسم</button>
+      <!-- ⚙️ زر الأدمن -->
+      <button id="btn-admin-auth" class="btn-main btn-admin">⚙️ الأدمن</button>
     </section>
 
     <section id="players-list-container" class="players-list-container" aria-label="قائمة اللاعبين">
@@ -50,6 +56,15 @@
         <button type="submit" id="btn-send-chat" class="btn-send">إرسال</button>
       </form>
     </aside>
+
+    <!-- 📢 نافذة الإعلان العام (Broadcast Popup) -->
+    <dialog id="broadcast-dialog" class="broadcast-popup">
+      <div class="broadcast-content">
+        <h2 id="broadcast-title">📢 تنبيه هام من الأدمن</h2>
+        <p id="broadcast-message-text"></p>
+        <button id="btn-close-broadcast" type="button">موافق</button>
+      </div>
+    </dialog>
 
     <dialog id="change-name-dialog" aria-modal="true" aria-labelledby="change-name-title">
       <form method="dialog" id="change-name-form">
@@ -139,11 +154,201 @@
       </div>
     </dialog>
 
+    <!-- 🔑 نافذة إدخال كلمة سر الأدمن -->
+    <dialog id="admin-login-dialog">
+      <form id="admin-login-form" method="dialog">
+        <h3>🔒 لوحة التحكم بالأدمن</h3>
+        <p>أدخل كلمة السر الخاصة للوصول إلى خيارات الأدمن:</p>
+        <input type="password" id="admin-password-input" placeholder="كلمة السر..." required />
+        <menu>
+          <button type="button" id="btn-cancel-admin-login">إلغاء</button>
+          <button type="submit" id="btn-submit-admin-login">دخول</button>
+        </menu>
+      </form>
+    </dialog>
+
+    <!-- 🛠️ لوحة الأدمن الشاملة والموسعة -->
+    <dialog id="admin-panel-dialog" class="admin-modal">
+      <div class="admin-modal-header">
+        <h2>🛠️ لوحة أدمن اللعبة الموسعة</h2>
+        <button id="btn-close-admin-panel" class="btn-close">✖️</button>
+      </div>
+
+      <div class="admin-modal-body">
+
+        <!-- 📊 1. إحصائيات المراقبة والمستجدات المباشرة -->
+        <fieldset class="admin-section">
+          <legend>📊 إحصائيات الروم الحية (Live Analytics)</legend>
+          <div class="stats-grid">
+            <div class="stat-card">المتصلون الآن: <strong id="stat-online-count">0</strong></div>
+            <div class="stat-card">متوسط السرعة: <strong id="stat-avg-speed">0ث</strong></div>
+            <div class="stat-card">إجمالي الإجابات: <strong id="stat-total-answers">0</strong></div>
+            <div class="stat-card">النشاط العام: <strong id="stat-active-player">لا يوجد</strong></div>
+          </div>
+        </fieldset>
+
+        <!-- ⏱️ 2. قسم التحكم بالوقت والمدة الإفتراضية -->
+        <fieldset class="admin-section">
+          <legend>⏱️ قسم التحكم بالوقت والأمد (Duration Control)</legend>
+          <div class="inline-controls">
+            <label>نوع المدة:</label>
+            <select id="admin-duration-type">
+              <option value="permanent">دائم (Permanent)</option>
+              <option value="seconds">مؤقت بالثواني</option>
+              <option value="minutes">مؤقت بالدقائق</option>
+            </select>
+            <input type="number" id="admin-duration-value" placeholder="المدة (مثلاً 30)" min="1" value="30" style="width: 110px;" />
+            <span class="note-text">* ينطبق على إجراءات الكلمة، الكتم، والتجميد</span>
+          </div>
+        </fieldset>
+
+        <!-- 🌐 3. أزرار التحكم الجماعي المطور -->
+        <fieldset class="admin-section">
+          <legend>🌐 التحكم الجماعي بالروم (Global Room Controls)</legend>
+          
+          <div class="admin-grid-buttons">
+            <button id="adm-btn-skip-word">⏩ تخطي الكلمة</button>
+            <button id="adm-btn-double-round">🌟 جولة مضاعفة (X2)</button>
+            <button id="adm-btn-sudden-death">⚡ جولة الموت المفاجئ (30ث)</button>
+            <button id="adm-btn-freeze-all">❄️ تجميد / فك الجميع</button>
+            <button id="adm-btn-mute-all">🔇 كتم الشات عن الجميع</button>
+            <button id="adm-btn-stealth">👻 وضع التخفي (Stealth)</button>
+            <button id="adm-btn-lock-room">🔒 قفل / فتح الروم</button>
+            <button id="adm-btn-reset-game">🏆 إعادة تعيين المسابقة</button>
+            <button id="adm-btn-clean-room" class="btn-danger">🚨 طرد جماعي (Clean Room)</button>
+          </div>
+
+          <hr class="admin-divider" />
+
+          <!-- أجهزة التحكم الموسعة بالكلمات والأوضاع -->
+          <div class="admin-sub-controls">
+            
+            <div class="control-row">
+              <label class="row-label">✍️ كلمة مخصصة:</label>
+              <input type="text" id="adm-custom-word-input" placeholder="اكتب الكلمة هنا..." />
+              <button id="adm-btn-set-custom-word">إرسال للجميع</button>
+            </div>
+
+            <div class="control-row">
+              <label class="row-label">⏰ كتم الشات المؤقت:</label>
+              <input type="number" id="adm-mute-timer-input" placeholder="الثواني (مثال: 60)" style="width: 140px;" />
+              <button id="adm-btn-mute-timer">تطبيق الكتم المؤقت</button>
+            </div>
+
+            <div class="control-row">
+              <label class="row-label">🎯 هدف الفوز بالنقاط:</label>
+              <input type="number" id="adm-win-score-input" value="1000" style="width: 140px;" />
+              <button id="adm-btn-set-win-score">حفظ الهدف</button>
+            </div>
+
+            <div class="control-row">
+              <label class="row-label">🎯 نظام توزيع النقاط:</label>
+              <select id="adm-point-system">
+                <option value="first_only">الأول فقط (1 نقطة)</option>
+                <option value="descending">التوزيع التنازلي (1, 0.9, 0.8...)</option>
+              </select>
+              <button id="adm-btn-save-point-system">تأكيد النظام</button>
+            </div>
+
+            <div class="control-row">
+              <label class="row-label">📢 إعلان شاشات (Broadcast):</label>
+              <input type="text" id="adm-broadcast-input" placeholder="نص الإعلان الذي سيظهر بالمنتصف..." />
+              <button id="adm-btn-send-broadcast">إرسال تنبيه عام</button>
+            </div>
+
+            <div class="control-row">
+              <label class="row-label">📢 الشريط الإخباري (Ticker):</label>
+              <input type="text" id="adm-ticker-input" placeholder="نص الشريط المتحرك..." />
+              <button id="adm-btn-set-ticker">تحديث النص</button>
+              <button id="adm-btn-toggle-ticker">👁️ إخفاء/إظهار</button>
+            </div>
+
+            <hr class="admin-divider" />
+
+            <div class="checkbox-options-grid">
+              <label><input type="checkbox" id="adm-chk-reverse-word"> 🔄 مود الكلمات المعكوسة (ع م ا ن ⬅️ ن ا م ع)</label>
+              <label><input type="checkbox" id="adm-chk-blur-mode"> 🎭 وضع الكلمات المخفية (Blur Mode)</label>
+              <label><input type="checkbox" id="adm-chk-missing-letter"> 🎲 مود الكلمة الناقصة (مثال: عـ*ـان)</label>
+              <label><input type="checkbox" id="adm-chk-reverse-input"> 🎮 المود العكسي بالاسم (كتابة اللاعب بالمعكوس)</label>
+            </div>
+
+          </div>
+        </fieldset>
+
+        <!-- 👤 4. قسم التحكم الفردي المفصل باللاعبين -->
+        <fieldset class="admin-section">
+          <legend>👤 التحكم الفردي باللاعبين (Individual Player Control)</legend>
+          
+          <div class="unban-panel-box">
+            <h4>🔓 قائمة المحظورين (Unban Management):</h4>
+            <div id="adm-banned-list" class="banned-tags-container">
+              <span>لا يوجد لاعبون محظورون حالياً</span>
+            </div>
+          </div>
+
+          <div class="admin-players-manage">
+            <p>جدول التحكم الفردي التفاعلي باللاعبين المتصلين:</p>
+            
+            <div id="admin-players-table-wrapper" class="admin-table-container">
+              <table class="admin-table">
+                <thead>
+                  <tr>
+                    <th>اللاعب</th>
+                    <th>النقاط</th>
+                    <th>الإجراءات الفردية السريعة</th>
+                    <th>تعديلات مخصصة</th>
+                  </tr>
+                </thead>
+                <tbody id="admin-players-table-body">
+                  <!-- يُملأ بديناميكية عبر JS بنفس الهيكل التالي لكل لاعب: -->
+                  <!-- 
+                  <tr>
+                    <td><strong>اسم اللاعب</strong> <span class="vip-badge">👑</span></td>
+                    <td>150</td>
+                    <td>
+                      <button class="btn-sm btn-ban">❌ باند</button>
+                      <button class="btn-sm btn-tempban">⏳ طرد مؤقت</button>
+                      <button class="btn-sm btn-mute">🔇 كتم</button>
+                      <button class="btn-sm btn-hidechat">👁️‍🗨️ إخفاء شات</button>
+                      <button class="btn-sm btn-drawlock">🔒 سحب رسم</button>
+                      <button class="btn-sm btn-blind">👁️ عمياء</button>
+                      <button class="btn-sm btn-slow">⏱️ بطء</button>
+                      <button class="btn-sm btn-vip">👑 VIP</button>
+                      <button class="btn-sm btn-warn">⚠️ تحذير</button>
+                      <button class="btn-sm btn-reset">🔄 0 نقاط</button>
+                    </td>
+                    <td>
+                      <input type="text" placeholder="اسم جديد" class="input-sm-name" />
+                      <button class="btn-sm">تعديل</button>
+                      <input type="number" placeholder="±نقاط" class="input-sm-pts" />
+                      <button class="btn-sm">تطبيق</button>
+                      <input type="text" placeholder="همس سرّي" class="input-sm-whisper" />
+                      <button class="btn-sm">إرسال</button>
+                    </td>
+                  </tr>
+                  -->
+                </tbody>
+              </table>
+            </div>
+          </div>
+        </fieldset>
+
+        <!-- 📜 5. سجل المراقبة وتتبع الأحداث -->
+        <fieldset class="admin-section">
+          <legend>📜 سجل المراقبة والتحركات (Admin Audit Logs)</legend>
+          <div id="admin-audit-logs" class="audit-logs-box">
+            <div class="log-item info">[النظام] تم فتح لوحة الأدمن بنجاح.</div>
+          </div>
+        </fieldset>
+
+      </div>
+    </dialog>
+
   </main>
 
   <script>
     document.addEventListener('DOMContentLoaded', () => {
-      // 1. زر الوضع الليلي الأساسي
+      // 1. زر الوضع الليلي
       const darkModeBtn = document.getElementById('dark-mode-toggle');
       if (darkModeBtn) {
         darkModeBtn.addEventListener('click', () => {
@@ -165,30 +370,23 @@
 
       function applyCustomTheme(index) {
         const activeTheme = customThemes[index];
-
-        // إزالة كلاسات الثيمات الخمسة
         customThemes.forEach(t => {
           if (t.className) document.body.classList.remove(t.className);
         });
 
-        // إضافة كلاس الثيم الجديد
         if (activeTheme.className) {
           document.body.classList.add(activeTheme.className);
         }
 
-        // حفظ الثيم في ذاكرة المتصفح
         localStorage.setItem('customThemeIndex', index);
 
-        // تحديث نص الزر
         if (themeBtn) {
           themeBtn.textContent = `🖌️ الثيم: ${activeTheme.nextLabel}`;
         }
       }
 
-      // تطبيق الثيم المحفوظ عند التحميل
       applyCustomTheme(currentThemeIndex);
 
-      // ربط الحدث بالزر
       if (themeBtn) {
         themeBtn.addEventListener('click', () => {
           currentThemeIndex = (currentThemeIndex + 1) % customThemes.length;
