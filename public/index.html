@@ -29,6 +29,8 @@
       <button id="btn-change-name" class="btn-main">✍️ تغيير الاسم</button>
       <button id="btn-instructions" class="btn-main">📖 تعليمات اللعبة</button>
       <button id="dark-mode-toggle" class="btn-main" aria-label="تفعيل الوضع الليلي">🌙 الوضع الليلي</button>
+      <!-- 🖌️ زر تغيير الثيمات الجديد -->
+      <button id="btn-theme-toggle" class="btn-main" aria-label="تغيير ثيم اللعبة">🖌️ تغيير الثيم</button>
       <button id="btn-open-board" class="btn-main">🎨 لوحة الرسم</button>
     </section>
 
@@ -140,15 +142,61 @@
   </main>
 
   <script>
-    const darkModeBtn = document.getElementById('dark-mode-toggle');
-    if (darkModeBtn) {
-      darkModeBtn.addEventListener('click', () => {
-        document.body.classList.toggle('dark-mode');
-      });
-    }
+    document.addEventListener('DOMContentLoaded', () => {
+      // 1. زر الوضع الليلي الأساسي
+      const darkModeBtn = document.getElementById('dark-mode-toggle');
+      if (darkModeBtn) {
+        darkModeBtn.addEventListener('click', () => {
+          document.body.classList.toggle('dark-mode');
+        });
+      }
+
+      // 2. نظام تبديل الثيمات 🖌️
+      const customThemes = [
+        { className: '', nextLabel: 'البنفسجي النيون' },
+        { className: 'theme-violet', nextLabel: 'الزجاجي الأزرق' },
+        { className: 'theme-glass', nextLabel: 'الزمردي المظلم' },
+        { className: 'theme-emerald', nextLabel: 'السايبر المظلم' },
+        { className: 'theme-stealth', nextLabel: 'الافتراضي (الذهبي)' }
+      ];
+
+      let currentThemeIndex = parseInt(localStorage.getItem('customThemeIndex')) || 0;
+      const themeBtn = document.getElementById('btn-theme-toggle');
+
+      function applyCustomTheme(index) {
+        const activeTheme = customThemes[index];
+
+        // إزالة كلاسات الثيمات الخمسة
+        customThemes.forEach(t => {
+          if (t.className) document.body.classList.remove(t.className);
+        });
+
+        // إضافة كلاس الثيم الجديد
+        if (activeTheme.className) {
+          document.body.classList.add(activeTheme.className);
+        }
+
+        // حفظ الثيم في ذاكرة المتصفح
+        localStorage.setItem('customThemeIndex', index);
+
+        // تحديث نص الزر
+        if (themeBtn) {
+          themeBtn.textContent = `🖌️ الثيم: ${activeTheme.nextLabel}`;
+        }
+      }
+
+      // تطبيق الثيم المحفوظ عند التحميل
+      applyCustomTheme(currentThemeIndex);
+
+      // ربط الحدث بالزر
+      if (themeBtn) {
+        themeBtn.addEventListener('click', () => {
+          currentThemeIndex = (currentThemeIndex + 1) % customThemes.length;
+          applyCustomTheme(currentThemeIndex);
+        });
+      }
+    });
   </script>
 </body>
 
-              </html>
-
-              
+</html>
