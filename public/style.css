@@ -2122,3 +2122,72 @@ body.theme-stealth #close-instructions {
     transform: translateX(-100%);
   }
 }
+
+/* حل مشكلة تداخل علامات الاستفهام وضمان تموضُعها خارج النص */
+.btn-admin-action {
+  position: relative;
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  padding: 10px 15px;
+  margin: 5px 0;
+  width: 100%;
+}
+
+.help-icon {
+  display: inline-block;
+  background: rgba(255, 255, 255, 0.15);
+  color: #ffca28;
+  border-radius: 50%;
+  width: 22px;
+  height: 22px;
+  text-align: center;
+  line-height: 22px;
+  font-weight: bold;
+  cursor: pointer;
+  margin-left: 8px;
+  font-size: 13px;
+}
+
+/* مؤشرات الحالة ON/OFF */
+.status-badge {
+  font-size: 11px;
+  font-weight: bold;
+  padding: 2px 8px;
+  border-radius: 12px;
+  margin-left: auto;
+  display: inline-block;
+}
+
+.status-badge.on {
+  background-color: #2e7d32;
+  color: #ffffff;
+  box-shadow: 0 0 6px #4caf50;
+}
+
+.status-badge.off {
+  background-color: #c62828;
+  color: #ffffff;
+  box-shadow: 0 0 6px #f44336;
+}
+
+/* الشريط المتحرك المحدث */
+.ticker-container {
+  overflow: hidden;
+  white-space: nowrap;
+  width: 100%;
+  background: #111;
+  color: #fff;
+  padding: 8px 0;
+}
+
+.ticker-text {
+  display: inline-block;
+  padding-right: 100%;
+  animation: ticker-scroll 15s linear infinite;
+}
+
+@keyframes ticker-scroll {
+  0% { transform: translate3d(100%, 0, 0); }
+  100% { transform: translate3d(-100%, 0, 0); }
+}
