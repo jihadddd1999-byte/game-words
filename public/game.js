@@ -732,3 +732,52 @@ const initStudio = () => {
 };
 
 initStudio();
+
+// ==========================================
+//    نظام تبديل الثيمات المتقدم (Theme Switcher)
+// ==========================================
+
+const themes = [
+  { className: '', label: 'الوضع الداكن' },
+  { className: 'theme-violet', label: 'الزجاجي الأزرق' },
+  { className: 'theme-glass', label: 'الزمردي المظلم' },
+  { className: 'theme-emerald', label: 'السايبر المظلم' },
+  { className: 'theme-stealth', label: 'الوضع الطبيعي' }
+];
+
+let currentThemeIndex = parseInt(localStorage.getItem('themeIndex')) || 0;
+
+function applyTheme(index) {
+  const currentTheme = themes[index];
+  
+  // إزالة جميع كلاسات الثيمات من body
+  themes.forEach(t => {
+    if (t.className) document.body.classList.remove(t.className);
+  });
+
+  // إضافة كلاس الثيم الحالي إذا لم يكن الوضع الأساسي
+  if (currentTheme.className) {
+    document.body.classList.add(currentTheme.className);
+  }
+
+  // حفظ الاختيار
+  localStorage.setItem('themeIndex', index);
+
+  // تحديث نص الزر ليعرض اسم التصميم القادم
+  const darkModeBtn = document.getElementById('dark-mode-toggle');
+  if (darkModeBtn) {
+    darkModeBtn.textContent = `🎨 ${currentTheme.label}`;
+  }
+}
+
+// تشغيل الثيم المحفوظ فور تحميل الصفحة
+applyTheme(currentThemeIndex);
+
+// ربط الحدث بزر الوضع الليلي
+const darkModeBtn = document.getElementById('dark-mode-toggle');
+if (darkModeBtn) {
+  darkModeBtn.addEventListener('click', () => {
+    currentThemeIndex = (currentThemeIndex + 1) % themes.length;
+    applyTheme(currentThemeIndex);
+  });
+}
