@@ -339,32 +339,365 @@ io.on('connection', (socket) => {
     }
   });
 
-  // ==========================================
-  // 🔐 1. مصادقة الأدمن والتخفي
-  // ==========================================
-  socket.on('admin:authenticate', (data, callback) => {
-    if (data && data.password === ADMIN_PASSWORD) {
-      const player = players.get(socket.id);
-      if (player) player.isAdmin = true;
+          /**
+ * ==========================================================================
+ * 🚀 لعبة الكلمات السريعة - الباك إند المتقدم (Server-Side Logic)
+ * 🛡️ إدارة نظام الأدمن الأساسي، الغرفة المغلقت، العقوبات والتحكم الكامل
+ * ==========================================================================
+ */
 
+const express = require('express');
+const http = require('http');
+const { Server } = require('socket.io');
+const path = require('path');
+
+const app = express();
+const server = http.createServer(app);
+const io = new Server(server, {
+  cors: {
+    origin: "*",
+    methods: ["GET", "POST"]
+  }
+});
+
+const PORT = process.env.PORT || 3000;
+const ADMIN_PASSWORD = process.env.ADMIN_PASSWORD || "admin123";
+
+// إعداد تقديم الملفات الاستاتيكية
+app.use(express.static(path.join(__dirname, 'public')));
+
+// ==========================================
+// 📊 قواعد البيانات في الذاكرة (In-Memory Data Structures)
+// ==========================================
+
+const players = new Map();             // socket.id -> Player Object
+const authenticatedAdmins = new Set(); // Set of socket.ids
+let superAdminSocketId = null;         // معرف الأدمن الأساسي
+let superAdminIp = null;               // IP الأدمن الأساسي للتعرف عليه عند العودة
+
+const pendingAdminApprovals = new Map(); // socket.id -> { name, ip }
+const pendingRoomRequests = new Map();   // requestId -> { socketId, name, type: 'LOCK' | 'KICK', reason }
+
+const bannedIPs = new Map();   // IP -> { bannedUntil, reason }
+const kickedIPs = new Map();   // IP -> { kickedUntil, reason }
+const allowedMuteBypass = new Set(); // socket.ids allowed during mute all
+
+// حالة الغرفة الجماعية
+const roomState = {
+  isLocked: false,
+  isMutedAll: false,
+  isFrozenAll: false,
+  isDoubleRound: false,
+  isSuddenDeath: false,
+  suddenDeathTimer: 30,
+  suddenDeathRequiredAnswers: 1,
+  winningScore: 100,
+  pointsPerAnswer: 10,
+  maxCorrectAnswersPerRound: 1, // كم لاعب يقدر يجاوب بالجولة
+  currentWord: "",
+  category: "",
+  nextCustomWord: "",
+  tickerText: "مرحباً بكم في لعبة الكلمات السريعة!",
+  tickerVisible: true,
+  tickerSpeed: 20, // السرعة بالثواني
+  correctAnswersCount: 0
+};
+
+let auditLogs = [];
+let wordTimer = null;
+
+// ==========================================
+// 🛠️ الدوال المساعدة (Helper Functions)
+// ==========================================
+
+function getClientIP(socket) {
+  const forwarded = socket.handshake.headers['x-forwarded-for'];
+  if (forwarded) {
+    return forwarded.split(',')[0].trim();
+  }
+  return socket.handshake.address || socket.id;
+}
+
+function logToAudit(action, adminName, targetName = "", details = "") {
+  const logEntry = {
+    id: Date.now() + Math.random().toString(36).substr(2, 4),
+    timestamp: new Date().toLocaleTimeString('ar-EG'),
+    action,
+    adminName: adminName || "الأدمن الأساسي",
+    targetName,
+    details
+  };
+  auditLogs.unshift(logEntry);
+  if (auditLogs.length > 100) auditLogs.pop();
+
+  // إرسال السجل للأدمن الأساسي فقط لحماية الخصوصية
+  if (superAdminSocketId) {
+    io.to(superAdminSocketId).emit('admin:audit_log_added', logEntry);
+  }
+}
+
+function updatePlayersList() {
+  const playersArray = [];
+  players.forEach((p, socketId) => {
+    // إخفاء الأدمن المخفي عن باقي اللاعبين
+    if (p.isHiddenFromRoom) {
+      // يرسل فقط للأدمنية
+      return;
+    }
+    playersArray.push({
+      id: socketId,
+      name: p.name,
+      score: p.score,
+      isVip: !!p.isVip,
+      isAdmin: !!p.isAdmin,
+      hideAdminBadge: !!p.hideAdminBadge,
+      muted: !!p.muted,
+      frozen: !!p.frozen,
+      blinded: !!p.blinded,
+      isSuperAdmin: socketId === superAdminSocketId
+    });
+  });
+
+  io.emit('players:list_update', playersArray);
+
+  // إرسال القائمة الكاملة شاملا المخفيين للأدمنية المعتمدين
+  const fullAdminList = [];
+  players.forEach((p, socketId) => {
+    fullAdminList.push({
+      id: socketId,
+      name: p.name,
+      ip: p.ip,
+      score: p.score,
+      isVip: !!p.isVip,
+      isAdmin: !!p.isAdmin,
+      hideAdminBadge: !!p.hideAdminBadge,
+      isHiddenFromRoom: !!p.isHiddenFromRoom,
+      muted: !!p.muted,
+      frozen: !!p.frozen,
+      blinded: !!p.blinded,
+      isSuperAdmin: socketId === superAdminSocketId
+    });
+  });
+
+  authenticatedAdmins.forEach(adminId => {
+    io.to(adminId).emit('admin:full_players_update', fullAdminList);
+  });
+}
+
+function sendSystemMessage(message, targetSocketId = null) {
+  const payload = { system: true, message, time: new Date().toLocaleTimeString('ar-EG') };
+  if (targetSocketId) {
+    io.to(targetSocketId).emit('chatMessage', payload);
+  } else {
+    io.emit('chatMessage', payload);
+  }
+}
+
+// ==========================================
+// 🔌 الاتصالات ومعالجة أحداث Socket.io
+// ==========================================
+
+io.on('connection', (socket) => {
+  const clientIP = getClientIP(socket);
+
+  // 1. التحقق من الحظر الباند والطرط قبل السماح بالاتصال
+  const banInfo = bannedIPs.get(clientIP);
+  if (banInfo) {
+    if (banInfo.bannedUntil === 'PERMANENT' || Date.now() < banInfo.bannedUntil) {
+      socket.emit('access_denied', {
+        reason: 'BAN',
+        message: `أنت محظور دائماً أو مؤقتاً من اللعبة. السبب: ${banInfo.reason || 'تحفظ الأدمن بالسبب'}`
+      });
+      return socket.disconnect(true);
+    } else {
+      bannedIPs.delete(clientIP);
+    }
+  }
+
+  const kickInfo = kickedIPs.get(clientIP);
+  if (kickInfo) {
+    if (kickInfo.kickedUntil === 'PERMANENT' || Date.now() < kickInfo.kickedUntil) {
+      socket.emit('access_denied', {
+        reason: 'KICK',
+        message: `تم طردك من الغرفة من قبل الأدمن. السبب: ${kickInfo.reason || 'الأدمن يتحفظ بالسبب'}`,
+        canRequestEntry: true
+      });
+      return socket.disconnect(true);
+    } else {
+      kickedIPs.delete(clientIP);
+    }
+  }
+
+  // 2. التحقق من قفل الغرفة
+  if (roomState.isLocked) {
+    // التعرف التلقائي على الأدمن الأساسي بحسب الـ IP إذا عاد
+    if (superAdminIp && superAdminIp === clientIP) {
+      // السماح بدخول الأدمن الأساسي تلقائياً
+    } else {
+      socket.emit('room_locked_prompt', {
+        message: "الغرفة مغلقة حالياً من قبل الأدمن الأساسي."
+      });
+      // لا نقطع الاتصال فوراً لنسمح بطلب الإذن
+    }
+  }
+
+  // تسجيل اللاعب فور انضمامه
+  socket.on('joinGame', (data) => {
+    const rawName = (data && data.name) ? data.name.trim() : "";
+    const playerName = rawName || `لاعب_${Math.floor(1000 + Math.random() * 9000)}`;
+
+    // التثبت من إمكانية الدخول لو كانت الغرفة مغلقة
+    if (roomState.isLocked && superAdminIp !== clientIP && !socket.isAllowedByAdmin) {
+      return socket.emit('room_locked_prompt', { message: "الغرفة مغلقة. يجب الحصول على إذن الأدمن أولاً." });
+    }
+
+    const playerObj = {
+      id: socket.id,
+      name: playerName,
+      ip: clientIP,
+      score: 0,
+      isAdmin: false,
+      isVip: false,
+      hideAdminBadge: false,
+      isHiddenFromRoom: false,
+      muted: false,
+      frozen: false,
+      blinded: false
+    };
+
+    // التعرف التلقائي الذاتي على الأدمن الأساسي عند إعادة الدخول بنفس الـ IP
+    if (superAdminIp === clientIP) {
+      superAdminSocketId = socket.id;
+      playerObj.isAdmin = true;
+      authenticatedAdmins.add(socket.id);
+      socket.emit('admin:auth_success', { isSuperAdmin: true, autoRestored: true });
+      sendSystemMessage(`👑 عاد الأدمن الأساسي (${playerName}) إلى اللعبة!`);
+    }
+
+    players.set(socket.id, playerObj);
+
+    // إرسال حالة اللعبة الحالية فوراً للاعب الجديد
+    socket.emit('roomState:sync', roomState);
+    socket.emit('ticker:updated', {
+      text: roomState.tickerText,
+      visible: roomState.tickerVisible,
+      speed: roomState.tickerSpeed
+    });
+
+    updatePlayersList();
+    sendSystemMessage(`انضم ${playerName} إلى اللعبة.`);
+  });
+
+  // ==========================================
+  // 🔐 1. مصادقة الأدمن والأدمن الأساسي (Super Admin Logic)
+  // ==========================================
+
+  socket.on('admin:authenticate', (data, callback) => {
+    const response = typeof callback === 'function' ? callback : () => {};
+    const player = players.get(socket.id);
+    if (!player) return response({ success: false, message: "لم يتم العثور على بيانات اللاعب." });
+
+    if (!data || data.password !== ADMIN_PASSWORD) {
+      return response({ success: false, message: "كلمة المرور غير صحيحة!" });
+    }
+
+    // الحالة الأولى: لا يوجد أدمن أساسي محدد بعد (أول شخص يدخل كلمة السر صحيحة)
+    if (!superAdminSocketId) {
+      superAdminSocketId = socket.id;
+      superAdminIp = player.ip;
+      player.isAdmin = true;
       authenticatedAdmins.add(socket.id);
 
-      if (!superAdminSocketId) {
-        superAdminSocketId = socket.id;
-        socket.emit('admin:set_super', { isSuper: true });
-      } else if (superAdminSocketId === socket.id) {
-        socket.emit('admin:set_super', { isSuper: true });
-      } else {
-        socket.emit('admin:set_super', { isSuper: false });
-      }
+      socket.emit('admin:set_super', { isSuper: true });
+      sendSystemMessage(`👑 تم التعرف على (${player.name}) كـ الأدمن الأساسي للعبة!`);
+      logToAudit("تعيين الأدمن الأساسي", player.name, player.name, "أول تسجيل دخول بكلمة السر");
 
-      if (typeof callback === 'function') callback({ success: true });
       updatePlayersList();
+      return response({ success: true, isSuper: true, message: "تم تسجيل دخولك كأدمن أساسي بنجاح." });
+    }
+
+    // إذا كان نفس الأدمن الأساسي يعيد المصادقة
+    if (superAdminSocketId === socket.id || superAdminIp === player.ip) {
+      superAdminSocketId = socket.id;
+      player.isAdmin = true;
+      authenticatedAdmins.add(socket.id);
+      socket.emit('admin:set_super', { isSuper: true });
+      return response({ success: true, isSuper: true });
+    }
+
+    // الحالة الثانية: الأدمن الأساسي موجود بالفعل، يلزم موافقته لدخول أي أدمن إضافي
+    pendingAdminApprovals.set(socket.id, {
+      socketId: socket.id,
+      name: player.name,
+      ip: player.ip
+    });
+
+    // إرسال طلب موافقة للأدمن الأساسي
+    io.to(superAdminSocketId).emit('admin:approval_request', {
+      requestId: socket.id,
+      playerName: player.name,
+      playerIp: player.ip
+    });
+
+    response({ pending: true, message: "تم إرسال طلب الدخول للأدمن الأساسي بانتظار الموافقة..." });
+  });
+
+  // معالجة قرار الأدمن الأساسي بشأن طلبات دخول الأدمنية الفرعيين
+  socket.on('admin:resolve_approval', (data) => {
+    if (socket.id !== superAdminSocketId) return; // حماية: الأدمن الأساسي فقط
+
+    const { requestId, approve } = data;
+    const targetPending = pendingAdminApprovals.get(requestId);
+    if (!targetPending) return;
+
+    const targetSocket = io.sockets.sockets.get(requestId);
+    const targetPlayer = players.get(requestId);
+
+    if (approve) {
+      if (targetPlayer) {
+        targetPlayer.isAdmin = true;
+        authenticatedAdmins.add(requestId);
+        if (targetSocket) {
+          targetSocket.emit('admin:auth_success', { isSuperAdmin: false });
+          targetSocket.emit('admin:set_super', { isSuper: false });
+          sendSystemMessage(`🛡️ وافق الأدمن الأساسي على منح صلاحيات الأدمن للـ (${targetPlayer.name}).`);
+        }
+      }
+      logToAudit("موافقة دخول أدمن", players.get(socket.id)?.name, targetPlayer?.name || requestId);
     } else {
-      if (typeof callback === 'function') callback({ success: false });
+      if (targetSocket) {
+        targetSocket.emit('admin:auth_rejected', { message: "رفض الأدمن الأساسي دخولك إلى لوحة التحكم." });
+      }
+      logToAudit("رفض دخول أدمن", players.get(socket.id)?.name, targetPlayer?.name || requestId);
+    }
+
+    pendingAdminApprovals.delete(requestId);
+    updatePlayersList();
+  });
+
+  // سحب صلاحية الأدمن الفرعي أو إخراجه بواسطة الأدمن الأساسي
+  socket.on('admin:revoke_sub_admin', (data) => {
+    if (socket.id !== superAdminSocketId) return;
+    const { targetPlayerId } = data;
+    
+    if (targetPlayerId === superAdminSocketId) return; // لا يمكن إخراج النفس
+
+    const targetPlayer = players.get(targetPlayerId);
+    if (targetPlayer) {
+      targetPlayer.isAdmin = false;
+      authenticatedAdmins.delete(targetPlayerId);
+      
+      const targetSocket = io.sockets.sockets.get(targetPlayerId);
+      if (targetSocket) {
+        targetSocket.emit('admin:revoked', { message: "تم سحب صلاحيات الأدمن منك بواسطة الأدمن الأساسي." });
+      }
+      sendSystemMessage(`⚠️ قام الأدمن الأساسي بسحب صلاحيات الأدمن من (${targetPlayer.name}).`);
+      logToAudit("سحب صلاحية أدمن", players.get(socket.id)?.name, targetPlayer.name);
+      updatePlayersList();
     }
   });
 
+  // نمط التخفي والتنكر
   socket.on('admin:toggle_stealth', (data) => {
     if (!authenticatedAdmins.has(socket.id)) return;
     const player = players.get(socket.id);
@@ -372,246 +705,436 @@ io.on('connection', (socket) => {
       player.hideAdminBadge = !!data.hideBadge;
       player.isHiddenFromRoom = !!data.hideFromRoom;
       updatePlayersList();
+      logToAudit("تعديل نمط التخفي", player.name, "", `شارة: ${data.hideBadge}, اختفاء: ${data.hideFromRoom}`);
     }
   });
 
   // ==========================================
-  // 👤 2. العقوبات وإدارة اللاعبين
+  // 👤 2. إدارة العقوبات واللاعبين (Ban, Kick, State, Whisper)
   // ==========================================
 
-  socket.on('admin:player:ban', (data) => {
-    if (!authenticatedAdmins.has(socket.id)) return;
-    const { playerId, isPermanent, durationMinutes } = data;
-    const target = players.get(playerId);
-
-    if (target) {
-      const bannedUntil = isPermanent ? 'PERMANENT' : Date.now() + (durationMinutes || 5) * 60 * 1000;
-      bannedIPs.set(target.ip, { bannedUntil });
-
-      const targetSocket = io.sockets.sockets.get(playerId);
-      if (targetSocket) {
-        targetSocket.emit('chatMessage', { system: true, message: 'تم حظرك من اللعبة.' });
-        targetSocket.disconnect(true);
-      }
-      players.delete(playerId);
-      updatePlayersList();
-      io.emit('admin:banned_list_updated', Array.from(bannedIPs.entries()));
-    }
-  });
-
-  socket.on('admin:unban_ip', (ip) => {
-    if (!authenticatedAdmins.has(socket.id)) return;
-    bannedIPs.delete(ip);
-    io.emit('admin:banned_list_updated', Array.from(bannedIPs.entries()));
-  });
-
+  // طرد لاعب مع تحديد السبب وإمكانية طلب الإذن
   socket.on('admin:player:kick', (data) => {
     if (!authenticatedAdmins.has(socket.id)) return;
-    const { playerId, isPermanent, durationMinutes } = data;
+    const { playerId, reason, isPermanent, durationMinutes } = data;
     const target = players.get(playerId);
+    const adminPlayer = players.get(socket.id);
 
     if (target) {
+      const kickReason = (reason && reason.trim()) ? reason.trim() : "الأدمن يتحفظ بالسبب";
       const kickedUntil = isPermanent ? 'PERMANENT' : Date.now() + (durationMinutes || 5) * 60 * 1000;
-      kickedIPs.set(target.ip, { kickedUntil });
+      
+      kickedIPs.set(target.ip, { kickedUntil, reason: kickReason });
 
       const targetSocket = io.sockets.sockets.get(playerId);
       if (targetSocket) {
-        targetSocket.emit('chatMessage', { system: true, message: 'تم طردك من الروم.' });
+        targetSocket.emit('player_kicked_event', {
+          reason: kickReason,
+          message: `تم طردك من اللعبة بواسطة الأدمن. السبب: ${kickReason}`
+        });
         targetSocket.disconnect(true);
       }
+
+      sendSystemMessage(`🚫 قام الأدمن بطرد اللاعب (${target.name}). السبب: ${kickReason}`);
+      logToAudit("طرد لاعب", adminPlayer?.name, target.name, kickReason);
+
       players.delete(playerId);
       updatePlayersList();
-      io.emit('admin:kicked_list_updated', Array.from(kickedIPs.entries()));
     }
   });
 
-  socket.on('admin:unkick_ip', (ip) => {
+  // حظر لاعب نهائياً أو مؤقتاً
+  socket.on('admin:player:ban', (data) => {
     if (!authenticatedAdmins.has(socket.id)) return;
-    kickedIPs.delete(ip);
-    io.emit('admin:kicked_list_updated', Array.from(kickedIPs.entries()));
+    const { playerId, reason, isPermanent, durationMinutes } = data;
+    const target = players.get(playerId);
+    const adminPlayer = players.get(socket.id);
+
+    if (target) {
+      const banReason = (reason && reason.trim()) ? reason.trim() : "الأدمن يتحفظ بالسبب";
+      const bannedUntil = isPermanent ? 'PERMANENT' : Date.now() + (durationMinutes || 10) * 60 * 1000;
+
+      bannedIPs.set(target.ip, { bannedUntil, reason: banReason });
+
+      const targetSocket = io.sockets.sockets.get(playerId);
+      if (targetSocket) {
+        targetSocket.emit('access_denied', {
+          reason: 'BAN',
+          message: `تم حظرك نهائياً من اللعبة. السبب: ${banReason}`
+        });
+        targetSocket.disconnect(true);
+      }
+
+      sendSystemMessage(`⛔ قام الأدمن بحظر اللاعب (${target.name}) من اللعبة. السبب: ${banReason}`);
+      logToAudit("حظر IP", adminPlayer?.name, target.name, banReason);
+
+      players.delete(playerId);
+      updatePlayersList();
+    }
   });
 
+  // طلب إذن الدخول من قبل اللاعب المطرود أو أثناء قفل الغرفة
+  socket.on('room:request_entry', (data) => {
+    const clientIP = getClientIP(socket);
+    const playerName = data?.name || "لاعب مطرود/منتظر";
+    const requestId = socket.id;
+
+    pendingRoomRequests.set(requestId, {
+      socketId: socket.id,
+      ip: clientIP,
+      name: playerName
+    });
+
+    if (superAdminSocketId) {
+      io.to(superAdminSocketId).emit('admin:entry_request_received', {
+        requestId,
+        playerName,
+        ip: clientIP
+      });
+      socket.emit('entry_request_sent', { message: "تم إرسال طلب الدخول للأدمن الأساسي. بانتظار الرد..." });
+    } else {
+      socket.emit('entry_request_failed', { message: "الأدمن الأساسي غير متواجد حالياً." });
+    }
+  });
+
+  // معالجة طلب إذن الدخول من قبل الأدمن الأساسي
+  socket.on('admin:resolve_entry_request', (data) => {
+    if (socket.id !== superAdminSocketId) return;
+    const { requestId, approve, responseMessage } = data;
+    const request = pendingRoomRequests.get(requestId);
+
+    if (!request) return;
+
+    const targetSocket = io.sockets.sockets.get(requestId);
+    if (approve) {
+      // إزالة من قائمة المطرودين وتأييد الدخول
+      kickedIPs.delete(request.ip);
+      if (targetSocket) {
+        targetSocket.isAllowedByAdmin = true;
+        targetSocket.emit('entry_request_approved', {
+          message: responseMessage || "تم قبول طلب دخولك للغرفة من قبل الأدمن!"
+        });
+      }
+      logToAudit("قبول طلب دخول", players.get(socket.id)?.name, request.name);
+    } else {
+      if (targetSocket) {
+        targetSocket.emit('entry_request_rejected', {
+          message: responseMessage || "تم رفض طلب دخولك للغرفة من قبل الأدمن."
+        });
+      }
+      logToAudit("رفض طلب دخول", players.get(socket.id)?.name, request.name, responseMessage);
+    }
+
+    pendingRoomRequests.delete(requestId);
+  });
+
+  // التحكم بالحالات (كتم، تجميد، عمياء، VIP) وإمكانية إلغائها فورياً
   socket.on('admin:player:toggle_state', (data) => {
     if (!authenticatedAdmins.has(socket.id)) return;
-    const { playerId, key } = data;
+    const { playerId, key, stateValue } = data;
     const target = players.get(playerId);
+    const adminPlayer = players.get(socket.id);
 
     if (target && key in target) {
-      target[key] = !target[key];
+      // استخدام القيمة الصريحة أو القلم القلاب (Toggle)
+      target[key] = (typeof stateValue === 'boolean') ? stateValue : !target[key];
 
+      // تأثير العمياء المباشر
       if (key === 'blinded') {
         io.to(playerId).emit('admin:effect:blind', { active: target.blinded });
       }
+
+      // تأثير الـ VIP المباشر مع رسالة الشات النظامية
+      if (key === 'isVip') {
+        if (target.isVip) {
+          sendSystemMessage(`🌟 منح الأدمن رتبة (VIP) للاعب (${target.name}). يستطيع الآن طلب الدخول المباشر لوحة التحكم!`);
+        } else {
+          sendSystemMessage(`ℹ️ تم سحب رتبة (VIP) من اللاعب (${target.name}).`);
+        }
+      }
+
+      logToAudit(`تغيير حالة [${key}]`, adminPlayer?.name, target.name, `الحالة الجديدة: ${target[key]}`);
       updatePlayersList();
     }
   });
 
-  socket.on('admin:player:rename', (data) => {
-    if (!authenticatedAdmins.has(socket.id)) return;
-    const target = players.get(data.playerId);
-    if (target && data.newName) {
-      const oldName = target.name;
-      target.name = data.newName.trim();
-      io.emit('chatMessage', {
-        system: true,
-        message: `📢 أدمن اللعبة غير اسم (${oldName}) إلى (${target.name})`
-      });
-      updatePlayersList();
-    }
-  });
-
-  socket.on('admin:player:adjust_score', (data) => {
-    if (!authenticatedAdmins.has(socket.id)) return;
-    const target = players.get(data.playerId);
-    if (target && !isNaN(data.points)) {
-      target.score += parseInt(data.points);
-      updatePlayersList();
-    }
-  });
-
-  socket.on('admin:player:warn', (data) => {
-    if (!authenticatedAdmins.has(socket.id)) return;
-    io.to(data.playerId).emit('admin:warn_effect', { message: data.message || 'تحذير من الأدمن!' });
-  });
-
+  // نظام الهمس المباشر الموجه وحصريته للأدمن الأساسي
   socket.on('admin:player:whisper', (data) => {
     if (!authenticatedAdmins.has(socket.id)) return;
     const sender = players.get(socket.id);
     const target = players.get(data.playerId);
 
-    if (target) {
+    if (target && data.message) {
+      const msgContent = data.message.trim();
+      
+      // إرسال الرسالة إلى اللاعب المستهدف
       io.to(data.playerId).emit('admin:whisper_received', {
-        message: data.message,
-        from: sender ? sender.name : 'الأدمن'
+        message: msgContent,
+        fromAdminName: sender ? sender.name : "الأدمن الأساسي",
+        fromAdminId: socket.id
       });
-      logToAudit(data.message, sender ? sender.name : 'الأدمن', target.name);
+
+      // توثيق الهمس في سجل المراقبة وتوجيهه للأدمن الأساسي فقط
+      logToAudit("رسالة همس 💬", sender ? sender.name : "الأدمن", target.name, msgContent);
+      
+      socket.emit('admin:whisper_sent_success', {
+        targetName: target.name,
+        message: msgContent
+      });
+    }
+  });
+
+  // رد اللاعب على همس الأدمن
+  socket.on('player:reply_whisper', (data) => {
+    const sender = players.get(socket.id);
+    if (!sender || !data.message) return;
+
+    if (superAdminSocketId) {
+      io.to(superAdminSocketId).emit('admin:whisper_reply_received', {
+        fromPlayerId: socket.id,
+        fromPlayerName: sender.name,
+        message: data.message.trim()
+      });
+
+      logToAudit("رد على الهمس 💬", sender.name, "الأدمن الأساسي", data.message.trim());
+    }
+  });
+
+  // تعديل اسم اللاعب من قبل الأدمن
+  socket.on('admin:player:rename', (data) => {
+    if (!authenticatedAdmins.has(socket.id)) return;
+    const target = players.get(data.playerId);
+    const adminPlayer = players.get(socket.id);
+
+    if (target && data.newName) {
+      const oldName = target.name;
+      target.name = data.newName.trim();
+      
+      sendSystemMessage(`📢 قام الأدمن بتغيير اسم اللاعب من (${oldName}) إلى (${target.name}).`);
+      logToAudit("تغيير اسم لاعب", adminPlayer?.name, target.name, `الاسم السابق: ${oldName}`);
+      updatePlayersList();
+    }
+  });
+
+  // تعديل النقاط مع خيار الخفاء/الإظهار في الشات
+  socket.on('admin:player:adjust_score', (data) => {
+    if (!authenticatedAdmins.has(socket.id)) return;
+    const { playerId, points, silent } = data;
+    const target = players.get(playerId);
+    const adminPlayer = players.get(socket.id);
+
+    if (target && !isNaN(points)) {
+      const pointsNum = parseInt(points);
+      target.score += pointsNum;
+
+      if (!silent) {
+        sendSystemMessage(`🎯 قام الأدمن بـ (${pointsNum >= 0 ? 'زيادة' : 'إنقاص'}) نقاط اللاعب (${target.name}) بمقدار [${Math.abs(pointsNum)}] نقطة.`);
+      }
+
+      logToAudit("تعديل نقاط", adminPlayer?.name, target.name, `التغيير: ${pointsNum}, النقاط الكلية: ${target.score}`);
+      updatePlayersList();
     }
   });
 
   // ==========================================
-  // 🎯 3. التحكم بالجولات والروم
+  // 🎯 3. التحكم بالجولات والروم وإعداها المتقدمة
   // ==========================================
-  socket.on('admin:room:skip_word', () => {
+
+  // قفل / فتح الغرفة
+  socket.on('admin:room:toggle_lock', () => {
     if (!authenticatedAdmins.has(socket.id)) return;
-    chooseNewWord();
+    roomState.isLocked = !roomState.isLocked;
+    
+    if (roomState.isLocked) {
+      sendSystemMessage("🔒 قام الأدمن بقفل الغرفة. لن يستطيع أي لاعب جديد الدخول بدون إذن.");
+    } else {
+      sendSystemMessage("🔓 قام الأدمن بفتح الغرفة للجميع.");
+    }
+
+    io.emit('roomState:sync', roomState);
+    logToAudit("تغيير قفل الغرفة", players.get(socket.id)?.name, "", roomState.isLocked ? "مغلقة" : "مفتوحة");
   });
 
-  socket.on('admin:room:set_custom_word', (data) => {
-    if (!authenticatedAdmins.has(socket.id) || !data || !data.word) return;
-    roomState.nextCustomWord = data.word.trim();
-  });
-
+  // كتم الشات العام وتحديد استثناء الأدمن الأساسي
   socket.on('admin:room:toggle_mute_all', () => {
     if (!authenticatedAdmins.has(socket.id)) return;
     roomState.isMutedAll = !roomState.isMutedAll;
+
+    if (roomState.isMutedAll) {
+      sendSystemMessage("🔇 قام الأدمن بكتم الشات العام. الأدمن الأساسي فقط هو من يستطيع الكتابة الآن!");
+    } else {
+      sendSystemMessage("🔊 تم فك الكتم العام. الجميع يستطيع التحدث الآن!");
+    }
+
     io.emit('roomState:sync', roomState);
+    logToAudit("كتم الجميع", players.get(socket.id)?.name, "", roomState.isMutedAll ? "مفعل" : "معطل");
   });
 
-  socket.on('admin:room:allow_mute_bypass', (data) => {
+  // تجميد جميع اللاعبين
+  socket.on('admin:room:toggle_freeze_all', () => {
     if (!authenticatedAdmins.has(socket.id)) return;
-    if (data.allow) allowedMuteBypass.add(data.playerId);
-    else allowedMuteBypass.delete(data.playerId);
+    roomState.isFrozenAll = !roomState.isFrozenAll;
+
+    players.forEach((p, sId) => {
+      if (sId !== superAdminSocketId) {
+        p.frozen = roomState.isFrozenAll;
+      }
+    });
+
+    if (roomState.isFrozenAll) {
+      sendSystemMessage("❄️ قام الأدمن بتجميد جميع اللاعبين في الغرفة!");
+    } else {
+      sendSystemMessage("🔥 قام الأدمن بفك التجميد عن الجميع!");
+    }
+
+    updatePlayersList();
+    logToAudit("تجميد الجميع", players.get(socket.id)?.name, "", roomState.isFrozenAll ? "مفعل" : "معطل");
   });
 
-  socket.on('admin:room:toggle_double_round', () => {
+  // طرد جميع اللاعبين العاديين
+  socket.on('admin:room:kick_all', () => {
     if (!authenticatedAdmins.has(socket.id)) return;
-    roomState.isDoubleRound = !roomState.isDoubleRound;
-    io.emit('roomState:sync', roomState);
+    const adminPlayer = players.get(socket.id);
+
+    players.forEach((p, sId) => {
+      if (!p.isAdmin && sId !== superAdminSocketId) {
+        const targetSocket = io.sockets.sockets.get(sId);
+        if (targetSocket) {
+          targetSocket.emit('player_kicked_event', {
+            reason: 'طرد جماعي من قبل الأدمن',
+            message: 'تم تطبيق طرد جماعي للغرفة من قبل الأدمن.'
+          });
+          targetSocket.disconnect(true);
+        }
+        players.delete(sId);
+      }
+    });
+
+    sendSystemMessage("🧹 قام الأدمن بطرد جميع اللاعبين غير الأدمنية من الغرفة.");
+    logToAudit("طرد جماعي", adminPlayer?.name, "جميع اللاعبين");
+    updatePlayersList();
   });
 
+  // إطلاق الموت المفاجئ
   socket.on('admin:room:trigger_sudden_death', (data) => {
     if (!authenticatedAdmins.has(socket.id)) return;
     roomState.isSuddenDeath = true;
-    roomState.suddenDeathTimer = data.timer || 30;
-    roomState.suddenDeathRequiredAnswers = data.requiredAnswers || 1;
+    roomState.suddenDeathTimer = data?.timer || 30;
+    roomState.suddenDeathRequiredAnswers = data?.requiredAnswers || 1;
+
     io.emit('game:sudden_death_started', {
       timer: roomState.suddenDeathTimer,
       required: roomState.suddenDeathRequiredAnswers
     });
+
+    sendSystemMessage(`⚡ تم تفعيل جولة الموت المفاجئ! الوقت: [${roomState.suddenDeathTimer}] ثانية.`);
+    logToAudit("تفعيل الموت المفاجئ", players.get(socket.id)?.name);
   });
 
+  // تحديث إعدادات النقاط والفائزين
   socket.on('admin:room:update_settings', (data) => {
     if (!authenticatedAdmins.has(socket.id)) return;
     if (data.winningScore) roomState.winningScore = parseInt(data.winningScore);
-    if (data.pointsMode) roomState.pointsMode = data.pointsMode;
     if (data.pointsPerAnswer) roomState.pointsPerAnswer = parseInt(data.pointsPerAnswer);
+    if (data.maxCorrectAnswersPerRound) roomState.maxCorrectAnswersPerRound = parseInt(data.maxCorrectAnswersPerRound);
+
     io.emit('roomState:sync', roomState);
+    sendSystemMessage(`⚙️ تم تحديث إعدادات الغرفة (نقاط الفوز: ${roomState.winningScore} | النقاط للإجابة: ${roomState.pointsPerAnswer} | أقصى عدد للمستجيبين: ${roomState.maxCorrectAnswersPerRound}).`);
+    logToAudit("تحديث إعدادات اللعبة", players.get(socket.id)?.name);
   });
 
-  socket.on('admin:room:reset_scores', () => {
-    if (!authenticatedAdmins.has(socket.id)) return;
-    players.forEach(p => p.score = 0);
-    updatePlayersList();
-  });
-
-  socket.on('admin:room:toggle_lock', () => {
-    if (!authenticatedAdmins.has(socket.id)) return;
-    roomState.isLocked = !roomState.isLocked;
-    io.emit('roomState:sync', roomState);
-  });
-
-  socket.on('admin:broadcast:send', (data) => {
-    if (!authenticatedAdmins.has(socket.id)) return;
-    io.emit('broadcast:received', { message: data.message });
-  });
-
+  // التحكم بشريط الأخبار العائم وسرعته
   socket.on('admin:ticker:update', (data) => {
     if (!authenticatedAdmins.has(socket.id)) return;
-    roomState.tickerText = data.text;
-    roomState.tickerVisible = data.visible;
-    io.emit('ticker:updated', { text: roomState.tickerText, visible: roomState.tickerVisible });
+    if (typeof data.text === 'string') roomState.tickerText = data.text.trim();
+    if (typeof data.visible === 'boolean') roomState.tickerVisible = data.visible;
+    if (data.speed) roomState.tickerSpeed = parseInt(data.speed);
+
+    io.emit('ticker:updated', {
+      text: roomState.tickerText,
+      visible: roomState.tickerVisible,
+      speed: roomState.tickerSpeed
+    });
+
+    logToAudit("تحديث الشريط الإخباري", players.get(socket.id)?.name, "", `نص: ${roomState.tickerText}`);
+  });
+
+  // إرسال الإعلان المنبثق الجماعي
+  socket.on('admin:broadcast:send', (data) => {
+    if (!authenticatedAdmins.has(socket.id)) return;
+    if (data && data.message) {
+      io.emit('broadcast:received', {
+        message: data.message.trim(),
+        adminName: players.get(socket.id)?.name || "الأدمن"
+      });
+      logToAudit("إعلان منبثق", players.get(socket.id)?.name, "جميع اللاعبين", data.message);
+    }
   });
 
   // ==========================================
-  // 💬 الشات العادي
+  // 💬 الشات العام ومعالجة الإجابات
   // ==========================================
   socket.on('sendMessage', (msg) => {
     const player = players.get(socket.id);
     if (!player || player.frozen) return;
 
-    if (roomState.isMutedAll && !player.isAdmin && !allowedMuteBypass.has(socket.id)) return;
-    if (player.muted) return;
+    // منع الكتم العام إلا للأدمن الأساسي
+    if (roomState.isMutedAll && socket.id !== superAdminSocketId && !allowedMuteBypass.has(socket.id)) {
+      return socket.emit('chatMessage', { system: true, message: "⚠️ الشات العام مكتوم حالياً من قبل الأدمن." });
+    }
 
-    const message = msg.trim();
+    if (player.muted) {
+      return socket.emit('chatMessage', { system: true, message: "⚠️ أنت مكتوم من الكتابة بواسطة الأدمن." });
+    }
+
+    const message = msg ? msg.trim() : "";
     if (!message) return;
 
     let displayName = player.name;
     if (player.isAdmin && !player.hideAdminBadge) {
-      displayName = `[الأدمن] ${player.name}`;
+      displayName = socket.id === superAdminSocketId ? `[👑 الأدمن الأساسي] ${player.name}` : `[🛡️ أدمن] ${player.name}`;
+    } else if (player.isVip) {
+      displayName = `[🌟 VIP] ${player.name}`;
     }
 
-    io.emit('chatMessage', { name: displayName, message, system: false, color: player.color });
+    io.emit('chatMessage', {
+      id: socket.id,
+      name: displayName,
+      message,
+      system: false,
+      isVip: player.isVip,
+      isAdmin: player.isAdmin
+    });
   });
 
   // ==========================================
-  // 🚪 الانفصال
+  // 🚪 الانفصال (Disconnect Logic)
   // ==========================================
   socket.on('disconnect', () => {
     const player = players.get(socket.id);
     if (player) {
-      typingUsers.delete(player.name);
-      io.emit('typing', [...typingUsers]);
-      sendSystemMessage(`${player.name} خرج من اللعبة.`);
+      sendSystemMessage(`غادر ${player.name} اللعبة.`);
       players.delete(socket.id);
     }
 
+    // عدم تصفير superAdminIp لنضمن التعرف الذاتي عليه فور عودته بنفس الـ IP
     if (superAdminSocketId === socket.id) {
       superAdminSocketId = null;
+      sendSystemMessage("⚠️ خرج الأدمن الأساسي من اللعبة (النظام يحتفظ بصلاحياته عند عودته).");
     }
+
     authenticatedAdmins.delete(socket.id);
     allowedMuteBypass.delete(socket.id);
-    updatePlayersList();
+    pendingAdminApprovals.delete(socket.id);
+    pendingRoomRequests.delete(socket.id);
 
-    if (players.size === 0) {
-      roomState.currentWord = '';
-      if (wordTimer) {
-        clearTimeout(wordTimer);
-        wordTimer = null;
-      }
-    }
+    updatePlayersList();
   });
 });
 
-app.get('/ping', (req, res) => res.status(200).send('alive'));
+// مسار الفحص والإنعاش للسيرفر
+app.get('/ping', (req, res) => res.status(200).send('Server active'));
 
-server.listen(PORT, () => console.log(`🚀 Server running successfully on port: ${PORT}`));
+server.listen(PORT, () => {
+  console.log(`🚀 السيرفر يعمل بنجاح وكفاءة عالية على المنفذ: ${PORT}`);
+});
