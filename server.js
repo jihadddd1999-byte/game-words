@@ -1,6 +1,5 @@
 /* ==========================================================================
-   🛡️ سيرفر لعبة الكلمات السريعة - النسخة الكاملة والمصادقة بالكامل
-   كلمة السر: 20018151070792005932
+   🛡️ سيرفر لعبة الكلمات السريعة - النسخة المحدثة والمعدلة بالكامل
    ========================================================================== */
 
 const express = require('express');
@@ -20,7 +19,7 @@ const MAX_PLAYERS = 30;
 
 app.use(express.static(path.join(__dirname, 'public')));
 
-// قائمة الكلمات الكاملة
+// قائمة الكلمات
 const words = [
   "قلب","رمح","عشب","صندوق","حبل","اشارة مرور","ثعلب","يضحك","قنفذ","علم","بقرة","كلب","شبح","قنبلة","نعامة","سجق","ديك","قطايف","روبوت","بطة",
   "يمشي","ابرة","ذئب","نافذة","فرشة","صحن","بطريق","ملك","سكر","برج ايفل","مزرعة","ملفوف","روبيان","مكة","مندي","ثلج","ذبابة","طاولة",
@@ -48,7 +47,6 @@ const words = [
   "كمبيوتر","ملوخية","قميص","مرحاض","فم","صقر"
 ];
 
-// ألوان الأسماء الخاصة
 const specialNamesColors = {
   "جهاد": "#00ffe7",
   "زيزو": "#ff3366",
@@ -69,7 +67,6 @@ let superAdminSocketId = null;
 const bannedIPs = new Map();           
 const kickedIPs = new Map();           
 const pendingJoinRequests = new Map(); 
-const allowedMuteBypass = new Set();   
 const typingUsers = new Set();
 
 let wordTimer = null;
@@ -88,6 +85,7 @@ const roomState = {
   currentWord: '',
   nextCustomWord: '',
   tickerText: 'مرحباً بكم في لعبة الكلمات السريعة!',
+  tickerSpeed: 15,
   tickerVisible: true
 };
 
@@ -116,6 +114,8 @@ function chooseNewWord() {
 function getFormattedPlayersList(forAdmin = false) {
   const list = [];
   players.forEach((p) => {
+    // حل مشكلة ظهور اليوزر التلقائي: لا يظهر اللاعب في القائمة للجميع إلا إذا قام بإدخال اسم صريح
+    if (!p.isNamed) return; 
     if (!forAdmin && p.isHiddenFromRoom) return;
 
     let displayName = p.name;
@@ -135,6 +135,7 @@ function getFormattedPlayersList(forAdmin = false) {
       blinded: !!p.blinded,
       canDraw: p.canDraw !== undefined ? p.canDraw : true,
       isAdmin: !!p.isAdmin,
+      isSuperAdmin: p.id === superAdminSocketId,
       hideAdminBadge: !!p.hideAdminBadge,
       isHiddenFromRoom: !!p.isHiddenFromRoom,
       color: specialNamesColors[p.name] || p.color || '#00e5ff'
@@ -161,7 +162,7 @@ function logToAudit(message, sender = 'النظام', target = 'الكل') {
   authenticatedAdmins.forEach(adminId => {
     io.to(adminId).emit('admin:notify', {
       type: 'audit',
-      message: `[${sender} -> ${target}]: ${message}`
+      message: `[${sender} ➔ ${target}]: ${message}`
     });
   });
   if (superAdminSocketId) {
@@ -195,7 +196,7 @@ io.on('connection', (socket) => {
   if (bannedIPs.has(clientIP)) {
     const banData = bannedIPs.get(clientIP);
     if (banData.bannedUntil === 'PERMANENT' || now < banData.bannedUntil) {
-      socket.emit('chatMessage', { system: true, message: 'أنت محظور بشكل دائم أو مؤقت من دخول اللعبة.' });
+      socket.emit('accessDenied', { reason: 'banned', message: `أنت محظور من اللعبة. السبب: ${banData.reason || 'بدون سبب'}` });
       socket.disconnect(true);
       return;
     } else {
@@ -203,42 +204,71 @@ io.on('connection', (socket) => {
     }
   }
 
-  // 2. فحص الطرد
+  // 2. فحص الطرد ونظام الاستئذان
   if (kickedIPs.has(clientIP)) {
     const kickData = kickedIPs.get(clientIP);
     if (kickData.kickedUntil === 'PERMANENT' || now < kickData.kickedUntil) {
-      socket.emit('chatMessage', { system: true, message: 'أنت مطرود من الروم حالياً.' });
-      socket.disconnect(true);
+      socket.emit('accessDenied', { 
+        reason: 'kicked', 
+        message: `تم طردك من الروم. السبب: ${kickData.reason || 'بدون سبب'}`,
+        canRequestPermission: true
+      });
+      
+      socket.on('requestJoinPermission', (data) => {
+        const requestId = `req_kick_${Date.now()}_${Math.random().toString(36).substr(2, 5)}`;
+        pendingJoinRequests.set(requestId, { socketId: socket.id, ip: clientIP, name: data.name || 'لاعب مطرود' });
+        
+        if (superAdminSocketId) {
+          io.to(superAdminSocketId).emit('admin:join_request', {
+            requestId,
+            ip: clientIP,
+            name: data.name || 'لاعب مطرود',
+            type: 'kicked'
+          });
+        }
+      });
       return;
     } else {
       kickedIPs.delete(clientIP);
     }
   }
 
-  // 3. فحص قفل الروم والعدد الأقصى
+  // 3. فحص قفل الغرفة
   if (roomState.isLocked) {
-    const requestId = `req_${Date.now()}_${Math.random().toString(36).substr(2, 5)}`;
-    pendingJoinRequests.set(requestId, { socketId: socket.id, ip: clientIP });
-
-    authenticatedAdmins.forEach(adminId => {
-      io.to(adminId).emit('admin:join_request', {
-        requestId,
-        ip: clientIP,
-        name: 'زائر جديد'
-      });
+    socket.emit('accessDenied', { 
+      reason: 'room_locked', 
+      message: 'الغرفة مغلقة حالياً بقرار من الأدمن.',
+      canRequestPermission: true
     });
+
+    socket.on('requestJoinPermission', (data) => {
+      const requestId = `req_lock_${Date.now()}_${Math.random().toString(36).substr(2, 5)}`;
+      pendingJoinRequests.set(requestId, { socketId: socket.id, ip: clientIP, name: data.name || 'زائر' });
+
+      if (superAdminSocketId) {
+        io.to(superAdminSocketId).emit('admin:join_request', {
+          requestId,
+          ip: clientIP,
+          name: data.name || 'زائر',
+          type: 'room_locked'
+        });
+      }
+    });
+    return;
   }
 
   if (players.size >= MAX_PLAYERS) {
-    socket.emit('chatMessage', { system: true, message: 'الغرفة مكتملة العدد.' });
+    socket.emit('accessDenied', { reason: 'full', message: 'الغرفة مكتملة العدد حالياً.' });
     socket.disconnect(true);
     return;
   }
 
+  // لاعب جديد (isNamed: false لمنع ظهوره تلقائياً في قائمة المتصدرين)
   const newPlayer = {
     id: socket.id,
     ip: clientIP,
-    name: `لاعب_${socket.id.substring(0, 4)}`,
+    name: '',
+    isNamed: false,
     score: 0,
     wins: 0,
     canAnswer: true,
@@ -256,9 +286,8 @@ io.on('connection', (socket) => {
   players.set(socket.id, newPlayer);
 
   socket.emit('welcome', { id: socket.id });
-  socket.emit('ticker:updated', { text: roomState.tickerText, visible: roomState.tickerVisible });
+  socket.emit('ticker:updated', { text: roomState.tickerText, speed: roomState.tickerSpeed, visible: roomState.tickerVisible });
   socket.emit('roomState:sync', roomState);
-  sendSystemMessage(`${newPlayer.name} دخل اللعبة.`);
 
   if (!roomState.currentWord) chooseNewWord();
   else {
@@ -266,10 +295,8 @@ io.on('connection', (socket) => {
     socket.emit('updateScore', newPlayer.score);
   }
 
-  updatePlayersList();
-
   // ==========================================
-  // 🔐 إدارة مصادقة الأدمن والتخفي
+  // 🔐 إدارة الأدمن والتشفير والأدمن الأساسي
   // ==========================================
   socket.on('admin:authenticate', (data, callback) => {
     if (data && data.password === ADMIN_PASSWORD) {
@@ -278,16 +305,21 @@ io.on('connection', (socket) => {
 
       authenticatedAdmins.add(socket.id);
 
+      // تعيين الأدمن الأساسي الأول
+      let isFirstSuper = false;
       if (!superAdminSocketId) {
         superAdminSocketId = socket.id;
-        socket.emit('admin:set_super', { isSuper: true });
-      } else {
-        socket.emit('admin:set_super', { isSuper: superAdminSocketId === socket.id });
+        isFirstSuper = true;
+        sendSystemMessage(`👑 ترحيب خاص بالأدمن الأساسي (${player ? player.name : 'الأدمن'})!`);
       }
 
-      if (typeof callback === 'function') callback({ success: true });
+      socket.emit('admin:set_super', { isSuper: socket.id === superAdminSocketId });
+
+      if (typeof callback === 'function') callback({ success: true, isSuper: socket.id === superAdminSocketId });
       updatePlayersList();
       broadcastPunishmentLists();
+      
+      logToAudit('تسجيل دخول بصلاحيات الأدمن', player ? player.name : 'أدمن');
     } else {
       if (typeof callback === 'function') callback({ success: false });
     }
@@ -308,31 +340,7 @@ io.on('connection', (socket) => {
   });
 
   // ==========================================
-  // 🎨 استوديو الرسم
-  // ==========================================
-  socket.on('draw-data', (data) => {
-    const player = players.get(socket.id);
-    if (player && player.canDraw) {
-      socket.broadcast.emit('draw-remote', data);
-    }
-  });
-
-  socket.on('clear-board-all', (data) => {
-    const player = players.get(socket.id);
-    if (player && player.canDraw) {
-      io.emit('clear-board-remote', data);
-    }
-  });
-
-  socket.on('load-gallery-all', (imgData) => {
-    const player = players.get(socket.id);
-    if (player && player.canDraw) {
-      socket.broadcast.emit('load-remote', imgData);
-    }
-  });
-
-  // ==========================================
-  // 💬 الشات وإعدادات الاسم والإجابات
+  // 💬 الشات وتسمية اللاعبين
   // ==========================================
   socket.on('setName', (data) => {
     if (!data || typeof data.name !== 'string') return;
@@ -341,6 +349,7 @@ io.on('connection', (socket) => {
 
     const oldName = player.name;
     player.name = data.name.trim().substring(0, 20);
+    player.isNamed = true; // الآن يتم إظهاره في قائمة اللاعبين المتصدرين
 
     if (specialNamesColors[player.name]) {
       player.color = specialNamesColors[player.name];
@@ -351,23 +360,24 @@ io.on('connection', (socket) => {
     }
 
     updatePlayersList();
-    sendSystemMessage(`${oldName} غير اسمه إلى ${player.name}`);
-
-    if (player.name === "كول") {
-      socket.emit('chatMessage', { system: true, message: "🌸 أهلاً كول! نورتِ اللعبة 🤍" });
+    if (oldName) {
+      sendSystemMessage(`${oldName} غير اسمه إلى ${player.name}`);
+      logToAudit(`تغيير الاسم من ${oldName} إلى ${player.name}`, player.name);
+    } else {
+      sendSystemMessage(`${player.name} دخل اللعبة.`);
     }
   });
 
   socket.on('typing', () => {
     const player = players.get(socket.id);
-    if (!player) return;
+    if (!player || !player.isNamed) return;
     typingUsers.add(player.name);
     io.emit('typing', [...typingUsers]);
   });
 
   socket.on('stopTyping', () => {
     const player = players.get(socket.id);
-    if (!player) return;
+    if (!player || !player.isNamed) return;
     typingUsers.delete(player.name);
     io.emit('typing', [...typingUsers]);
   });
@@ -376,8 +386,10 @@ io.on('connection', (socket) => {
     const player = players.get(socket.id);
     if (!player || player.frozen) return;
 
-    if (roomState.isMutedAll && !player.isAdmin && !allowedMuteBypass.has(socket.id)) return;
-    if (player.muted) return;
+    // استثناء الأدمن الأساسي من الكتم العام
+    const isSuperAdmin = socket.id === superAdminSocketId;
+    if (roomState.isMutedAll && !isSuperAdmin) return;
+    if (player.muted && !isSuperAdmin) return;
 
     const message = typeof msg === 'string' ? msg.trim() : '';
     if (!message) return;
@@ -390,6 +402,43 @@ io.on('connection', (socket) => {
     io.emit('chatMessage', { name: displayName, message, system: false, color: player.color });
   });
 
+  // ==========================================
+  // 🤫 نظام الهمس المباشر والرد
+  // ==========================================
+  socket.on('admin:player:whisper', (data) => {
+    if (!authenticatedAdmins.has(socket.id)) return;
+    const sender = players.get(socket.id);
+    const target = players.get(data.playerId);
+
+    if (target) {
+      io.to(data.playerId).emit('whisper:received', {
+        fromId: socket.id,
+        fromName: sender ? sender.name : 'الأدمن',
+        message: data.message
+      });
+      
+      logToAudit(`همس إلى [${target.name}]: "${data.message}"`, sender ? sender.name : 'الأدمن', target.name);
+    }
+  });
+
+  socket.on('player:whisper:reply', (data) => {
+    const sender = players.get(socket.id);
+    const target = players.get(data.targetId);
+
+    if (sender && target) {
+      io.to(data.targetId).emit('whisper:received', {
+        fromId: socket.id,
+        fromName: sender.name,
+        message: data.message
+      });
+
+      logToAudit(`رد همس إلى [${target.name}]: "${data.message}"`, sender.name, target.name);
+    }
+  });
+
+  // ==========================================
+  // 🎮 نظام الإجابات واللعبة
+  // ==========================================
   socket.on('submitAnswer', (data) => {
     const player = players.get(socket.id);
     if (!player || !data || typeof data.answer !== 'string' || !player.canAnswer || player.frozen) return;
@@ -431,21 +480,31 @@ io.on('connection', (socket) => {
   });
 
   // ==========================================
-  // 👤 العقوبات والتحكم باللاعبين (للأدمن)
+  // 👤 العقوبات الفردية (الطرد والمنع مع السبب)
   // ==========================================
-  socket.on('admin:player:ban', (data) => {
+  socket.on('admin:player:kick', (data) => {
     if (!authenticatedAdmins.has(socket.id)) return;
-    const { playerId, isPermanent, duration, durationMinutes, autoReentry } = data;
+    const { playerId, isPermanent, durationMinutes, reason } = data;
     const target = players.get(playerId);
-    const mins = duration || durationMinutes || 5;
+    const admin = players.get(socket.id);
+    const mins = durationMinutes || 5;
 
     if (target) {
-      const bannedUntil = isPermanent ? 'PERMANENT' : Date.now() + mins * 60 * 1000;
-      bannedIPs.set(target.ip, { bannedUntil, autoReentry: !!autoReentry, name: target.name });
+      const kickedUntil = isPermanent ? 'PERMANENT' : Date.now() + mins * 60 * 1000;
+      const kickReason = reason || 'بدون سبب محدد';
+      
+      kickedIPs.set(target.ip, { kickedUntil, reason: kickReason, name: target.name });
+
+      sendSystemMessage(`🚪 تم طرد اللاعب (${target.name}) من قبل الأدمن. السبب: ${kickReason}`);
+      logToAudit(`طرد اللاعب [${target.name}] - السبب: ${kickReason}`, admin ? admin.name : 'الأدمن', target.name);
 
       const targetSocket = io.sockets.sockets.get(playerId);
       if (targetSocket) {
-        targetSocket.emit('chatMessage', { system: true, message: 'تم حظرك من اللعبة بواسطة الأدمن.' });
+        targetSocket.emit('accessDenied', {
+          reason: 'kicked',
+          message: `تم طردك من الروم. السبب: ${kickReason}`,
+          canRequestPermission: true
+        });
         targetSocket.disconnect(true);
       }
       players.delete(playerId);
@@ -454,25 +513,28 @@ io.on('connection', (socket) => {
     }
   });
 
-  socket.on('admin:unban_ip', (ip) => {
+  socket.on('admin:player:ban', (data) => {
     if (!authenticatedAdmins.has(socket.id)) return;
-    bannedIPs.delete(ip);
-    broadcastPunishmentLists();
-  });
-
-  socket.on('admin:player:kick', (data) => {
-    if (!authenticatedAdmins.has(socket.id)) return;
-    const { playerId, isPermanent, duration, durationMinutes, autoReentry } = data;
+    const { playerId, isPermanent, durationMinutes, reason } = data;
     const target = players.get(playerId);
-    const mins = duration || durationMinutes || 5;
+    const admin = players.get(socket.id);
+    const mins = durationMinutes || 5;
 
     if (target) {
-      const kickedUntil = isPermanent ? 'PERMANENT' : Date.now() + mins * 60 * 1000;
-      kickedIPs.set(target.ip, { kickedUntil, autoReentry: !!autoReentry, name: target.name });
+      const bannedUntil = isPermanent ? 'PERMANENT' : Date.now() + mins * 60 * 1000;
+      const banReason = reason || 'بدون سبب محدد';
+
+      bannedIPs.set(target.ip, { bannedUntil, reason: banReason, name: target.name });
+
+      sendSystemMessage(`🔨 تم حظر اللاعب (${target.name}) نهائياً/مؤقتاً. السبب: ${banReason}`);
+      logToAudit(`حظر اللاعب [${target.name}] - السبب: ${banReason}`, admin ? admin.name : 'الأدمن', target.name);
 
       const targetSocket = io.sockets.sockets.get(playerId);
       if (targetSocket) {
-        targetSocket.emit('chatMessage', { system: true, message: 'تم طردك من الروم.' });
+        targetSocket.emit('accessDenied', {
+          reason: 'banned',
+          message: `أنت محظور من دخول اللعبة. السبب: ${banReason}`
+        });
         targetSocket.disconnect(true);
       }
       players.delete(playerId);
@@ -485,14 +547,27 @@ io.on('connection', (socket) => {
     if (!authenticatedAdmins.has(socket.id)) return;
     kickedIPs.delete(ip);
     broadcastPunishmentLists();
+    logToAudit(`إلغاء طرد الـ IP: ${ip}`);
   });
 
+  socket.on('admin:unban_ip', (ip) => {
+    if (!authenticatedAdmins.has(socket.id)) return;
+    bannedIPs.delete(ip);
+    broadcastPunishmentLists();
+    logToAudit(`إلغاء حظر الـ IP: ${ip}`);
+  });
+
+  // ==========================================
+  // ⚡ العقوبات المباشرة (كتم، تجميد، عمياء، VIP)
+  // ==========================================
   socket.on('admin:player:toggle_mute', (data) => {
     if (!authenticatedAdmins.has(socket.id)) return;
     const target = players.get(data.playerId);
     if (target) {
-      target.muted = !target.muted;
+      target.muted = data.state !== undefined ? data.state : !target.muted;
+      io.to(data.playerId).emit('admin:effect:mute', { active: target.muted });
       updatePlayersList();
+      logToAudit(`${target.muted ? 'كتم' : 'إلغاء كتم'} اللاعب`, 'الأدمن', target.name);
     }
   });
 
@@ -500,8 +575,10 @@ io.on('connection', (socket) => {
     if (!authenticatedAdmins.has(socket.id)) return;
     const target = players.get(data.playerId);
     if (target) {
-      target.frozen = !target.frozen;
+      target.frozen = data.state !== undefined ? data.state : !target.frozen;
+      io.to(data.playerId).emit('admin:effect:freeze', { active: target.frozen });
       updatePlayersList();
+      logToAudit(`${target.frozen ? 'تجميد' : 'إلغاء تجميد'} اللاعب`, 'الأدمن', target.name);
     }
   });
 
@@ -509,9 +586,10 @@ io.on('connection', (socket) => {
     if (!authenticatedAdmins.has(socket.id)) return;
     const target = players.get(data.playerId);
     if (target) {
-      target.blinded = !target.blinded;
+      target.blinded = data.state !== undefined ? data.state : !target.blinded;
       io.to(data.playerId).emit('admin:effect:blind', { active: target.blinded });
       updatePlayersList();
+      logToAudit(`${target.blinded ? 'تفعيل الوضع العمياء على' : 'إلغاء الوضع العمياء عن'} اللاعب`, 'الأدمن', target.name);
     }
   });
 
@@ -519,90 +597,35 @@ io.on('connection', (socket) => {
     if (!authenticatedAdmins.has(socket.id)) return;
     const target = players.get(data.playerId);
     if (target) {
-      target.isVip = !target.isVip;
+      target.isVip = data.state !== undefined ? data.state : !target.isVip;
       updatePlayersList();
-    }
-  });
-
-  socket.on('admin:player:rename', (data) => {
-    if (!authenticatedAdmins.has(socket.id)) return;
-    const target = players.get(data.playerId);
-    if (target && data.newName) {
-      const oldName = target.name;
-      target.name = data.newName.trim();
-      sendSystemMessage(`📢 تغيير اسم (${oldName}) إلى (${target.name}) بواسطة الأدمن`);
-      updatePlayersList();
-    }
-  });
-
-  socket.on('admin:player:adjust_score', (data) => {
-    if (!authenticatedAdmins.has(socket.id)) return;
-    const target = players.get(data.playerId);
-    if (target && !isNaN(data.points)) {
-      target.score += parseInt(data.points);
-      updatePlayersList();
-    }
-  });
-
-  socket.on('admin:player:whisper', (data) => {
-    if (!authenticatedAdmins.has(socket.id)) return;
-    const sender = players.get(socket.id);
-    const target = players.get(data.playerId);
-
-    if (target) {
-      io.to(data.playerId).emit('admin:notify', {
-        type: 'whisper',
-        message: data.message,
-        from: sender ? sender.name : 'الأدمن'
-      });
-      logToAudit(data.message, sender ? sender.name : 'الأدمن', target.name);
-    }
-  });
-
-  socket.on('admin:handle_join_request', (data) => {
-    if (!authenticatedAdmins.has(socket.id)) return;
-    const { requestId, approve } = data;
-    const reqInfo = pendingJoinRequests.get(requestId);
-
-    if (reqInfo) {
-      io.to(reqInfo.socketId).emit('joinPermissionResponse', {
-        approved: approve,
-        message: approve ? 'تم قبول طلبك!' : 'تم رفض طلب انضمامك للروم.'
-      });
-      pendingJoinRequests.delete(requestId);
+      logToAudit(`${target.isVip ? 'منح شارة VIP لـ' : 'سحب شارة VIP من'} اللاعب`, 'الأدمن', target.name);
     }
   });
 
   // ==========================================
-  // 🎯 التحكم بالأحداث والروم (للأدمن)
+  // ⚙️ التحكم بالروم والأحداث العامة
   // ==========================================
-  socket.on('admin:room:skip_word', () => {
-    if (!authenticatedAdmins.has(socket.id)) return;
-    chooseNewWord();
-  });
-
-  socket.on('admin:room:set_custom_word', (data) => {
-    if (!authenticatedAdmins.has(socket.id) || !data || !data.word) return;
-    roomState.nextCustomWord = data.word.trim();
-  });
-
   socket.on('admin:room:toggle_mute_all', () => {
     if (!authenticatedAdmins.has(socket.id)) return;
     roomState.isMutedAll = !roomState.isMutedAll;
     io.emit('roomState:sync', roomState);
+    sendSystemMessage(roomState.isMutedAll ? '🔒 تم كتم الشات العام عن الجميع.' : '🔓 تم فتح الشات العام للجميع.');
+    logToAudit(`${roomState.isMutedAll ? 'تفعيل' : 'إلغاء'} كتم الجميع`);
   });
 
   socket.on('admin:room:toggle_freeze_all', () => {
     if (!authenticatedAdmins.has(socket.id)) return;
     roomState.isFrozenAll = !roomState.isFrozenAll;
-    players.forEach(p => { if (!p.isAdmin) p.frozen = roomState.isFrozenAll; });
+    players.forEach((p, pId) => {
+      if (pId !== superAdminSocketId) {
+        p.frozen = roomState.isFrozenAll;
+        io.to(pId).emit('admin:effect:freeze', { active: p.frozen });
+      }
+    });
     updatePlayersList();
-  });
-
-  socket.on('admin:room:toggle_double_round', () => {
-    if (!authenticatedAdmins.has(socket.id)) return;
-    roomState.isDoubleRound = !roomState.isDoubleRound;
-    io.emit('roomState:sync', roomState);
+    sendSystemMessage(roomState.isFrozenAll ? '❄️ تم تجميد جميع اللاعبين.' : '🔥 تم إلغاء تجميد الجميع.');
+    logToAudit(`${roomState.isFrozenAll ? 'تفعيل' : 'إلغاء'} تجميد الجميع`);
   });
 
   socket.on('admin:room:trigger_sudden_death', (data = {}) => {
@@ -610,82 +633,94 @@ io.on('connection', (socket) => {
     roomState.isSuddenDeath = true;
     roomState.suddenDeathTimer = data.timer || 30;
     roomState.suddenDeathRequiredAnswers = data.requiredAnswers || 1;
+    
     io.emit('game:sudden_death_started', {
       timer: roomState.suddenDeathTimer,
       required: roomState.suddenDeathRequiredAnswers
     });
-  });
-
-  socket.on('admin:room:reset_scores', () => {
-    if (!authenticatedAdmins.has(socket.id)) return;
-    players.forEach(p => p.score = 0);
-    updatePlayersList();
-  });
-
-  socket.on('admin:room:kick_all', () => {
-    if (!authenticatedAdmins.has(socket.id)) return;
-    players.forEach((player, pId) => {
-      if (!player.isAdmin) {
-        const targetSocket = io.sockets.sockets.get(pId);
-        if (targetSocket) {
-          targetSocket.emit('chatMessage', { system: true, message: 'تم إخلاء الغرفة بقرار من الأدمن.' });
-          targetSocket.disconnect(true);
-        }
-        players.delete(pId);
-      }
-    });
-    updatePlayersList();
+    sendSystemMessage('💀 بدأ طور الموت المفاجئ الآن!');
+    logToAudit('تفعيل طور الموت المفاجئ');
   });
 
   socket.on('admin:room:toggle_lock', () => {
     if (!authenticatedAdmins.has(socket.id)) return;
     roomState.isLocked = !roomState.isLocked;
     io.emit('roomState:sync', roomState);
+    sendSystemMessage(roomState.isLocked ? '🔒 تم قفل الغرفة.' : '🔓 تم فتح الغرفة لدخول الجميع.');
+    logToAudit(`${roomState.isLocked ? 'قفل' : 'فتح'} الغرفة`);
   });
 
-  socket.on('admin:broadcast:send', (data) => {
-    if (!authenticatedAdmins.has(socket.id)) return;
-    io.emit('broadcast:received', { message: data.message });
-  });
+  socket.on('admin:handle_join_request', (data) => {
+    if (socket.id !== superAdminSocketId) return; // الأدمن الأساسي فقط يوافق
+    const { requestId, approve } = data;
+    const reqInfo = pendingJoinRequests.get(requestId);
 
-  socket.on('admin:ticker:update_text', (data) => {
-    if (!authenticatedAdmins.has(socket.id)) return;
-    roomState.tickerText = data.text;
-    io.emit('ticker:updated', { text: roomState.tickerText, visible: roomState.tickerVisible });
-  });
-
-  socket.on('admin:ticker:toggle_visibility', () => {
-    if (!authenticatedAdmins.has(socket.id)) return;
-    roomState.tickerVisible = !roomState.tickerVisible;
-    io.emit('ticker:updated', { text: roomState.tickerText, visible: roomState.tickerVisible });
+    if (reqInfo) {
+      if (approve) {
+        // فك الطرد المؤقت إذا كان مطروداً وافق عليه الأدمن
+        kickedIPs.delete(reqInfo.ip);
+        io.to(reqInfo.socketId).emit('joinPermissionApproved');
+      } else {
+        io.to(reqInfo.socketId).emit('accessDenied', {
+          reason: 'rejected',
+          message: 'تم رفض طلب انضمامك من قبل الأدمن الأساسي.'
+        });
+      }
+      pendingJoinRequests.delete(requestId);
+    }
   });
 
   // ==========================================
-  // 🚪 الانفصال عن السيرفر
+  // 📰 التحكم بالشريط الإخباري المتحرك
   // ==========================================
+  socket.on('admin:ticker:update', (data) => {
+    if (!authenticatedAdmins.has(socket.id)) return;
+    if (data.text !== undefined) roomState.tickerText = data.text;
+    if (data.speed !== undefined) roomState.tickerSpeed = parseInt(data.speed) || 15;
+    if (data.visible !== undefined) roomState.tickerVisible = !!data.visible;
+
+    io.emit('ticker:updated', {
+      text: roomState.tickerText,
+      speed: roomState.tickerSpeed,
+      visible: roomState.tickerVisible
+    });
+    logToAudit('تحديث بيانات الشريط الإخباري');
+  });
+
+  // ==========================================
+  // 🎨 استوديو الرسم
+  // ==========================================
+  socket.on('draw-data', (data) => {
+    const player = players.get(socket.id);
+    if (player && player.canDraw) {
+      socket.broadcast.emit('draw-remote', data);
+    }
+  });
+
+  socket.on('clear-board-all', (data) => {
+    const player = players.get(socket.id);
+    if (player && player.canDraw) {
+      io.emit('clear-board-remote', data);
+    }
+  });
+
   socket.on('disconnect', () => {
     const player = players.get(socket.id);
     if (player) {
-      typingUsers.delete(player.name);
-      io.emit('typing', [...typingUsers]);
-      sendSystemMessage(`${player.name} خرج من اللعبة.`);
+      if (player.isNamed) {
+        typingUsers.delete(player.name);
+        io.emit('typing', [...typingUsers]);
+        sendSystemMessage(`${player.name} خرج من اللعبة.`);
+      }
       players.delete(socket.id);
     }
 
     if (superAdminSocketId === socket.id) {
       superAdminSocketId = null;
+      sendSystemMessage('⚠️ شغر منصب الأدمن الأساسي.');
     }
     authenticatedAdmins.delete(socket.id);
-    allowedMuteBypass.delete(socket.id);
     updatePlayersList();
-
-    if (players.size === 0) {
-      roomState.currentWord = '';
-      if (wordTimer) {
-        clearTimeout(wordTimer);
-        wordTimer = null;
-      }
-    }
   });
 });
 
