@@ -1377,412 +1377,184 @@ body.theme-stealth #close-instructions {
 }
 
 /* ==========================================================================
-   🎮 لعبة الكلمات السريعة - ملف التنسيقات المتقدم والتفاعلي (CSS)
-   🛡️ يدعم الليدات التفاعلية، الشاشات المنبثقة، الشريط الإخباري، والنمط الداكن
+   🛡️ نظام تصميم زر الأدمن واللوحة المتقدمة (Matte & Glassmorphism Design)
+   تصميم حديث، ألوان طافية ومريحة للعين مع دعم التفاعل الكامل
    ========================================================================== */
 
-/* --------------------------------------------------------------------------
-   1. المتغيرات العامة وإعادة الضبط (Global Variables & Reset)
-   -------------------------------------------------------------------------- */
 :root {
-  --primary-color: #4f46e5;
-  --primary-hover: #4338ca;
-  --secondary-color: #10b981;
-  --bg-gradient: linear-gradient(135deg, #0f172a 0%, #1e1b4b 100%);
-  --panel-bg: rgba(30, 41, 59, 0.85);
-  --panel-border: rgba(255, 255, 255, 0.1);
-  --text-main: #f8fafc;
-  --text-muted: #94a3b8;
+  /* ألوان زر الأدمن واللوحة - درجات طافية ومظلمة مريحة للعين */
+  --admin-bg-base: rgba(22, 27, 34, 0.85);
+  --admin-bg-hover: rgba(33, 38, 45, 0.95);
+  --admin-bg-card: rgba(18, 22, 28, 0.9);
+  --admin-border-matte: rgba(255, 255, 255, 0.08);
+  --admin-border-focus: rgba(88, 166, 255, 0.4);
   
-  /* ألوان الليدات التفاعلية */
-  --led-off-color: #ef4444;
-  --led-off-glow: rgba(239, 68, 68, 0.6);
-  --led-on-color: #22c55e;
-  --led-on-glow: rgba(34, 197, 94, 0.8);
-
-  --font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
-  --transition-fast: 0.25s ease;
-  --radius-lg: 16px;
-  --radius-md: 10px;
-  --radius-sm: 6px;
+  /* ألوان التمييز والنصوص (غير صارخة) */
+  --admin-accent-blue: #58a6ff;
+  --admin-accent-green: #3fb950;
+  --admin-accent-warning: #d29922;
+  --admin-accent-danger: #f85149;
+  --admin-accent-purple: #bc8cff;
+  
+  --admin-text-main: #c9d1d9;
+  --admin-text-muted: #8b949e;
+  --admin-text-bright: #f0f6fc;
+  
+  /* التأثيرات والظلال */
+  --admin-glass-blur: blur(16px) saturate(180%);
+  --admin-shadow-soft: 0 8px 32px 0 rgba(0, 0, 0, 0.37);
+  --admin-shadow-glow: 0 0 20px rgba(88, 166, 255, 0.15);
+  --admin-radius-lg: 16px;
+  --admin-radius-md: 10px;
+  --admin-radius-sm: 6px;
+  --admin-transition: all 0.3s cubic-bezier(0.25, 0.8, 0.25, 1);
 }
 
-* {
-  box-sizing: border-box;
-  margin: 0;
-  padding: 0;
-  user-select: none;
-  font-family: var(--font-family);
-}
+/* ==========================================================================
+   🔘 1. زر الأدمن الرئيسي (Floating Admin Button)
+   ========================================================================== */
 
-body {
-  background: var(--bg-gradient);
-  color: var(--text-main);
-  min-height: 100vh;
-  display: flex;
-  flex-direction: column;
-  overflow-x: hidden;
-  direction: rtl;
-}
-
-/* --------------------------------------------------------------------------
-   2. الشريط الإخباري المتحرك (News Ticker)
-   -------------------------------------------------------------------------- */
-.ticker-container {
-  width: 100%;
-  background: rgba(15, 23, 42, 0.95);
-  border-bottom: 2px solid #334155;
-  height: 40px;
-  overflow: hidden;
+.btn-admin-floating {
   position: relative;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  gap: 10px;
+  padding: 10px 18px;
+  background: var(--admin-bg-base);
+  backdrop-filter: var(--admin-glass-blur);
+  -webkit-backdrop-filter: var(--admin-glass-blur);
+  border: 1px solid var(--admin-border-matte);
+  border-radius: var(--admin-radius-md);
+  color: var(--admin-text-main);
+  font-size: 0.95rem;
+  font-weight: 600;
+  cursor: pointer;
+  overflow: hidden;
+  transition: var(--admin-transition);
+  box-shadow: var(--admin-shadow-soft);
+  outline: none;
+  user-select: none;
+}
+
+/* حركة الماوس على الزر (Hover) */
+.btn-admin-floating:hover {
+  background: var(--admin-bg-hover);
+  color: var(--admin-text-bright);
+  border-color: var(--admin-border-focus);
+  transform: translateY(-2px);
+  box-shadow: var(--admin-shadow-glow), var(--admin-shadow-soft);
+}
+
+/* عند الضغط على الزر (Active) */
+.btn-admin-floating:active {
+  transform: translateY(0) scale(0.98);
+}
+
+/* أيقونة الزر */
+.btn-admin-floating .admin-btn-icon {
+  font-size: 1.1rem;
+  filter: opacity(0.85);
+  transition: var(--admin-transition);
+}
+
+.btn-admin-floating:hover .admin-btn-icon {
+  filter: opacity(1);
+  transform: scale(1.1);
+}
+
+/* شارة الحالة الخفيفة للزر (Badge) */
+.admin-btn-badge {
+  font-size: 0.72rem;
+  padding: 2px 7px;
+  border-radius: 20px;
+  background: rgba(63, 185, 80, 0.15);
+  color: var(--admin-accent-green);
+  border: 1px solid rgba(63, 185, 80, 0.3);
+  font-weight: 500;
+  letter-spacing: 0.3px;
+  transition: var(--admin-transition);
+}
+
+.btn-admin-floating:hover .admin-btn-badge {
+  background: rgba(63, 185, 80, 0.25);
+  border-color: var(--admin-accent-green);
+}
+
+/* ==========================================================================
+   📢 2. الشريط الإخباري العائم أعلى الشاشة (Floating Ticker Bar)
+   ========================================================================== */
+
+.ticker-floating-bar {
+  position: fixed;
+  top: 12px;
+  left: 50%;
+  transform: translateX(-50%);
+  width: 90%;
+  max-width: 900px;
+  z-index: 9999;
   display: flex;
   align-items: center;
-  z-index: 100;
+  gap: 12px;
+  padding: 8px 16px;
+  background: var(--admin-bg-base);
+  backdrop-filter: var(--admin-glass-blur);
+  -webkit-backdrop-filter: var(--admin-glass-blur);
+  border: 1px solid var(--admin-border-matte);
+  border-radius: var(--admin-radius-lg);
+  box-shadow: var(--admin-shadow-soft);
+  animation: fadeInDown 0.4s ease-out;
 }
 
-.ticker-wrapper {
-  width: 100%;
+.ticker-badge {
+  background: rgba(210, 153, 34, 0.15);
+  color: var(--admin-accent-warning);
+  border: 1px solid rgba(210, 153, 34, 0.3);
+  padding: 4px 10px;
+  border-radius: var(--admin-radius-sm);
+  font-size: 0.8rem;
+  font-weight: 700;
   white-space: nowrap;
 }
 
-.ticker-text {
+.ticker-content-wrapper {
+  flex: 1;
+  overflow: hidden;
+  position: relative;
+}
+
+.ticker-content {
   display: inline-block;
-  padding-left: 100%;
-  font-size: 1rem;
-  font-weight: 600;
-  color: #fbbf24;
-  animation: tickerMove 20s linear infinite;
-}
-
-@keyframes tickerMove {
-  0% { transform: translate3d(0, 0, 0); }
-  100% { transform: translate3d(-100%, 0, 0); }
-}
-
-.ticker-container.hidden {
-  display: none !important;
-}
-
-/* --------------------------------------------------------------------------
-   3. الحاوية الرئيسية والتصميم المتجاوب (Main Layout)
-   -------------------------------------------------------------------------- */
-.app-container {
-  flex: 1;
-  max-width: 1400px;
-  width: 95%;
-  margin: 15px auto;
-  display: grid;
-  grid-template-columns: 320px 1fr 340px;
-  gap: 15px;
-}
-
-@media (max-width: 1024px) {
-  .app-container {
-    grid-template-columns: 1fr;
-  }
-}
-
-.panel {
-  background: var(--panel-bg);
-  backdrop-filter: blur(12px);
-  border: 1px solid var(--panel-border);
-  border-radius: var(--radius-lg);
-  padding: 15px;
-  display: flex;
-  flex-direction: column;
-  gap: 12px;
-  box-shadow: 0 8px 32px 0 rgba(0, 0, 0, 0.37);
-}
-
-/* --------------------------------------------------------------------------
-   4. الأزرار وأنظمة الليدات التفاعلية (LED Buttons & Controls)
-   -------------------------------------------------------------------------- */
-.btn-led-wrapper {
-  position: relative;
-  display: flex;
-  align-items: center;
-  gap: 8px;
-  width: 100%;
-}
-
-.btn-led {
-  flex: 1;
-  position: relative;
-  padding: 12px 18px;
-  font-size: 0.95rem;
-  font-weight: 700;
-  color: #fff;
-  background: #334155;
-  border: 2px solid transparent;
-  border-radius: var(--radius-md);
-  cursor: pointer;
-  transition: all var(--transition-fast);
-  display: flex;
-  align-items: center;
-  justify-content: center;
-  gap: 8px;
-  outline: none;
-}
-
-/* حالة الليد المطفي (أحمر) - الحالة الافتراضية */
-.btn-led::before {
-  content: '';
-  width: 10px;
-  height: 10px;
-  border-radius: 50%;
-  background-color: var(--led-off-color);
-  box-shadow: 0 0 8px var(--led-off-glow);
-  transition: all var(--transition-fast);
-}
-
-.btn-led.active-led {
-  background: #1e293b;
-  border-color: var(--led-on-color);
-}
-
-/* حالة الليد المفعل (أخضر) */
-.btn-led.active-led::before {
-  background-color: var(--led-on-color);
-  box-shadow: 0 0 12px var(--led-on-glow);
-}
-
-.btn-led:hover {
-  filter: brightness(1.15);
-  transform: translateY(-2px);
-}
-
-.btn-led:active {
-  transform: translateY(0);
-}
-
-/* زر الشرح الاستفهامي (?) */
-.help-icon {
-  width: 26px;
-  height: 26px;
-  border-radius: 50%;
-  background: #475569;
-  color: #f1f5f9;
-  font-size: 0.85rem;
-  font-weight: bold;
-  display: flex;
-  align-items: center;
-  justify-content: center;
-  cursor: pointer;
-  transition: background var(--transition-fast);
-  position: relative;
-}
-
-.help-icon:hover {
-  background: var(--primary-color);
-}
-
-/* صندوق التلميح عند التمرير على علامة الاستفهام */
-.help-icon::after {
-  content: attr(data-tooltip);
-  position: absolute;
-  bottom: 125%;
-  right: 50%;
-  transform: translateX(50%);
-  background: #0f172a;
-  color: #f8fafc;
-  padding: 8px 12px;
-  font-size: 0.8rem;
-  border-radius: var(--radius-sm);
-  white-space: normal;
-  width: 180px;
-  text-align: center;
-  box-shadow: 0 4px 12px rgba(0,0,0,0.5);
-  opacity: 0;
-  visibility: hidden;
-  transition: opacity 0.2s, visibility 0.2s;
-  pointer-events: none;
-  z-index: 1000;
-  border: 1px solid #334155;
-}
-
-.help-icon:hover::after {
-  opacity: 1;
-  visibility: visible;
-}
-
-/* --------------------------------------------------------------------------
-   5. لوحة التحكم وأدوات الأدمن (Admin Dashboard Controls)
-   -------------------------------------------------------------------------- */
-.admin-section-title {
-  font-size: 1.1rem;
-  font-weight: 800;
-  color: #38bdf8;
-  border-bottom: 2px solid #334155;
-  padding-bottom: 6px;
-  margin-top: 10px;
-  display: flex;
-  align-items: center;
-  gap: 8px;
-}
-
-.admin-controls-grid {
-  display: grid;
-  grid-template-columns: repeat(auto-fit, minmax(130px, 1fr));
-  gap: 10px;
-}
-
-.player-card {
-  background: rgba(15, 23, 42, 0.6);
-  border: 1px solid #334155;
-  border-radius: var(--radius-md);
-  padding: 10px;
-  display: flex;
-  flex-direction: column;
-  gap: 6px;
-}
-
-.player-card-header {
-  display: flex;
-  justify-content: space-between;
-  align-items: center;
-}
-
-.player-name {
-  font-weight: 700;
-  font-size: 0.95rem;
-  color: #f3f4f6;
-}
-
-.badge {
-  font-size: 0.7rem;
-  padding: 2px 6px;
-  border-radius: 4px;
-  font-weight: bold;
-}
-
-.badge-super { background: #eab308; color: #000; }
-.badge-admin { background: #3b82f6; color: #fff; }
-.badge-vip   { background: #a855f7; color: #fff; }
-
-/* --------------------------------------------------------------------------
-   6. منطقة اللعب واللوحة الرسم (Canvas & Game Area)
-   -------------------------------------------------------------------------- */
-.game-viewport {
-  display: flex;
-  flex-direction: column;
-  align-items: center;
-  gap: 10px;
-  position: relative;
-}
-
-.canvas-container {
-  width: 100%;
-  aspect-ratio: 16/9;
-  background: #ffffff;
-  border-radius: var(--radius-md);
-  box-shadow: inset 0 0 10px rgba(0,0,0,0.2);
-  position: relative;
-  overflow: hidden;
-}
-
-#drawing-canvas {
-  width: 100%;
-  height: 100%;
-  cursor: crosshair;
-  touch-action: none;
-}
-
-/* تأثير الشاشة العمياء */
-.blinded-overlay {
-  position: absolute;
-  top: 0;
-  left: 0;
-  width: 100%;
-  height: 100%;
-  background: #000000;
-  z-index: 50;
-  display: flex;
-  align-items: center;
-  justify-content: center;
-  color: #ef4444;
-  font-size: 1.5rem;
-  font-weight: bold;
-}
-
-/* --------------------------------------------------------------------------
-   7. الشات العام ورسائل الهمس المباشر (Chat & Whisper UI)
-   -------------------------------------------------------------------------- */
-.chat-container {
-  flex: 1;
-  display: flex;
-  flex-direction: column;
-  height: 350px;
-  background: rgba(15, 23, 42, 0.7);
-  border-radius: var(--radius-md);
-  overflow: hidden;
-  border: 1px solid #334155;
-}
-
-.chat-messages {
-  flex: 1;
-  padding: 10px;
-  overflow-y: auto;
-  display: flex;
-  flex-direction: column;
-  gap: 8px;
-}
-
-.chat-bubble {
-  background: #334155;
-  padding: 8px 12px;
-  border-radius: 12px;
-  max-width: 85%;
-  word-wrap: break-word;
+  white-space: nowrap;
+  color: var(--admin-text-main);
   font-size: 0.9rem;
-  line-height: 1.4;
+  animation: tickerScroll 25s linear infinite;
 }
 
-.chat-bubble.system {
-  background: #0284c7;
-  color: #fff;
-  align-self: center;
-  font-weight: bold;
-  font-size: 0.85rem;
-  text-align: center;
+.ticker-content:hover {
+  animation-play-state: paused;
 }
 
-.chat-bubble.whisper {
-  background: #7e22ce;
-  border: 1px solid #c084fc;
-  color: #fff;
-}
-
-.chat-input-row {
-  display: flex;
-  padding: 8px;
-  background: #0f172a;
-  gap: 6px;
-}
-
-.chat-input-row input {
-  flex: 1;
-  padding: 8px 12px;
-  border-radius: var(--radius-sm);
-  border: 1px solid #334155;
-  background: #1e293b;
-  color: #fff;
-  outline: none;
-}
-
-.chat-input-row button {
-  padding: 8px 16px;
-  background: var(--primary-color);
-  color: #fff;
+.ticker-close-btn {
+  background: transparent;
   border: none;
-  border-radius: var(--radius-sm);
+  color: var(--admin-text-muted);
+  font-size: 1.2rem;
   cursor: pointer;
-  font-weight: bold;
+  padding: 0 4px;
+  transition: var(--admin-transition);
 }
 
-/* --------------------------------------------------------------------------
-   8. الشاشات المنبثقة والنوافذ التفاعلية (Modal Popups)
-   -------------------------------------------------------------------------- */
-.modal-overlay {
+.ticker-close-btn:hover {
+  color: var(--admin-accent-danger);
+  transform: scale(1.15);
+}
+
+/* ==========================================================================
+   🖼️ 3. النوافذ المنبثقة والخلفيات المظلمة (Modals Overlay)
+   ========================================================================== */
+
+.custom-modal-overlay {
   position: fixed;
   top: 0;
   left: 0;
@@ -1790,73 +1562,632 @@ body {
   height: 100vh;
   background: rgba(0, 0, 0, 0.75);
   backdrop-filter: blur(8px);
+  -webkit-backdrop-filter: blur(8px);
+  z-index: 10000;
   display: flex;
   align-items: center;
   justify-content: center;
-  z-index: 9999;
+  padding: 20px;
   opacity: 0;
-  pointer-events: none;
-  transition: opacity 0.3s ease;
+  animation: modalFadeIn 0.3s cubic-bezier(0.16, 1, 0.3, 1) FORWARDS;
 }
 
-.modal-overlay.active {
-  opacity: 1;
-  pointer-events: all;
+.custom-modal-card {
+  background: var(--admin-bg-card);
+  border: 1px solid var(--admin-border-matte);
+  border-radius: var(--admin-radius-lg);
+  box-shadow: var(--admin-shadow-soft);
+  color: var(--admin-text-main);
+  width: 100%;
+  max-width: 500px;
+  overflow: hidden;
+  transform: scale(0.95);
+  animation: modalScaleUp 0.3s cubic-bezier(0.16, 1, 0.3, 1) FORWARDS;
 }
 
-.modal-box {
-  background: #1e293b;
-  border: 2px solid var(--primary-color);
-  border-radius: var(--radius-lg);
-  padding: 24px;
-  width: 90%;
-  max-width: 480px;
-  box-shadow: 0 20px 25px -5px rgba(0, 0, 0, 0.5);
+/* نافذة الأدمن الكبيرة (Admin Panel Extended Window) */
+.admin-panel-card {
+  max-width: 1100px;
+  max-height: 88vh;
   display: flex;
   flex-direction: column;
-  gap: 16px;
-  animation: modalSlideUp 0.3s cubic-bezier(0.16, 1, 0.3, 1);
 }
 
-@keyframes modalSlideUp {
-  from { transform: translateY(30px); opacity: 0; }
-  to { transform: translateY(0); opacity: 1; }
+/* ==========================================================================
+   🔑 4. نافذة دخول الأدمن (Admin Login Screen)
+   ========================================================================== */
+
+.login-card {
+  padding: 30px;
 }
 
-.modal-title {
-  font-size: 1.25rem;
-  font-weight: bold;
-  color: #f3f4f6;
-  border-bottom: 1px solid #334155;
-  padding-bottom: 8px;
+.modal-header {
+  text-align: center;
+  margin-bottom: 24px;
 }
 
-.modal-actions {
+.modal-icon-wrap {
+  font-size: 2.5rem;
+  margin-bottom: 10px;
+  opacity: 0.9;
+}
+
+.modal-header h3 {
+  color: var(--admin-text-bright);
+  font-size: 1.4rem;
+  margin-bottom: 6px;
+}
+
+.modal-subtitle {
+  color: var(--admin-text-muted);
+  font-size: 0.85rem;
+}
+
+.input-group {
+  margin-bottom: 20px;
+}
+
+.input-group label {
+  display: block;
+  font-size: 0.85rem;
+  color: var(--admin-text-main);
+  margin-bottom: 8px;
+}
+
+.input-with-icon {
+  position: relative;
   display: flex;
-  justify-content: flex-end;
+  align-items: center;
+}
+
+.custom-input {
+  width: 100%;
+  padding: 11px 14px;
+  background: rgba(0, 0, 0, 0.3);
+  border: 1px solid var(--admin-border-matte);
+  border-radius: var(--admin-radius-md);
+  color: var(--admin-text-bright);
+  font-size: 0.9rem;
+  transition: var(--admin-transition);
+  outline: none;
+}
+
+.custom-input:focus {
+  border-color: var(--admin-accent-blue);
+  background: rgba(0, 0, 0, 0.5);
+  box-shadow: 0 0 0 3px rgba(88, 166, 255, 0.15);
+}
+
+.input-icon {
+  position: absolute;
+  left: 12px;
+  opacity: 0.5;
+  font-size: 0.9rem;
+}
+
+/* ==========================================================================
+   ⚙️ 5. لوحة التحكم المتقدمة للأدمن (Admin Panel Interior)
+   ========================================================================== */
+
+.admin-panel-header {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  padding: 18px 24px;
+  background: rgba(255, 255, 255, 0.02);
+  border-bottom: 1px solid var(--admin-border-matte);
+}
+
+.admin-header-title {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+}
+
+.header-icon {
+  font-size: 1.6rem;
+  opacity: 0.85;
+}
+
+.admin-header-title h2 {
+  font-size: 1.2rem;
+  color: var(--admin-text-bright);
+  margin: 0;
+}
+
+.header-sub {
+  font-size: 0.8rem;
+  color: var(--admin-text-muted);
+}
+
+.admin-header-actions {
+  display: flex;
+  align-items: center;
+  gap: 15px;
+}
+
+.status-indicator {
+  font-size: 0.78rem;
+  padding: 4px 10px;
+  border-radius: 20px;
+  display: flex;
+  align-items: center;
+  gap: 6px;
+}
+
+.status-indicator.online {
+  background: rgba(63, 185, 80, 0.1);
+  color: var(--admin-accent-green);
+  border: 1px solid rgba(63, 185, 80, 0.2);
+}
+
+.status-indicator.online::before {
+  content: '';
+  width: 6px;
+  height: 6px;
+  border-radius: 50%;
+  background: var(--admin-accent-green);
+  box-shadow: 0 0 8px var(--admin-accent-green);
+}
+
+.btn-close-icon {
+  background: transparent;
+  border: none;
+  color: var(--admin-text-muted);
+  font-size: 1.5rem;
+  cursor: pointer;
+  transition: var(--admin-transition);
+  line-height: 1;
+}
+
+.btn-close-icon:hover {
+  color: var(--admin-accent-danger);
+  transform: rotate(90deg);
+}
+
+/* جسم اللوحة والمحتوى الداخلي */
+.admin-panel-body {
+  padding: 24px;
+  overflow-y: auto;
+  display: flex;
+  flex-direction: column;
+  gap: 24px;
+}
+
+/* الأقسام (Sections) */
+.admin-section {
+  background: rgba(255, 255, 255, 0.015);
+  border: 1px solid var(--admin-border-matte);
+  border-radius: var(--admin-radius-md);
+  padding: 18px;
+}
+
+.section-header {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  margin-bottom: 12px;
+}
+
+.section-title {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+}
+
+.sec-icon {
+  font-size: 1.1rem;
+}
+
+.section-title h3 {
+  font-size: 1rem;
+  color: var(--admin-text-bright);
+  margin: 0;
+}
+
+.section-hint {
+  font-size: 0.82rem;
+  color: var(--admin-text-muted);
+  margin-bottom: 16px;
+}
+
+/* ==========================================================================
+   👥 6. بطاقات اللاعبين الفردية (Player Admin Cards Grid)
+   ========================================================================== */
+
+.players-cards-grid {
+  display: grid;
+  grid-template-columns: repeat(auto-fill, minmax(320px, 1fr));
+  gap: 16px;
+}
+
+.player-admin-card {
+  background: rgba(0, 0, 0, 0.25);
+  border: 1px solid var(--admin-border-matte);
+  border-radius: var(--admin-radius-md);
+  padding: 14px;
+  display: flex;
+  flex-direction: column;
+  gap: 12px;
+  transition: var(--admin-transition);
+}
+
+.player-admin-card:hover {
+  border-color: rgba(255, 255, 255, 0.15);
+  background: rgba(0, 0, 0, 0.35);
+}
+
+.player-card-header {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  padding-bottom: 8px;
+  border-bottom: 1px solid rgba(255, 255, 255, 0.05);
+}
+
+.player-info {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+}
+
+.player-card-name {
+  font-weight: 600;
+  color: var(--admin-text-bright);
+  font-size: 0.92rem;
+}
+
+.vip-badge {
+  font-size: 0.68rem;
+  padding: 2px 6px;
+  border-radius: 4px;
+  background: rgba(188, 140, 255, 0.15);
+  color: var(--admin-accent-purple);
+  border: 1px solid rgba(188, 140, 255, 0.3);
+}
+
+.player-card-score {
+  font-size: 0.85rem;
+  color: var(--admin-accent-blue);
+  font-weight: 700;
+}
+
+.player-custom-controls {
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+}
+
+.input-inline-group {
+  display: flex;
+  flex-direction: column;
+  gap: 4px;
+}
+
+.input-inline-group label {
+  font-size: 0.78rem;
+  color: var(--admin-text-muted);
+}
+
+.checkbox-group label {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  cursor: pointer;
+  color: var(--admin-text-main);
+  font-size: 0.8rem;
+}
+
+/* أزرار الإجراءات الفردية لكل لاعب */
+.player-actions-grid {
+  display: grid;
+  grid-template-columns: repeat(3, 1fr);
+  gap: 6px;
+}
+
+/* ==========================================================================
+   🎯 7. أزرار التحكم والإجراءات العامة (Action Buttons)
+   ========================================================================== */
+
+.global-actions-grid {
+  display: grid;
+  grid-template-columns: repeat(auto-fill, minmax(160px, 1fr));
   gap: 10px;
 }
 
-/* --------------------------------------------------------------------------
-   9. سجل المراقبة وسجل الأحداث (Audit Logs Panel)
-   -------------------------------------------------------------------------- */
-.audit-log-container {
-  height: 200px;
+.btn-action {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  padding: 9px 12px;
+  background: rgba(255, 255, 255, 0.03);
+  border: 1px solid var(--admin-border-matte);
+  border-radius: var(--admin-radius-sm);
+  color: var(--admin-text-main);
+  font-size: 0.85rem;
+  cursor: pointer;
+  transition: var(--admin-transition);
+}
+
+.btn-action:hover {
+  background: rgba(255, 255, 255, 0.08);
+  border-color: rgba(255, 255, 255, 0.2);
+  color: var(--admin-text-bright);
+}
+
+/* تنوع ألوان الأزرار بطريقة هادئة ومطفية */
+.btn-action.highlight:hover {
+  border-color: var(--admin-accent-purple);
+  background: rgba(188, 140, 255, 0.1);
+  color: var(--admin-accent-purple);
+}
+
+.btn-action.warning:hover {
+  border-color: var(--admin-accent-warning);
+  background: rgba(210, 153, 34, 0.1);
+  color: var(--admin-accent-warning);
+}
+
+.btn-action.danger:hover {
+  border-color: var(--admin-accent-danger);
+  background: rgba(248, 81, 73, 0.1);
+  color: var(--admin-accent-danger);
+}
+
+.tooltip-icon {
+  font-size: 0.75rem;
+  opacity: 0.4;
+  cursor: help;
+  transition: var(--admin-transition);
+}
+
+.btn-action:hover .tooltip-icon {
+  opacity: 0.9;
+}
+
+/* ==========================================================================
+   ✍️ 8. عناصر الإدخال والأزرار المخصصة (Custom Inputs & Buttons)
+   ========================================================================== */
+
+.global-controls-form {
+  display: flex;
+  flex-direction: column;
+  gap: 14px;
+}
+
+.control-card-row {
+  display: flex;
+  flex-direction: column;
+  gap: 6px;
+}
+
+.control-label-wrap {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  font-size: 0.85rem;
+  color: var(--admin-text-main);
+}
+
+.input-with-btn {
+  display: flex;
+  gap: 8px;
+}
+
+.input-with-btn.multi {
+  flex-wrap: wrap;
+}
+
+.input-with-btn .custom-input {
+  flex: 1;
+}
+
+.btn-custom {
+  padding: 8px 16px;
+  border-radius: var(--admin-radius-sm);
+  font-size: 0.85rem;
+  font-weight: 600;
+  cursor: pointer;
+  border: 1px solid transparent;
+  transition: var(--admin-transition);
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  gap: 6px;
+}
+
+.btn-primary {
+  background: rgba(88, 166, 255, 0.15);
+  color: var(--admin-accent-blue);
+  border-color: rgba(88, 166, 255, 0.3);
+}
+
+.btn-primary:hover {
+  background: rgba(88, 166, 255, 0.25);
+  border-color: var(--admin-accent-blue);
+  color: var(--admin-text-bright);
+}
+
+.btn-secondary {
+  background: rgba(255, 255, 255, 0.05);
+  color: var(--admin-text-main);
+  border-color: var(--admin-border-matte);
+}
+
+.btn-secondary:hover {
+  background: rgba(255, 255, 255, 0.1);
+  color: var(--admin-text-bright);
+}
+
+.btn-sm {
+  padding: 4px 10px;
+  font-size: 0.78rem;
+}
+
+.input-sm {
+  padding: 6px 10px;
+  font-size: 0.8rem;
+}
+
+/* ==========================================================================
+   📜 9. سجل الأنشطة والتحركات (Audit Logs Box)
+   ========================================================================== */
+
+.audit-logs-box {
+  background: rgba(0, 0, 0, 0.4);
+  border: 1px solid var(--admin-border-matte);
+  border-radius: var(--admin-radius-sm);
+  padding: 12px;
+  height: 120px;
   overflow-y: auto;
-  background: #090d16;
-  border-radius: var(--radius-sm);
-  padding: 8px;
   font-family: monospace;
   font-size: 0.8rem;
-  border: 1px solid #1e293b;
+  display: flex;
+  flex-direction: column;
+  gap: 6px;
 }
 
-.audit-entry {
-  padding: 4px 0;
-  border-bottom: 1px dashed #1e293b;
-  color: #38bdf8;
+.log-item {
+  color: var(--admin-text-muted);
+  line-height: 1.4;
 }
 
-.audit-entry .time { color: #64748b; }
-.audit-entry .admin { color: #f59e0b; font-weight: bold; }
-.audit-entry .target { color: #ef4444; }
+.log-item.info {
+  color: var(--admin-accent-blue);
+}
+
+.log-item.warning {
+  color: var(--admin-accent-warning);
+}
+
+.log-item.danger {
+  color: var(--admin-accent-danger);
+}
+
+.btn-small-refresh,
+.btn-small-clear {
+  background: transparent;
+  border: none;
+  color: var(--admin-text-muted);
+  font-size: 0.78rem;
+  cursor: pointer;
+  transition: var(--admin-transition);
+}
+
+.btn-small-refresh:hover,
+.btn-small-clear:hover {
+  color: var(--admin-text-bright);
+}
+
+.players-count-tag {
+  font-size: 0.8rem;
+  color: var(--admin-accent-blue);
+  background: rgba(88, 166, 255, 0.1);
+  padding: 2px 8px;
+  border-radius: 12px;
+}
+
+/* ==========================================================================
+   ✨ 10. التحرّك والحركات الانسيابية (Animations)
+   ========================================================================== */
+
+@keyframes fadeInDown {
+  from {
+    opacity: 0;
+    transform: translate(-50%, -15px);
+  }
+  to {
+    opacity: 1;
+    transform: translate(-50%, 0);
+  }
+}
+
+@keyframes modalFadeIn {
+  to {
+    opacity: 1;
+  }
+}
+
+@keyframes modalScaleUp {
+  to {
+    transform: scale(1);
+  }
+}
+
+@keyframes tickerScroll {
+  0% {
+    transform: translateX(100%);
+  }
+  100% {
+    transform: translateX(-100%);
+  }
+}
+
+/* حل مشكلة تداخل علامات الاستفهام وضمان تموضُعها خارج النص */
+.btn-admin-action {
+  position: relative;
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  padding: 10px 15px;
+  margin: 5px 0;
+  width: 100%;
+}
+
+.help-icon {
+  display: inline-block;
+  background: rgba(255, 255, 255, 0.15);
+  color: #ffca28;
+  border-radius: 50%;
+  width: 22px;
+  height: 22px;
+  text-align: center;
+  line-height: 22px;
+  font-weight: bold;
+  cursor: pointer;
+  margin-left: 8px;
+  font-size: 13px;
+}
+
+/* مؤشرات الحالة ON/OFF */
+.status-badge {
+  font-size: 11px;
+  font-weight: bold;
+  padding: 2px 8px;
+  border-radius: 12px;
+  margin-left: auto;
+  display: inline-block;
+}
+
+.status-badge.on {
+  background-color: #2e7d32;
+  color: #ffffff;
+  box-shadow: 0 0 6px #4caf50;
+}
+
+.status-badge.off {
+  background-color: #c62828;
+  color: #ffffff;
+  box-shadow: 0 0 6px #f44336;
+}
+
+/* الشريط المتحرك المحدث */
+.ticker-container {
+  overflow: hidden;
+  white-space: nowrap;
+  width: 100%;
+  background: #111;
+  color: #fff;
+  padding: 8px 0;
+}
+
+.ticker-text {
+  display: inline-block;
+  padding-right: 100%;
+  animation: ticker-scroll 15s linear infinite;
+}
+
+@keyframes ticker-scroll {
+  0% { transform: translate3d(100%, 0, 0); }
+  100% { transform: translate3d(-100%, 0, 0); }
+}
