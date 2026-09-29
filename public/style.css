@@ -1569,7 +1569,7 @@ body.theme-stealth #close-instructions {
   justify-content: center;
   padding: 20px;
   opacity: 0;
-  animation: modalFadeIn 0.3s cubic-bezier(0.16, 1, 0.3, 1) forwards;
+  animation: modalFadeIn 0.3s cubic-bezier(0.16, 1, 0.3, 1) FORWARDS;
 }
 
 .custom-modal-card {
@@ -1582,7 +1582,7 @@ body.theme-stealth #close-instructions {
   max-width: 500px;
   overflow: hidden;
   transform: scale(0.95);
-  animation: modalScaleUp 0.3s cubic-bezier(0.16, 1, 0.3, 1) forwards;
+  animation: modalScaleUp 0.3s cubic-bezier(0.16, 1, 0.3, 1) FORWARDS;
 }
 
 /* نافذة الأدمن الكبيرة (Admin Panel Extended Window) */
