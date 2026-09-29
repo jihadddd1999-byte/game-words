@@ -117,7 +117,7 @@
       </div>
     </div>
 
-    <!-- 🔒 5. نافذة قفل الغرفة وطلب الإذن (جديد) -->
+    <!-- 🔒 5. نافذة قفل الغرفة وطلب الإذن -->
     <div id="permission-request-modal" class="custom-modal-overlay" style="display: none;">
       <div class="custom-modal-card danger-card">
         <div class="modal-header center">
@@ -133,7 +133,7 @@
       </div>
     </div>
 
-    <!-- 🤫 6. نافذة استلام الهمس الخاص مع إمكانية الرد (جديد) -->
+    <!-- 🤫 6. نافذة استلام الهمس الخاص مع إمكانية الرد -->
     <div id="whisper-received-modal" class="custom-modal-overlay" style="display: none;">
       <div class="custom-modal-card whisper-card">
         <div class="modal-header">
@@ -310,7 +310,33 @@
             </div>
           </section>
 
-          <!-- 📜 القسم الرابع: سجل الأنشطة والتحركات (Audit Logs) -->
+          <!-- 🚫 القسم الرابع: قائمة العقوبات والمحظورين (Banned & Kicked Lists) -->
+          <section class="admin-section">
+            <div class="section-header">
+              <div class="section-title">
+                <span class="sec-icon">🚫</span>
+                <h3>إدارة العقوبات وسجل المحظورين والمطرودين</h3>
+              </div>
+            </div>
+            
+            <div style="display: grid; grid-template-columns: 1fr 1fr; gap: 15px;">
+              <div>
+                <h4 style="color: var(--admin-danger, #ff5252); margin-bottom: 8px;">🚫 قائمة حظر IP (Banned)</h4>
+                <div id="banned-list-container" class="audit-logs-box" style="height: 120px;">
+                  <p class="empty-msg" style="color:var(--admin-text-muted);padding:10px;">لا يوجد عناصر في القائمة</p>
+                </div>
+              </div>
+
+              <div>
+                <h4 style="color: var(--admin-warning, #ffab00); margin-bottom: 8px;">⏳ قائمة المطرودين مؤقتاً (Kicked)</h4>
+                <div id="kicked-list-container" class="audit-logs-box" style="height: 120px;">
+                  <p class="empty-msg" style="color:var(--admin-text-muted);padding:10px;">لا يوجد عناصر في القائمة</p>
+                </div>
+              </div>
+            </div>
+          </section>
+
+          <!-- 📜 القسم الخامس: سجل الأنشطة والتحركات (Audit Logs) -->
           <section class="admin-section">
             <div class="section-header">
               <div class="section-title">
