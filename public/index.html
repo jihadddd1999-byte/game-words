@@ -13,12 +13,12 @@
 <body>
 
   <!-- ==========================================================================
-     📢 1. الشريط الإخباري (شريط عائم مطفي أعلى الشاشة دون تقسيم أو دفع العناصر)
+     📢 1. الشريط الإخباري (شريط عائم أعلى الشاشة مع تحكم بالسرعة)
      ========================================================================== -->
   <div id="ticker-banner" class="ticker-floating-bar" style="display: none;">
     <div class="ticker-badge">📢 خبر عاجل</div>
     <div class="ticker-content-wrapper">
-      <div class="ticker-content">
+      <div class="ticker-content speed-normal" id="ticker-content">
         <span id="ticker-text">أهلاً بكم في لعبة الكلمات السريعة! أتمنى لكم وقتاً ممتعاً.</span>
       </div>
     </div>
@@ -47,7 +47,7 @@
       <button id="btn-theme-toggle" class="btn-main" aria-label="تغيير ثيم اللعبة">🖌️ تغيير الثيم</button>
       <button id="btn-open-board" class="btn-main">🎨 لوحة الرسم</button>
 
-      <!-- 🛡️ 2. زر الأدمن المطفي المريح للعين -->
+      <!-- 🛡️ زر الأدمن -->
       <button id="btn-admin-auth" class="btn-main btn-admin-floating" aria-label="فتح لوحة التحكم بالأدمن">
         <span class="admin-btn-icon">🛡️</span>
         <span class="admin-btn-text">لوحة الأدمن</span>
@@ -72,7 +72,7 @@
       </form>
     </aside>
 
-    <!-- 🔑 3. نافذة دخول الأدمن المخصصة المطفية -->
+    <!-- 🔑 3. نافذة دخول الأدمن -->
     <div id="admin-login-modal" class="custom-modal-overlay" style="display: none;">
       <div class="custom-modal-card login-card">
         <div class="modal-header">
@@ -101,7 +101,7 @@
       </div>
     </div>
 
-    <!-- 📢 4. نافذة الإعلانات والتنبيهات العامة المعروضة للاعبين -->
+    <!-- 📢 4. نافذة الإعلانات والتنبيهات العامة -->
     <div id="broadcast-modal" class="custom-modal-overlay" style="display: none;">
       <div class="custom-modal-card broadcast-card">
         <div class="modal-header center">
@@ -117,7 +117,44 @@
       </div>
     </div>
 
-    <!-- 🛠️ 5. لوحة تحكم الأدمن الموسعة والشاملة -->
+    <!-- 🔒 5. نافذة قفل الغرفة وطلب الإذن (جديد) -->
+    <div id="permission-request-modal" class="custom-modal-overlay" style="display: none;">
+      <div class="custom-modal-card danger-card">
+        <div class="modal-header center">
+          <div class="modal-icon-wrap">🚫</div>
+          <h3 id="permission-modal-title">الغرفة مغلقة أو تم إبعادك</h3>
+          <p id="permission-modal-reason" class="modal-subtitle">الغرفة مقفلة حالياً بوجه الدخول المباشر.</p>
+        </div>
+        <div class="modal-actions center">
+          <button type="button" id="btn-send-permission-request" class="btn-custom btn-primary">📩 طلب إذن دخول</button>
+          <button type="button" id="btn-leave-game" class="btn-custom btn-secondary">🚪 خروج</button>
+        </div>
+        <p id="permission-request-status" style="margin-top: 15px; color: #ffeb3b; font-size: 0.9rem; text-align: center; display: none;"></p>
+      </div>
+    </div>
+
+    <!-- 🤫 6. نافذة استلام الهمس الخاص مع إمكانية الرد (جديد) -->
+    <div id="whisper-received-modal" class="custom-modal-overlay" style="display: none;">
+      <div class="custom-modal-card whisper-card">
+        <div class="modal-header">
+          <div class="modal-icon-wrap">🤫</div>
+          <h3>رسالة همس خاصة</h3>
+          <p class="modal-subtitle">من: <strong id="whisper-sender-name" style="color: #00e5ff;">الأدمن</strong></p>
+        </div>
+        <div class="broadcast-body">
+          <p id="whisper-message-content" class="broadcast-text" style="background: rgba(0,0,0,0.3); padding: 12px; border-radius: 8px; border-right: 3px solid #00e5ff;"></p>
+        </div>
+        <div id="whisper-reply-box" style="margin-top: 15px;">
+          <input type="text" id="whisper-reply-input" class="custom-input" placeholder="اكتب ردك بالهمس هنا..." autocomplete="off">
+        </div>
+        <div class="modal-actions center" style="margin-top: 15px;">
+          <button type="button" id="btn-send-whisper-reply" class="btn-custom btn-primary">إرسال الرد 💬</button>
+          <button type="button" id="btn-close-whisper" class="btn-custom btn-secondary">إغلاق</button>
+        </div>
+      </div>
+    </div>
+
+    <!-- 🛠️ 7. لوحة تحكم الأدمن المتقدمة -->
     <div id="admin-panel-modal" class="custom-modal-overlay" style="display: none;">
       <div class="custom-modal-card admin-panel-card">
         
@@ -139,7 +176,7 @@
         <!-- جسم اللوحة الرئيسي -->
         <div class="admin-panel-body">
 
-          <!-- 👥 القسم الأول: إدارة اللاعبين المتصلين بالروم (بطاقات مع خيارات تحكم فردية كاملة) -->
+          <!-- 👥 القسم الأول: إدارة اللاعبين المتصلين بالروم -->
           <section class="admin-section">
             <div class="section-header">
               <div class="section-title">
@@ -152,92 +189,10 @@
               </div>
             </div>
             
-            <p class="section-hint">تحكم كامل بكل لاعب منفصل: حدد مدة العقوبة، خيار إعادة الدخول تلقائياً، تعديل النقاط والرسائل الخاصة:</p>
+            <p class="section-hint">تحكم كامل بكل لاعب منفصل: حدد مدة العقوبة، السبب، خيار إلغاء العقوبة، تعديل النقاط والهمس الخاص:</p>
             
-            <!-- حاوية بطاقات اللاعبين (تولد ديناميكياً عبر JavaScript) -->
             <div id="admin-players-container" class="players-cards-grid">
-              
-              <!-- هيكل توضيحي للبطاقة التي يتم توليدها ديناميكياً لكل لاعب -->
-              <!--
-              <div class="player-admin-card">
-                <div class="player-card-header">
-                  <div class="player-info">
-                    <span class="player-avatar">👤</span>
-                    <span class="player-card-name">اسم اللاعب</span>
-                    <span class="vip-badge">VIP</span>
-                  </div>
-                  <span class="player-card-score">150 pt</span>
-                </div>
-
-                <div class="player-custom-controls">
-                  <div class="input-inline-group">
-                    <label>⏱️ مؤقت العقوبة (بالدقائق):</label>
-                    <input type="number" class="custom-input input-sm player-timer-input" placeholder="مثال: 10" min="1">
-                  </div>
-
-                  <div class="input-inline-group checkbox-group">
-                    <label>
-                      <input type="checkbox" class="player-auto-reentry-check" checked>
-                      السماح بالدخول التلقائي بعد انتهاء المدة
-                    </label>
-                  </div>
-                </div>
-
-                <div class="player-actions-grid">
-                  <button class="btn-action danger" title="حظر دائم أو مؤقت بالـ IP">
-                    <span>❌ باند</span>
-                    <span class="tooltip-icon" title="حظر اللاعب من دخول السيرفر وتطبيق مؤقت الحظر">❓</span>
-                  </button>
-                  <button class="btn-action warning" title="طرد اللاعب وإخراجه من الغرفة">
-                    <span>⏳ طرد</span>
-                    <span class="tooltip-icon" title="إخراج اللاعب فوراً مع إمكانية منعه من العودة للمدة المحجوزة">❓</span>
-                  </button>
-                  <button class="btn-action" title="منع/سماح للاعب بالحديث في الشات">
-                    <span>🔇 كتم</span>
-                    <span class="tooltip-icon" title="كتم صوت/رسائل اللاعب في الشات العام لمدّة محددة">❓</span>
-                  </button>
-                  <button class="btn-action" title="منع/سماح للاعب بالرسم">
-                    <span>🔒 منع الرسم</span>
-                    <span class="tooltip-icon" title="سحب الصلاحية من اللاعب لاستخدام لوحة الرسم">❓</span>
-                  </button>
-                  <button class="btn-action" title="تعمية شاشة اللاعب">
-                    <span>👁️ عمياء</span>
-                    <span class="tooltip-icon" title="تحويل شاشة اللاعب إلى اللون الأسود لمنعه من اللعب">❓</span>
-                  </button>
-                  <button class="btn-action" title="منح أو سحب شارة VIP">
-                    <span>👑 VIP</span>
-                    <span class="tooltip-icon" title="إعطاء تمييز ولون خاص لاسم اللاعب">❓</span>
-                  </button>
-                </div>
-
-                <div class="player-custom-controls">
-                  <div class="input-inline-group">
-                    <label>✏️ تغيير الاسم:</label>
-                    <div class="input-with-btn">
-                      <input type="text" class="custom-input input-sm" placeholder="الاسم الجديد">
-                      <button class="btn-custom btn-sm">حفظ</button>
-                    </div>
-                  </div>
-
-                  <div class="input-inline-group">
-                    <label>💎 تعديل النقاط:</label>
-                    <div class="input-with-btn">
-                      <input type="number" class="custom-input input-sm" placeholder="±50">
-                      <button class="btn-custom btn-sm">تطبيق</button>
-                    </div>
-                  </div>
-
-                  <div class="input-inline-group">
-                    <label>💬 همس خاص للاعب:</label>
-                    <div class="input-with-btn">
-                      <input type="text" class="custom-input input-sm" placeholder="رسالة سرية...">
-                      <button class="btn-custom btn-secondary btn-sm">إرسال</button>
-                    </div>
-                  </div>
-                </div>
-              </div>
-              -->
-
+              <!-- يُولد ديناميكياً عبر JavaScript -->
             </div>
           </section>
 
@@ -251,52 +206,52 @@
             </div>
 
             <div class="global-actions-grid">
-              <button id="adm-btn-skip-word" class="btn-action">
+              <button id="adm-btn-skip-word" class="btn-action led-button led-off">
                 <span class="btn-icon">⏩</span>
                 <span class="btn-label">تخطي الكلمة</span>
-                <span class="tooltip-icon" title="إنهاء الكلمة الحالية والانتقال فوراً للكلمة التالية">❓</span>
+                <span class="tooltip-icon" data-help="إنهاء الكلمة الحالية والانتقال فوراً للكلمة التالية">❓</span>
               </button>
               
-              <button id="adm-btn-double-round" class="btn-action highlight">
+              <button id="adm-btn-double-round" class="btn-action led-button led-off">
                 <span class="btn-icon">⚡</span>
                 <span class="btn-label">جولة مضاعفة X2</span>
-                <span class="tooltip-icon" title="مضاعفة النقاط المكتسبة للجميع في الجولة الحالية">❓</span>
+                <span class="tooltip-icon" data-help="مضاعفة النقاط المكتسبة للجميع في الجولة الحالية">❓</span>
               </button>
               
-              <button id="adm-btn-sudden-death" class="btn-action warning">
+              <button id="adm-btn-sudden-death" class="btn-action warning led-button led-off">
                 <span class="btn-icon">💀</span>
                 <span class="btn-label">الموت المفاجئ</span>
-                <span class="tooltip-icon" title="تسريع الوقت جداً ونهاية حاسمة للجولة">❓</span>
+                <span class="tooltip-icon" data-help="تسريع الوقت وتفعيل الجولة الحاسمة للموت المفاجئ">❓</span>
               </button>
               
-              <button id="adm-btn-freeze-all" class="btn-action warning">
+              <button id="adm-btn-freeze-all" class="btn-action warning led-button led-off">
                 <span class="btn-icon">🧊</span>
                 <span class="btn-label">تجميد الجميع</span>
-                <span class="tooltip-icon" title="منع جميع اللاعبين من الكتابة أو إدخال الإجابات">❓</span>
+                <span class="tooltip-icon" data-help="منع جميع اللاعبين من الكتابة أو إدخال الإجابات">❓</span>
               </button>
               
-              <button id="adm-btn-mute-all" class="btn-action warning">
+              <button id="adm-btn-mute-all" class="btn-action warning led-button led-off">
                 <span class="btn-icon">🔇</span>
                 <span class="btn-label">كتم الشات العام</span>
-                <span class="tooltip-icon" title="قفل الشات العام بوجه كافة اللاعبين المتصلين">❓</span>
+                <span class="tooltip-icon" data-help="قفل الشات العام بوجه جميع اللاعبين ويستثنى منه الأدمن الأساسي">❓</span>
               </button>
               
-              <button id="adm-btn-lock-room" class="btn-action warning">
+              <button id="adm-btn-lock-room" class="btn-action warning led-button led-off">
                 <span class="btn-icon">🔒</span>
                 <span class="btn-label">قفل الغرفة</span>
-                <span class="tooltip-icon" title="منع انضمام أي لاعب جديد إلى الروم">❓</span>
+                <span class="tooltip-icon" data-help="منع انضمام أي لاعب جديد إلى الروم وتفعيل نظام طلب الإذن">❓</span>
               </button>
               
-              <button id="adm-btn-reset-game" class="btn-action danger">
+              <button id="adm-btn-reset-game" class="btn-action danger led-button led-off">
                 <span class="btn-icon">🔄</span>
                 <span class="btn-label">تصفير النقاط</span>
-                <span class="tooltip-icon" title="إعادة نتائج جميع اللاعبين في الروم إلى 0">❓</span>
+                <span class="tooltip-icon" data-help="إعادة نتائج جميع اللاعبين في الروم إلى 0">❓</span>
               </button>
               
-              <button id="adm-btn-clean-room" class="btn-action danger">
+              <button id="adm-btn-clean-room" class="btn-action danger led-button led-off">
                 <span class="btn-icon">🧹</span>
                 <span class="btn-label">طرد الجماعي</span>
-                <span class="tooltip-icon" title="طرد جميع المتصلين وتفريغ الغرفة فوراً">❓</span>
+                <span class="tooltip-icon" data-help="طرد جميع المتصلين وتفريغ الغرفة فوراً">❓</span>
               </button>
             </div>
           </section>
@@ -315,7 +270,7 @@
               <div class="control-card-row">
                 <div class="control-label-wrap">
                   <label>📢 إعلان شاشات منبثق</label>
-                  <span class="tooltip-icon" title="رسالة كبيرة تظهر في منتصف شاشات جميع اللاعبين">❓</span>
+                  <span class="tooltip-icon" data-help="رسالة كبيرة تظهر في منتصف شاشات جميع اللاعبين المتصلين">❓</span>
                 </div>
                 <div class="input-with-btn">
                   <input type="text" id="adm-broadcast-input" class="custom-input" placeholder="اكتب نص الإعلان العام...">
@@ -323,15 +278,20 @@
                 </div>
               </div>
 
-              <!-- التحكم بالشريط الإخباري -->
+              <!-- التحكم بالشريط الإخباري وسرعته -->
               <div class="control-card-row">
                 <div class="control-label-wrap">
-                  <label>📺 الشريط الإخباري المتحرك</label>
-                  <span class="tooltip-icon" title="التحكم بالنص المتحرك العائم أعلى الشاشة">❓</span>
+                  <label>📺 الشريط الإخباري المتحرك والسرعة</label>
+                  <span class="tooltip-icon" data-help="التحكم بالنص المتحرك العائم أعلى الشاشة وسرعة حركته">❓</span>
                 </div>
                 <div class="input-with-btn multi">
                   <input type="text" id="adm-ticker-input" class="custom-input" placeholder="أدخل نص الشريط الإخباري...">
-                  <button id="adm-btn-set-ticker" class="btn-custom btn-primary">تحديث النص</button>
+                  <select id="adm-ticker-speed-select" class="custom-input" style="max-width: 120px;">
+                    <option value="speed-slow">بطيء</option>
+                    <option value="speed-normal" selected>عادي</option>
+                    <option value="speed-fast">سريع</option>
+                  </select>
+                  <button id="adm-btn-set-ticker" class="btn-custom btn-primary">تحديث النص والسرعة</button>
                   <button id="adm-btn-toggle-ticker" class="btn-custom btn-secondary">إظهار / إخفاء</button>
                 </div>
               </div>
@@ -340,7 +300,7 @@
               <div class="control-card-row">
                 <div class="control-label-wrap">
                   <label>✍️ تعيين كلمة الجولة القادمة</label>
-                  <span class="tooltip-icon" title="تحديد كلمة معينة تلعب في الجولة القادمة مباشرة">❓</span>
+                  <span class="tooltip-icon" data-help="تحديد كلمة معينة تلعب في الجولة القادمة مباشرة">❓</span>
                 </div>
                 <div class="input-with-btn">
                   <input type="text" id="adm-custom-word-input" class="custom-input" placeholder="اكتب الكلمة المطلوب التخمين عليها...">
@@ -484,35 +444,39 @@
       function applyCustomTheme(index) {
         const activeTheme = customThemes[index];
 
-        // إزالة كلاسات الثيمات الخمسة
         customThemes.forEach(t => {
           if (t.className) document.body.classList.remove(t.className);
         });
 
-        // إضافة كلاس الثيم الجديد
         if (activeTheme.className) {
           document.body.classList.add(activeTheme.className);
         }
 
-        // حفظ الثيم في ذاكرة المتصفح
         localStorage.setItem('customThemeIndex', index);
 
-        // تحديث نص الزر
         if (themeBtn) {
           themeBtn.textContent = `🖌️ الثيم: ${activeTheme.nextLabel}`;
         }
       }
 
-      // تطبيق الثيم المحفوظ عند التحميل
       applyCustomTheme(currentThemeIndex);
 
-      // ربط الحدث بالزر
       if (themeBtn) {
         themeBtn.addEventListener('click', () => {
           currentThemeIndex = (currentThemeIndex + 1) % customThemes.length;
           applyCustomTheme(currentThemeIndex);
         });
       }
+
+      // 3. دعم الضغط على أيقونات الشرح (?) لإظهار نافذة تنبيه مفصلة
+      document.body.addEventListener('click', (e) => {
+        if (e.target.classList.contains('tooltip-icon')) {
+          const helpText = e.target.getAttribute('data-help') || e.target.getAttribute('title');
+          if (helpText) {
+            alert(`ℹ️ شرح الزر:\n${helpText}`);
+          }
+        }
+      });
     });
   </script>
 </body>
