@@ -778,8 +778,8 @@ initStudio();
 })();
 
 /* ==========================================================================
-   🛡️ نظام الأدمن المتقدم للعبة الكلمات السريعة - game.js
-   إدارة كاملة للاعبين، العقوبات الحية مع مؤقتات، الإعلانات، الأحداث والسجلات
+   🛡️ نظام الأدمن المتقدم للعبة الكلمات السريعة - game.js (النسخة الكاملة والمعدلة)
+   إدارة كاملة للاعبين، العقوبات الحية مع تحديد الأسباب، طلبات الإذن، الإعلانات، الأحداث والسجلات
    ========================================================================== */
 
 document.addEventListener('DOMContentLoaded', () => {
@@ -832,13 +832,13 @@ document.addEventListener('DOMContentLoaded', () => {
 
   // حالة الجلسة المحلية للأدمن
   let isAdminAuthenticated = false;
+  let isSuperAdmin = false;
   let activePlayersList = [];
 
   // ==========================================================================
   // 🔐 2. نظام تسجيل الدخول وفتح/إغلاق اللوحة
   // ==========================================================================
 
-  // فتح نافذة الدخول أو اللوحة مباشرة إذا كان مسجلاً
   if (btnAdminAuth) {
     btnAdminAuth.addEventListener('click', () => {
       if (isAdminAuthenticated) {
@@ -876,7 +876,6 @@ document.addEventListener('DOMContentLoaded', () => {
         return;
       }
 
-      // إرسال طلب التحقق للباك إند عبر Socket.io
       if (socket) {
         socket.emit('admin:authenticate', { password }, (response) => {
           if (response && response.success) {
@@ -890,7 +889,6 @@ document.addEventListener('DOMContentLoaded', () => {
           }
         });
       } else {
-        // وضع تجريبي محلي للواجهة Frontend التجريبية
         isAdminAuthenticated = true;
         closeAdminLoginModal();
         openAdminPanel();
@@ -918,13 +916,13 @@ document.addEventListener('DOMContentLoaded', () => {
 
   function refreshPlayersData() {
     if (socket && isAdminAuthenticated) {
+      // إرسال استعلام للحصول على قائمة اللاعبين
       socket.emit('admin:get_players');
     } else {
-      // إدخال بيانات تجريبية لعرض شكل البطاقات المفصلة
       const mockPlayers = [
-        { id: 'p1', name: 'عبد الحميد', score: 350, isVip: true, muted: false, frozen: false },
-        { id: 'p2', name: 'أحمد علي', score: 120, isVip: false, muted: false, frozen: false },
-        { id: 'p3', name: 'خالد محمد', score: 80, isVip: false, muted: true, frozen: false }
+        { id: 'p1', name: 'عبد الحميد', score: 350, isVip: true, muted: false, frozen: false, blinded: false },
+        { id: 'p2', name: 'أحمد علي', score: 120, isVip: false, muted: false, frozen: false, blinded: false },
+        { id: 'p3', name: 'خالد محمد', score: 80, isVip: false, muted: true, frozen: false, blinded: false }
       ];
       renderPlayerCards(mockPlayers);
     }
@@ -966,42 +964,39 @@ document.addEventListener('DOMContentLoaded', () => {
 
         <div class="player-custom-controls">
           <div class="input-inline-group">
-            <label>⏱️ مدة العقوبة/المؤقت (بالدقائق):</label>
-            <input type="number" class="custom-input input-sm player-timer-input" id="timer-${player.id}" placeholder="مثال: 10" min="1" value="5">
+            <label>🚨 سبب الطرد / العقوبة:</label>
+            <input type="text" class="custom-input input-sm player-reason-input" id="reason-${player.id}" placeholder="مثال: مخالقة قوانين الشات">
           </div>
-
-          <div class="input-inline-group checkbox-group">
-            <label>
-              <input type="checkbox" class="player-auto-reentry-check" id="auto-entry-${player.id}" checked>
-              السماح بالدخول التلقائي بعد انتهاء المدة
-            </label>
+          <div class="input-inline-group">
+            <label>⏱️ مدة الحظر (بالدقائق):</label>
+            <input type="number" class="custom-input input-sm player-timer-input" id="timer-${player.id}" placeholder="مثال: 5" min="1" value="5">
           </div>
         </div>
 
         <div class="player-actions-grid">
           <button class="btn-action danger btn-p-ban" data-id="${player.id}">
             <span>❌ باند IP</span>
-            <span class="tooltip-icon" title="حظر اللاعب وتطبيق مؤقت الحظر بدقة">❓</span>
+            <span class="tooltip-icon" title="حظر اللاعب نهائياً بالـ IP">❓</span>
           </button>
           <button class="btn-action warning btn-p-kick" data-id="${player.id}">
-            <span>⏳ طرد</span>
-            <span class="tooltip-icon" title="إخراج اللاعب فوراً من الروم">❓</span>
+            <span>🚪 طرد بالسبب</span>
+            <span class="tooltip-icon" title="طرد اللاعب مع تحديد السبب وفتح خيار طلب الإذن">❓</span>
           </button>
           <button class="btn-action btn-p-mute" data-id="${player.id}">
             <span>${player.muted ? '🔊 فك الكتم' : '🔇 كتم'}</span>
-            <span class="tooltip-icon" title="منع/سماح بالتحدث في الشات للمدة المحددة">❓</span>
+            <span class="tooltip-icon" title="منع/سماح بالتحدث في الشات">❓</span>
           </button>
           <button class="btn-action btn-p-freeze" data-id="${player.id}">
             <span>${player.frozen ? '🔥 فك التجميد' : '🧊 تجميد'}</span>
             <span class="tooltip-icon" title="منع اللاعب من إدخال الإجابات">❓</span>
           </button>
           <button class="btn-action btn-p-blind" data-id="${player.id}">
-            <span>👁️ عمياء</span>
+            <span>${player.blinded ? '👁️ فك التعمية' : '🕶️ تعمية'}</span>
             <span class="tooltip-icon" title="تعتيم شاشة اللاعب بالكامل">❓</span>
           </button>
-          <button class="btn-action btn-p-vip" data-id="${player.id}">
-            <span>👑 VIP</span>
-            <span class="tooltip-icon" title="منح أو سحب رتبة VIP">❓</span>
+          <button class="btn-action btn-p-warn" data-id="${player.id}">
+            <span>⚠️ تحذير</span>
+            <span class="tooltip-icon" title="إرسال تنبيه تحذيري مباشر">❓</span>
           </button>
         </div>
 
@@ -1035,7 +1030,6 @@ document.addEventListener('DOMContentLoaded', () => {
       adminPlayersContainer.appendChild(card);
     });
 
-    // ربط أحداث أزرار البطاقات
     bindPlayerCardEvents();
   }
 
@@ -1045,59 +1039,61 @@ document.addEventListener('DOMContentLoaded', () => {
       btn.onclick = () => {
         const pId = btn.dataset.id;
         const duration = getTimerValue(pId);
-        const autoReentry = getAutoReentryValue(pId);
-        emitAdminAction('player:ban', { playerId: pId, duration, autoReentry });
-        logAudit(`تم حظر اللاعب (${pId}) لمدة ${duration} دقيقة (تلقائي: ${autoReentry}).`, 'danger');
+        if (confirm('هل أنت متأكد من تطبيق حظر IP على هذا اللاعب؟')) {
+          emitAdminAction('player:ban', { playerId: pId, durationMinutes: duration, isPermanent: false });
+          logAudit(`تم حظر اللاعب (${pId}) لمدة ${duration} دقيقة.`, 'danger');
+        }
       };
     });
 
-    // 2. طرد
+    // 2. طرد مطور (مع إدخال السبب المباشر)
     document.querySelectorAll('.btn-p-kick').forEach(btn => {
       btn.onclick = () => {
         const pId = btn.dataset.id;
-        const duration = getTimerValue(pId);
-        const autoReentry = getAutoReentryValue(pId);
-        emitAdminAction('player:kick', { playerId: pId, duration, autoReentry });
-        logAudit(`تم طرد اللاعب (${pId}) [منع عودة: ${duration} دقيقة].`, 'warning');
+        const reasonInput = document.getElementById(`reason-${pId}`);
+        const reason = reasonInput && reasonInput.value.trim() ? reasonInput.value.trim() : 'تم طردك من قبل الأدمن';
+
+        emitAdminAction('player:kick', { playerId: pId, reason: reason });
+        logAudit(`تم طرد اللاعب (${pId}) بسبب: ${reason}`, 'warning');
       };
     });
 
-    // 3. كتم
+    // 3. كتم / فك الكتم
     document.querySelectorAll('.btn-p-mute').forEach(btn => {
       btn.onclick = () => {
         const pId = btn.dataset.id;
-        const duration = getTimerValue(pId);
-        emitAdminAction('player:toggle_mute', { playerId: pId, duration });
-        logAudit(`تغيير حالة كتم الشات للاعب (${pId}) لمدة ${duration} دقيقة.`, 'warning');
+        emitAdminAction('player:toggle_state', { playerId: pId, key: 'muted' });
+        logAudit(`تغيير حالة كتم الشات للاعب (${pId}).`, 'warning');
       };
     });
 
-    // 4. تجميد
+    // 4. تجميد / فك التجميد
     document.querySelectorAll('.btn-p-freeze').forEach(btn => {
       btn.onclick = () => {
         const pId = btn.dataset.id;
-        const duration = getTimerValue(pId);
-        emitAdminAction('player:toggle_freeze', { playerId: pId, duration });
-        logAudit(`تغيير حالة تجميد اللعب للاعب (${pId}).`, 'warning');
+        emitAdminAction('player:toggle_state', { playerId: pId, key: 'frozen' });
+        logAudit(`تغيير حالة تجميد اللاعب (${pId}).`, 'warning');
       };
     });
 
-    // 5. شاشة عمياء
+    // 5. تعمية / فك التعمية
     document.querySelectorAll('.btn-p-blind').forEach(btn => {
       btn.onclick = () => {
         const pId = btn.dataset.id;
-        const duration = getTimerValue(pId);
-        emitAdminAction('player:toggle_blind', { playerId: pId, duration });
-        logAudit(`تفعيل/إلغاء الشاشة العمياء للاعب (${pId}).`, 'warning');
+        emitAdminAction('player:toggle_state', { playerId: pId, key: 'blinded' });
+        logAudit(`تغيير حالة تعمية شاشة اللاعب (${pId}).`, 'warning');
       };
     });
 
-    // 6. VIP
-    document.querySelectorAll('.btn-p-vip').forEach(btn => {
+    // 6. تحذير لاعب
+    document.querySelectorAll('.btn-p-warn').forEach(btn => {
       btn.onclick = () => {
         const pId = btn.dataset.id;
-        emitAdminAction('player:toggle_vip', { playerId: pId });
-        logAudit(`تحديث حالة VIP للاعب (${pId}).`, 'info');
+        const msg = prompt('أدخل نص التحذير الموجه للاعب:', 'تنبيه: التزم بقوانين اللعب الشريف!');
+        if (msg) {
+          emitAdminAction('player:warn', { playerId: pId, message: msg });
+          logAudit(`إرسال تحذير للاعب (${pId}): ${msg}`, 'warning');
+        }
       };
     });
 
@@ -1144,15 +1140,9 @@ document.addEventListener('DOMContentLoaded', () => {
     });
   }
 
-  // أدوات مساعدة لجلب قيمة المؤقت والخيار
   function getTimerValue(playerId) {
     const timerInput = document.getElementById(`timer-${playerId}`);
     return timerInput ? (parseInt(timerInput.value) || 5) : 5;
-  }
-
-  function getAutoReentryValue(playerId) {
-    const check = document.getElementById(`auto-entry-${playerId}`);
-    return check ? check.checked : true;
   }
 
   // ==========================================================================
@@ -1175,8 +1165,11 @@ document.addEventListener('DOMContentLoaded', () => {
 
   if (admBtnSuddenDeath) {
     admBtnSuddenDeath.onclick = () => {
-      emitAdminAction('room:trigger_sudden_death');
-      logAudit('تفعيل وضع الموت المفاجئ!', 'warning');
+      const timer = prompt('أدخل وقت الموت المفاجئ (بالثواني):', '30');
+      if (timer) {
+        emitAdminAction('room:trigger_sudden_death', { timer: parseInt(timer) });
+        logAudit(`تفعيل وضع الموت المفاجئ (${timer} ثانية)!`, 'warning');
+      }
     };
   }
 
@@ -1203,7 +1196,7 @@ document.addEventListener('DOMContentLoaded', () => {
 
   if (admBtnResetGame) {
     admBtnResetGame.onclick = () => {
-      if (confirm('هل أنت تأكد من تصفير نتائج جميع اللاعبين؟')) {
+      if (confirm('هل أنت متأكد من تصفير نتائج جميع اللاعبين؟')) {
         emitAdminAction('room:reset_scores');
         logAudit('تم تصفير جميع نقاط اللاعبين في الروم.', 'danger');
       }
@@ -1223,7 +1216,6 @@ document.addEventListener('DOMContentLoaded', () => {
   // 📢 5. الإعلانات، الشريط الإخباري والكلمات المخصصة
   // ==========================================================================
 
-  // إرسال إعلان شاشة منبثق
   if (admBtnSendBroadcast) {
     admBtnSendBroadcast.onclick = () => {
       const msg = admBroadcastInput ? admBroadcastInput.value.trim() : '';
@@ -1235,12 +1227,11 @@ document.addEventListener('DOMContentLoaded', () => {
     };
   }
 
-  // تحديث نص الشريط الإخباري
   if (admBtnSetTicker) {
     admBtnSetTicker.onclick = () => {
       const msg = admTickerInput ? admTickerInput.value.trim() : '';
       if (msg) {
-        emitAdminAction('ticker:update_text', { text: msg });
+        emitAdminAction('ticker:update', { text: msg, visible: true });
         updateTickerTextLocally(msg);
         logAudit(`تحديث نص الشريط الإخباري: "${msg}"`, 'info');
         admTickerInput.value = '';
@@ -1248,13 +1239,12 @@ document.addEventListener('DOMContentLoaded', () => {
     };
   }
 
-  // إظهار/إخفاء الشريط الإخباري
   if (admBtnToggleTicker) {
     admBtnToggleTicker.onclick = () => {
-      emitAdminAction('ticker:toggle_visibility');
       if (tickerBanner) {
-        const isHidden = tickerBanner.style.display === 'none';
-        tickerBanner.style.display = isHidden ? 'flex' : 'none';
+        const isCurrentlyVisible = tickerBanner.style.display !== 'none';
+        emitAdminAction('ticker:update', { text: tickerText ? tickerText.textContent : '', visible: !isCurrentlyVisible });
+        tickerBanner.style.display = isCurrentlyVisible ? 'none' : 'flex';
       }
       logAudit('تبديل حالة إظهار الشريط الإخباري.', 'info');
     };
@@ -1266,7 +1256,6 @@ document.addEventListener('DOMContentLoaded', () => {
     };
   }
 
-  // تعيين كلمة الجولة القادمة
   if (admBtnSetCustomWord) {
     admBtnSetCustomWord.onclick = () => {
       const word = admCustomWordInput ? admCustomWordInput.value.trim() : '';
@@ -1278,7 +1267,6 @@ document.addEventListener('DOMContentLoaded', () => {
     };
   }
 
-  // إغلاق نافذة الإعلان العام للاعبين
   if (btnCloseBroadcast) {
     btnCloseBroadcast.onclick = () => {
       if (broadcastModal) broadcastModal.style.display = 'none';
@@ -1318,7 +1306,6 @@ document.addEventListener('DOMContentLoaded', () => {
       .replace(/"/g, '&quot;');
   }
 
-  // إرسال الإجراء إلى السيرفر
   function emitAdminAction(eventName, data = {}) {
     if (socket && isAdminAuthenticated) {
       socket.emit(`admin:${eventName}`, data);
@@ -1330,12 +1317,39 @@ document.addEventListener('DOMContentLoaded', () => {
   // ==========================================================================
 
   if (socket) {
-    // تحديث قائمة اللاعبين الحية
+    // تعيين السوبر أدمن
+    socket.on('admin:set_super', (data) => {
+      isSuperAdmin = !!data.isSuper;
+      if (isSuperAdmin) {
+        logAudit('👑 تم تعيينك كـ الأدمن الأساسي (Super Admin) للغرفة.', 'info');
+      }
+    });
+
+    // تحديث قائمة اللاعبين الحية للأدمن
     socket.on('admin:players_updated', (players) => {
       if (isAdminAuthenticated) renderPlayerCards(players);
     });
 
-    // استقبال إعلان الشاشة العامة من الأدمن
+    // استقبال طلبات الدخول/الاستئذان الموجهة للأدمن الأساسي
+    socket.on('admin:reentry_request', (data) => {
+      const accepted = confirm(`📥 طلب إذن دخول جديد:\nاللاعب: ${data.playerName}\nسبب الطرد: ${data.reason}\n\nهل ترغب في قبول طلب الدخول؟`);
+      const responseMessage = prompt("اكتب رسالة الرد الموجهة للاعب (اختياري):", accepted ? "تم قبول طلبك، أهلاً بك!" : "تم رفض الطلب.");
+
+      socket.emit('admin:respond_reentry', {
+        requestId: data.requestId,
+        accepted: accepted,
+        responseMessage: responseMessage || ''
+      });
+
+      logAudit(`تم التعامل مع طلب إذن الدخول للاعب (${data.playerName}) - النتيجة: ${accepted ? 'قبول' : 'رفض'}`, accepted ? 'info' : 'warning');
+    });
+
+    // استقبال سجلات التدقيق المباشرة من السيرفر
+    socket.on('admin:audit_log', (data) => {
+      logAudit(`[${data.from} -> ${data.to}]: ${data.message}`, 'info');
+    });
+
+    // استقبال إعلان الشاشة العامة
     socket.on('broadcast:received', (data) => {
       if (broadcastMessageText) broadcastMessageText.textContent = data.message;
       if (broadcastModal) broadcastModal.style.display = 'flex';
@@ -1349,12 +1363,29 @@ document.addEventListener('DOMContentLoaded', () => {
       }
     });
 
-    // استقبال رسائل التنبيه والهمس الخاصة للأدمن/اللاعبين
-    socket.on('admin:notify', (data) => {
-      if (data.type === 'whisper') {
-        alert(`💬 همس خاص من الأدمن: ${data.message}`);
-      } else {
-        logAudit(data.message, data.level || 'info');
+    // استقبال تأثير التحذير المباشر
+    socket.on('admin:warn_effect', (data) => {
+      alert(`⚠️ تحذير إداري:\n${data.message}`);
+    });
+
+    // استقبال الهمس الخاص
+    socket.on('admin:whisper_received', (data) => {
+      alert(`💬 همس خاص من (${data.from}):\n${data.message}`);
+    });
+
+    // استقبال تأثير الشاشة العمياء
+    socket.on('admin:effect:blind', (data) => {
+      let blindOverlay = document.getElementById('blind-overlay');
+      if (data.active) {
+        if (!blindOverlay) {
+          blindOverlay = document.createElement('div');
+          blindOverlay.id = 'blind-overlay';
+          blindOverlay.style.cssText = 'position:fixed; top:0; left:0; width:100%; height:100%; background:#000; z-index:999999; display:flex; align-items:center; justify-content:center; color:#fff; font-size:24px; font-family:sans-serif;';
+          blindOverlay.innerHTML = '<div>🕶️ شاشتك معتمة حالياً بقرار من الأدمن</div>';
+          document.body.appendChild(blindOverlay);
+        }
+      } else if (blindOverlay) {
+        blindOverlay.remove();
       }
     });
   }
