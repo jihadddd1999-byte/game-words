@@ -949,9 +949,7 @@ io.on('connection', (socket) => {
         clearTimeout(wordTimer);
         wordTimer = null;
       }
-    }
   });
-});
 
 app.get('/ping', (req, res) => res.status(200).send('alive'));
 
