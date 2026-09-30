@@ -1,6 +1,5 @@
 /* ==========================================================================
    🛡️ سيرفر لعبة الكلمات السريعة - النسخة الكاملة والمشاملة بدون حذف
-   كلمة السر: 20018151070792005932
    ========================================================================== */
 
 const express = require('express');
@@ -68,6 +67,7 @@ let superAdminSocketId = null;
 
 const bannedIPs = new Map();           
 const kickedIPs = new Map();           
+const kickRequests = new Map();        // ذاكرة طلبات الإذن للدخول
 const allowedMuteBypass = new Set();   
 const typingUsers = new Set();
 
@@ -182,16 +182,14 @@ io.on('connection', (socket) => {
     }
   }
 
-  // 2. فحص الطرد
+  // 2. فحص الطرد (إرسال الحالة للاعب دون قطع الاتصال الفوري لكي يتمكن من طلب الإذن)
   if (kickedIPs.has(clientIP)) {
     const kickData = kickedIPs.get(clientIP);
-    if (kickData.kickedUntil === 'PERMANENT' || Date.now() < kickData.kickedUntil) {
-      socket.emit('chatMessage', { system: true, message: 'أنت مطرود من الروم حالياً.' });
-      socket.disconnect(true);
-      return;
-    } else {
-      kickedIPs.delete(clientIP);
-    }
+    socket.emit('kicked:status', {
+      reason: kickData.reason || 'تم طردك من قبل الأدمن',
+      kickedBy: kickData.kickedBy || 'الأدمن'
+    });
+    return;
   }
 
   // 3. فحص قفل الروم والعدد الأقصى
@@ -405,23 +403,33 @@ io.on('connection', (socket) => {
     io.emit('admin:banned_list_updated', Array.from(bannedIPs.entries()));
   });
 
+  // --- طرد اللاعب مع تحديد السبب وترخيص طلب الإذن ---
   socket.on('admin:player:kick', (data) => {
     if (!authenticatedAdmins.has(socket.id)) return;
-    const { playerId, isPermanent, durationMinutes } = data;
+    const { playerId, reason } = data;
     const target = players.get(playerId);
+    const adminPlayer = players.get(socket.id);
 
     if (target) {
-      const kickedUntil = isPermanent ? 'PERMANENT' : Date.now() + (durationMinutes || 5) * 60 * 1000;
-      kickedIPs.set(target.ip, { kickedUntil });
+      const kickReason = reason && reason.trim() ? reason.trim() : 'تم طردك من قبل الأدمن';
+      const kickedByName = adminPlayer ? adminPlayer.name : 'الأدمن';
 
-      const targetSocket = io.sockets.sockets.get(playerId);
-      if (targetSocket) {
-        targetSocket.emit('chatMessage', { system: true, message: 'تم طردك من الروم.' });
-        targetSocket.disconnect(true);
-      }
+      kickedIPs.set(target.ip, {
+        reason: kickReason,
+        kickedBy: kickedByName,
+        playerName: target.name
+      });
+
+      // إرسال الإشعار للواجهة قبل حذف اللاعب من الذاكرة الحية للروم
+      io.to(playerId).emit('kicked:status', {
+        reason: kickReason,
+        kickedBy: kickedByName
+      });
+
       players.delete(playerId);
       updatePlayersList();
       io.emit('admin:kicked_list_updated', Array.from(kickedIPs.entries()));
+      logToAudit(`قام بطرد اللاعب (${target.name}) بسبب: ${kickReason}`, kickedByName, target.name);
     }
   });
 
@@ -429,6 +437,66 @@ io.on('connection', (socket) => {
     if (!authenticatedAdmins.has(socket.id)) return;
     kickedIPs.delete(ip);
     io.emit('admin:kicked_list_updated', Array.from(kickedIPs.entries()));
+  });
+
+  // ==========================================
+  // 📩 3. نظام طلب الإذن للدخول بعد الطرد
+  // ==========================================
+
+  socket.on('player:request_reentry', () => {
+    const clientIP = getClientIP(socket);
+    const kickData = kickedIPs.get(clientIP);
+
+    if (!kickData) return;
+
+    kickRequests.set(socket.id, {
+      ip: clientIP,
+      playerName: kickData.playerName || 'لاعب مطرود'
+    });
+
+    if (superAdminSocketId) {
+      io.to(superAdminSocketId).emit('admin:reentry_request', {
+        requestId: socket.id,
+        playerName: kickData.playerName || 'لاعب مطرود',
+        ip: clientIP,
+        reason: kickData.reason
+      });
+      socket.emit('reentry:status_update', { message: '⏳ تم إرسال طلبك للرئيسي، بانتظار الرد...' });
+    } else {
+      socket.emit('reentry:status_update', { message: '❌ الأدمن الأساسي غير متواجد حالياً.' });
+    }
+  });
+
+  socket.on('admin:respond_reentry', (data) => {
+    if (socket.id !== superAdminSocketId) return;
+
+    const { requestId, accepted, responseMessage } = data;
+    const request = kickRequests.get(requestId);
+
+    if (request) {
+      const targetSocket = io.sockets.sockets.get(requestId);
+
+      if (accepted) {
+        kickedIPs.delete(request.ip);
+        kickRequests.delete(requestId);
+
+        if (targetSocket) {
+          targetSocket.emit('reentry:approved', {
+            message: responseMessage || 'تم قبول طلبك للدخول، يمكنك العودة للعب الآن!'
+          });
+        }
+        logToAudit(`تم قبول طلب دخول اللاعب (${request.playerName})`, 'السوبر أدمن', request.playerName);
+      } else {
+        kickRequests.delete(requestId);
+
+        if (targetSocket) {
+          targetSocket.emit('reentry:rejected', {
+            message: responseMessage || 'تم رفض طلب دخولك من قبل الأدمن الأساسي.'
+          });
+        }
+        logToAudit(`تم رفض طلب دخول اللاعب (${request.playerName}) بسبب: ${responseMessage || 'بدون سبب'}`, 'السوبر أدمن', request.playerName);
+      }
+    }
   });
 
   socket.on('admin:player:toggle_state', (data) => {
@@ -489,7 +557,7 @@ io.on('connection', (socket) => {
   });
 
   // ==========================================
-  // 🎯 3. التحكم بالجولات والروم
+  // 🎯 4. التحكم بالجولات والروم
   // ==========================================
   socket.on('admin:room:skip_word', () => {
     if (!authenticatedAdmins.has(socket.id)) return;
@@ -600,6 +668,7 @@ io.on('connection', (socket) => {
     }
     authenticatedAdmins.delete(socket.id);
     allowedMuteBypass.delete(socket.id);
+    kickRequests.delete(socket.id);
     updatePlayersList();
 
     if (players.size === 0) {
