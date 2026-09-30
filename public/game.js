@@ -1390,3 +1390,109 @@ document.addEventListener('DOMContentLoaded', () => {
     });
   }
 });
+
+/* ==========================================================================
+   🚨 معالجة الطرد وطلب الإذن وواجهة الاستئذان للأدمن
+   ========================================================================== */
+
+// 1️⃣ استقبال حدث الطرد
+socket.on('player:kicked', (data) => {
+  const reason = data.reason || 'تم طردك بواسطة الأدمن';
+  showKickedModal(reason);
+});
+
+// 2️⃣ عرض النافذة المنبثقة المخصصة للمطرود
+function showKickedModal(reason) {
+  let existingModal = document.getElementById('kicked-modal-overlay');
+  if (existingModal) existingModal.remove();
+
+  const modal = document.createElement('div');
+  modal.id = 'kicked-modal-overlay';
+  modal.style.cssText = `
+    position: fixed; top: 0; left: 0; width: 100%; height: 100%;
+    background: rgba(0, 0, 0, 0.88); display: flex; align-items: center;
+    justify-content: center; z-index: 999999; direction: rtl; font-family: system-ui, sans-serif;
+  `;
+
+  modal.innerHTML = `
+    <div style="background: #1e1e24; border: 2px solid #ff4757; border-radius: 14px; padding: 25px; width: 90%; max-width: 440px; text-align: center; color: #fff; box-shadow: 0 10px 30px rgba(0,0,0,0.6);">
+      <h2 style="color: #ff4757; margin-top: 0; font-size: 22px;">🚫 تم طردك من الغرفة</h2>
+      <div style="font-size: 15px; margin: 15px 0; background: rgba(255,255,255,0.06); padding: 12px; border-radius: 8px; border-right: 4px solid #ff4757;">
+        <strong>سبب الطرد:</strong> <br><span style="color: #eccc68; font-weight: bold;">${escapeHtml(reason)}</span>
+      </div>
+      <div style="display: flex; flex-direction: column; gap: 10px; margin-top: 20px;">
+        <button id="btn-request-reentry" style="background: #2ed573; color: #fff; border: none; padding: 12px; border-radius: 8px; font-weight: bold; cursor: pointer; font-size: 15px; transition: 0.2s;">
+          🙋‍♂️ طلب إذن الدخول من الأدمن
+        </button>
+        <button id="btn-close-kick-modal" style="background: #4b6584; color: #fff; border: none; padding: 10px; border-radius: 8px; cursor: pointer; font-size: 14px;">
+          إغلاق النافذة
+        </button>
+      </div>
+      <p id="reentry-status-text" style="margin-top: 15px; font-size: 14px; color: #ffa502; display: none;"></p>
+    </div>
+  `;
+
+  document.body.appendChild(modal);
+
+  // إرسال طلب إذن الدخول
+  document.getElementById('btn-request-reentry').onclick = () => {
+    const btn = document.getElementById('btn-request-reentry');
+    const statusText = document.getElementById('reentry-status-text');
+    
+    btn.disabled = true;
+    btn.style.opacity = '0.5';
+    statusText.style.display = 'block';
+    statusText.style.color = '#ffa502';
+    statusText.textContent = '⏳ جاري إرسال الطلب للأدمن الأساسي...';
+
+    const localPlayerName = localStorage.getItem('playerName') || 'لاعب';
+    socket.emit('player:request_reentry', { reason: reason, playerName: localPlayerName });
+  };
+
+  // زر الإغلاق
+  document.getElementById('btn-close-kick-modal').onclick = () => {
+    modal.remove();
+  };
+}
+
+// 3️⃣ استقبال رد الأدمن على طلب الإذن
+socket.on('player:reentry_response', (data) => {
+  const statusText = document.getElementById('reentry-status-text');
+  if (statusText) {
+    if (data.accepted) {
+      statusText.style.color = '#2ed573';
+      statusText.textContent = `✅ ${data.responseMessage}`;
+      setTimeout(() => {
+        location.reload(); // إعادة التحميل للجلوس والدخول من جديد
+      }, 2000);
+    } else {
+      statusText.style.color = '#ff4757';
+      statusText.textContent = `❌ ${data.responseMessage}`;
+      const btn = document.getElementById('btn-request-reentry');
+      if (btn) btn.disabled = false;
+    }
+  }
+});
+
+// 4️⃣ استقبال طلب الإذن (يصل للأدمن الأساسي فقط)
+socket.on('admin:reentry_request', (data) => {
+  const accepted = confirm(`📥 طلب إذن دخول جديد:\nاللاعب: ${data.playerName}\nسبب الطرد: ${data.reason}\n\nهل ترغب في قبول طلب الدخول؟`);
+  let responseMessage = '';
+
+  if (accepted) {
+    responseMessage = prompt('اكتب رسالة ترحيبية عند القبول (اختياري):', 'تم قبول طلبك، أهلاً بك مرة أخرى!') || 'تم قبول طلبك.';
+  } else {
+    responseMessage = prompt('اكتب سبب الرفض الموجه للاعب (اختياري):', 'تم رفض طلبك، الرجاء الالتزام بالقوانين.') || 'تم رفض الطلب.';
+  }
+
+  socket.emit('admin:respond_reentry', {
+    requestId: data.requestId,
+    accepted: accepted,
+    responseMessage: responseMessage
+  });
+});
+
+function escapeHtml(str) {
+  return String(str).replace(/&/g, '&amp;').replace(/</g, '&lt;').replace(/>/g, '&gt;');
+}
+
