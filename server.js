@@ -924,7 +924,7 @@ io.on('connection', (socket) => {
     io.emit('chatMessage', { name: displayName, message, system: false, color: player.color });
   });
 
-  // ==========================================
+    // ==========================================
   // 🚪 الانفصال
   // ==========================================
   socket.on('disconnect', () => {
@@ -949,7 +949,10 @@ io.on('connection', (socket) => {
         clearTimeout(wordTimer);
         wordTimer = null;
       }
+    }
   });
+
+}); // إغلاق io.on('connection', ...)
 
 app.get('/ping', (req, res) => res.status(200).send('alive'));
 
