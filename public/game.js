@@ -1495,4 +1495,3 @@ socket.on('admin:reentry_request', (data) => {
 function escapeHtml(str) {
   return String(str).replace(/&/g, '&amp;').replace(/</g, '&lt;').replace(/>/g, '&gt;');
 }
-
