@@ -63,9 +63,19 @@ if (!playerName) {
 let playerColor = localStorage.getItem('playerColor') || '#00e5ff';
 let canAnswer = true; // للتحكم بالسماح بالإجابة
 
+// بصمة الأدمن الأساسي (بتنحفظ بمتصفحك وبتخلي السيرفر يعرفك حتى لو نسي كل شي)
+let ownerProof = null;
+try { ownerProof = localStorage.getItem('ownerProof'); } catch (e) {}
+
 // أول ما يتصل اللاعب بيرسل اسمه الحقيقي + هوية جهازه، والسيرفر بيقرر دخوله
 socket.on('connect', () => {
-  socket.emit('identify', { token: deviceToken, name: playerName, color: playerColor });
+  socket.emit('identify', { token: deviceToken, name: playerName, color: playerColor, proof: ownerProof });
+});
+
+socket.on('admin:owner_proof', (d) => {
+  if (!d || !d.proof) return;
+  ownerProof = d.proof;
+  try { localStorage.setItem('ownerProof', d.proof); } catch (e) {}
 });
 
 // ألوان خاصة لأسماء محددة (مطابقة للسيرفر)
@@ -1068,6 +1078,8 @@ function showGate(d) {
 
 socket.on('gate:blocked', (d) => {
   playerId = null;
+  const adminBtn = document.getElementById('btn-admin-auth');
+  if (adminBtn) adminBtn.style.display = 'none';
   myStatus = { muted: false, frozen: false, blinded: false, globalMute: false };
   applyStatus();
   clearSuddenBadge();
@@ -1124,6 +1136,9 @@ socket.on('gate:approved', (d) => {
   const admBtnLockRoom = $('adm-btn-lock-room');
   const admBtnResetGame = $('adm-btn-reset-game');
   const admBtnCleanRoom = $('adm-btn-clean-room');
+
+  // زر لوحة الأدمن مخفي عن الجميع، والسيرفر بيظهره فقط للأدمن الأساسي وللـ VIP
+  if (btnAdminAuth) btnAdminAuth.style.display = 'none';
 
   // ---------- الحالة المحلية ----------
   let isAdminAuthenticated = false;
@@ -1212,13 +1227,15 @@ socket.on('gate:approved', (d) => {
             <h3>صلاحيات الأدمن الأساسي</h3>
           </div>
         </div>
-        <p class="section-hint">اللاعبون المسموح لهم بدخول الغرفة وأنت غير متواجد (تضيفهم من بطاقة اللاعب بزر "سماح بالدخول عند غيابي"):</p>
+        <p class="section-hint" id="owner-ip-line"></p>
+        <p class="section-hint">اللاعبون المسموح لهم بدخول لوحة الأدمن وأنت غير متواجد (تضيفهم من بطاقة اللاعب بزر "سماح بدخول اللوحة عند غيابي"):</p>
         <div id="admin-allowed-list"></div>
       </section>`);
   }
   const sanctionsListEl = $('admin-sanctions-list');
   const ownerSection = $('owner-only-section');
   const allowedListEl = $('admin-allowed-list');
+  const ownerIpLine = $('owner-ip-line');
 
   // ---------- أدوات مساعدة ----------
   function escapeHtml(str) {
@@ -1368,7 +1385,9 @@ socket.on('gate:approved', (d) => {
           openAdminPanel();
           logAudit('تم تسجيل الدخول كأدمن بنجاح.', 'info');
         } else if (response && response.reason === 'owner_absent') {
-          alert('⛔ الأدمن الأساسي غير متواجد حالياً، لا يمكنك دخول اللوحة الآن.');
+          alert('⛔ الأدمن الأساسي غير متواجد حالياً ولم يسمح لك بدخول اللوحة وهو غائب.');
+        } else if (response && response.reason === 'not_allowed') {
+          alert('⛔ ما عندك صلاحية لفتح لوحة الأدمن.');
         } else {
           alert('كلمة المرور غير صحيحة!');
           logAudit('محاولة فاشلة لتسجيل دخول الأدمن.', 'danger');
@@ -1459,8 +1478,8 @@ socket.on('gate:approved', (d) => {
       if (isOwner) {
         ownerExtras += `
           <button class="btn-action ${ledClass(player.allowedAbsent)}" data-act="allow" data-id="${id}">
-            <span>✅ سماح بالدخول عند غيابي</span>
-            <span class="tooltip-icon" title="يسمح لهذا اللاعب بدخول الغرفة حتى لو الأدمن الأساسي غير موجود. اضغط مرة ثانية لإلغاء السماح">❓</span>
+            <span>✅ سماح بدخول اللوحة عند غيابي</span>
+            <span class="tooltip-icon" title="يسمح لهذا اللاعب بدخول لوحة الأدمن (بكلمة المرور) حتى لو أنت غير موجود. بدون هذا السماح ما حدا بدخل اللوحة وأنت غايب. اضغط مرة ثانية للإلغاء">❓</span>
           </button>`;
         if (player.isAdmin) {
           ownerExtras += `
@@ -1618,7 +1637,7 @@ socket.on('gate:approved', (d) => {
         case 'allow':
           emitAdminAction('owner:allow_entry', { playerId: pid, allow: !p.allowedAbsent });
           setLed(btn, !p.allowedAbsent);
-          logAudit(p.allowedAbsent ? `إلغاء سماح الدخول عند غيابك لـ (${name}).` : `السماح لـ (${name}) بالدخول عند غيابك.`, 'info');
+          logAudit(p.allowedAbsent ? `إلغاء سماح دخول اللوحة عند غيابك لـ (${name}).` : `السماح لـ (${name}) بدخول اللوحة عند غيابك.`, 'info');
           break;
         case 'revoke':
           emitAdminAction('revoke_admin', { playerId: pid });
@@ -2067,6 +2086,7 @@ socket.on('gate:approved', (d) => {
   socket.on('connect', () => {
     isAdminAuthenticated = false;
     isOwner = false;
+    if (btnAdminAuth) btnAdminAuth.style.display = 'none';
     updateOwnerUI();
   });
 
@@ -2074,6 +2094,14 @@ socket.on('gate:approved', (d) => {
     stealthMode = d.stealthMode || 0;
     renderStealth();
     onAdminGranted(!!d.isOwner);
+    if (ownerIpLine && d.isOwner && d.ip) {
+      ownerIpLine.textContent = `عنوان IP تاعك الحالي: ${d.ip} — اللعبة بتميّزه وبتحميك من أي أمر. لتثبيته حتى بعد إعادة تشغيل Render ضعه بمتغير البيئة OWNER_IP (أو افتح /my-ip).`;
+    }
+  });
+
+  // إظهار/إخفاء زر لوحة الأدمن حسب قرار السيرفر
+  socket.on('admin:button', (d) => {
+    if (btnAdminAuth) btnAdminAuth.style.display = (d && d.visible) ? '' : 'none';
   });
 
   socket.on('admin:stealth_state', (d) => {
