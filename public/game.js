@@ -2170,3 +2170,999 @@ socket.on('gate:approved', (d) => {
     restartTicker();
   });
 })();
+
+/* ==========================================================================
+   🎮 واجهة الألعاب المتنوعة (الشطرنج حالياً)
+   - زر "ألعاب متنوعة" + قائمة الألعاب + شاشة الشطرنج
+   - ضد الكمبيوتر (5 مستويات) أو ضد لاعب من الروم بدعوة
+   - مشاهدة المباريات الجارية + شات خاص باللاعبين الاثنين فقط
+   - عند اختيار أي قطعة بيشرحلك كيف بتتحرك وأين تقدر تروح
+   ========================================================================== */
+(() => {
+  'use strict';
+  if (window.__gamesUiLoaded) return;
+  window.__gamesUiLoaded = true;
+
+  /* ------------------------------------------------------------------ */
+  /*  الستايل                                                             */
+  /* ------------------------------------------------------------------ */
+  const css = `
+  .gm-launch{position:relative;display:inline-flex;align-items:center;justify-content:center;gap:8px;min-width:110px;padding:10px 22px;border:0;border-radius:40px;cursor:pointer;font:inherit;font-weight:800;font-size:1.1rem;color:#fff8dc;background:linear-gradient(120deg,#6d28d9,#be185d 50%,#f59e0b);background-size:220% 220%;animation:gmShift 7s ease infinite;box-shadow:0 0 18px rgba(190,24,93,.55),0 6px 14px rgba(0,0,0,.35),inset 0 -3px 10px rgba(0,0,0,.25);overflow:hidden;transition:transform .15s ease}
+  .gm-launch:hover,.gm-launch:focus{transform:translateY(-2px) scale(1.05);outline:none}
+  .gm-launch::after{content:'';position:absolute;top:0;left:-70%;width:45%;height:100%;background:linear-gradient(100deg,transparent,rgba(255,255,255,.55),transparent);transform:skewX(-20deg);animation:gmSheen 3.4s ease-in-out infinite}
+  .gm-launch .gm-ico{font-size:1.4rem;display:inline-block;animation:gmBob 2.6s ease-in-out infinite}
+  .gm-launch .gm-dot{position:absolute;top:6px;right:10px;width:11px;height:11px;border-radius:50%;background:#22c55e;box-shadow:0 0 10px #22c55e;display:none;z-index:2}
+  .gm-launch.has-alert .gm-dot{display:block;animation:gmPulse 1.2s infinite}
+  @keyframes gmShift{0%{background-position:0% 50%}50%{background-position:100% 50%}100%{background-position:0% 50%}}
+  @keyframes gmSheen{0%,55%{left:-70%}100%{left:130%}}
+  @keyframes gmBob{0%,100%{transform:translateY(0) rotate(-6deg)}50%{transform:translateY(-3px) rotate(6deg)}}
+  @keyframes gmPulse{0%,100%{transform:scale(1)}50%{transform:scale(1.35)}}
+  @keyframes gmFade{from{opacity:0;transform:translateY(6px)}to{opacity:1;transform:none}}
+  @keyframes gmPop{0%{transform:scale(.55)}60%{transform:scale(1.14)}100%{transform:scale(1)}}
+  @keyframes gmPulseBg{50%{background:rgba(239,68,68,.42)}}
+
+  .gm-overlay{position:fixed;inset:0;width:100%;height:100%;margin:0;padding:0;border:0;z-index:10020;display:none;flex-direction:column;overflow-y:auto;overflow-x:hidden;direction:rtl;color:#f7efd2;background:radial-gradient(1200px 600px at 50% -10%,#3b1f6b 0%,#1a1033 45%,#0b0716 100%);-webkit-overflow-scrolling:touch;font-family:inherit}
+  .gm-overlay.open{display:flex}
+  .gm-overlay::before{content:'';position:fixed;inset:0;pointer-events:none;background-image:radial-gradient(rgba(255,215,120,.12) 1px,transparent 1px);background-size:26px 26px;opacity:.5}
+  .gm-wrap{position:relative;width:100%;max-width:560px;margin:0 auto;padding:12px 12px 30px;display:flex;flex-direction:column;gap:12px}
+  .gm-top{display:flex;align-items:center;gap:10px}
+  .gm-title{flex:1;margin:0;font-size:1.25rem;font-weight:900;color:#ffd75e;text-shadow:0 0 14px rgba(255,200,60,.55)}
+  .gm-iconbtn{width:40px;height:40px;border-radius:50%;border:1px solid rgba(255,215,120,.35);background:rgba(255,255,255,.07);color:#ffe9a8;font-size:1.1rem;cursor:pointer;display:flex;align-items:center;justify-content:center;flex:0 0 auto;font-family:inherit}
+  .gm-iconbtn:hover{background:rgba(255,215,120,.2)}
+  .gm-card{background:linear-gradient(160deg,rgba(255,255,255,.09),rgba(255,255,255,.03));border:1px solid rgba(255,215,120,.22);border-radius:18px;padding:14px;backdrop-filter:blur(8px);box-shadow:0 10px 30px rgba(0,0,0,.35)}
+  .gm-card h3{margin:0 0 10px;font-size:1.02rem;color:#ffe08a;display:flex;align-items:center;gap:8px}
+  .gm-sub{font-size:.8rem;opacity:.75;line-height:1.5;margin:0 0 10px}
+
+  .gm-games{display:grid;grid-template-columns:1fr 1fr;gap:12px}
+  .gm-game{position:relative;border-radius:20px;padding:20px 10px 16px;text-align:center;cursor:pointer;border:1px solid rgba(255,215,120,.35);background:linear-gradient(160deg,#3a2368,#1b1033);overflow:hidden;color:inherit;font:inherit;transition:transform .18s,box-shadow .18s}
+  .gm-game:hover{transform:translateY(-4px);box-shadow:0 14px 28px rgba(139,92,246,.35)}
+  .gm-game .gm-big{font-size:3.6rem;line-height:1;filter:drop-shadow(0 6px 10px rgba(0,0,0,.5))}
+  .gm-game b{display:block;margin-top:8px;font-size:1.1rem;color:#ffe08a}
+  .gm-game small{opacity:.75}
+  .gm-game.soon{opacity:.55;cursor:not-allowed;filter:grayscale(.4)}
+  .gm-game.soon:hover{transform:none;box-shadow:none}
+  .gm-game .gm-tag{position:absolute;top:8px;left:8px;background:#f59e0b;color:#2b1700;font-size:.68rem;font-weight:800;padding:2px 8px;border-radius:10px}
+
+  .gm-chips{display:flex;flex-wrap:wrap;gap:8px;margin-bottom:10px}
+  .gm-chip{flex:1 1 auto;min-width:78px;padding:9px 10px;border-radius:12px;border:1px solid rgba(255,215,120,.3);background:rgba(255,255,255,.06);color:#f7efd2;font:inherit;font-weight:700;cursor:pointer;text-align:center;font-size:.88rem;transition:all .15s}
+  .gm-chip.on{background:linear-gradient(135deg,#ffd75e,#d99a0b);color:#2b1700;border-color:transparent;box-shadow:0 0 14px rgba(255,200,60,.55)}
+  .gm-btn{width:100%;padding:12px;border:0;border-radius:14px;font:inherit;font-weight:900;font-size:1rem;cursor:pointer;color:#2b1700;background:linear-gradient(135deg,#ffe08a,#e0a30c);box-shadow:0 6px 0 #8a5a0a,0 10px 18px rgba(0,0,0,.4);transition:transform .1s}
+  .gm-btn:active{transform:translateY(3px);box-shadow:0 3px 0 #8a5a0a}
+  .gm-btn.sm{width:auto;padding:8px 14px;font-size:.85rem;box-shadow:0 3px 0 #8a5a0a}
+  .gm-btn.ghost{background:rgba(255,255,255,.08);color:#ffe9a8;box-shadow:none;border:1px solid rgba(255,215,120,.35)}
+  .gm-btn.danger{background:linear-gradient(135deg,#f87171,#b91c1c);color:#fff;box-shadow:0 3px 0 #7f1d1d}
+  .gm-btn:disabled{opacity:.45;cursor:not-allowed}
+  .gm-row{display:flex;align-items:center;gap:10px;padding:9px 10px;border-radius:12px;background:rgba(255,255,255,.05);margin-bottom:8px}
+  .gm-row .gm-name{flex:1;min-width:0;font-weight:700;word-break:break-word}
+  .gm-row small{opacity:.7;font-weight:400}
+  .gm-dot2{width:12px;height:12px;border-radius:50%;flex:0 0 auto;box-shadow:0 0 8px currentColor}
+  .gm-empty{opacity:.65;font-size:.88rem;text-align:center;padding:8px}
+  .gm-wait{display:flex;align-items:center;gap:10px;padding:10px 12px;border-radius:12px;background:rgba(139,92,246,.2);border:1px solid rgba(167,139,250,.5)}
+  .gm-wait span{flex:1}
+
+  .gm-board{width:min(100%,520px,66vh);margin:0 auto;padding:10px;border-radius:20px;background:linear-gradient(145deg,#f3cf6a,#a87114 55%,#6b4408);box-shadow:0 18px 40px rgba(0,0,0,.55),0 0 0 2px rgba(255,235,170,.4) inset,0 0 30px rgba(255,190,50,.25);position:relative}
+  .gm-grid{display:grid;grid-template-columns:repeat(8,1fr);aspect-ratio:1;border-radius:10px;overflow:hidden;container-type:inline-size;direction:ltr;box-shadow:0 0 0 2px rgba(60,35,5,.7)}
+  .gm-sq{position:relative;display:flex;align-items:center;justify-content:center;cursor:pointer;user-select:none;-webkit-tap-highlight-color:transparent;aspect-ratio:1}
+  .gm-sq.l{background:linear-gradient(135deg,#f6e3b4,#e9cf94)}
+  .gm-sq.d{background:linear-gradient(135deg,#bf8a45,#a8742f)}
+  .gm-co{position:absolute;font-size:9px;font-size:max(8px,1.9cqw);font-weight:800;opacity:.75;pointer-events:none;z-index:1}
+  .gm-co.r{top:2px;left:3px}.gm-co.f{bottom:1px;right:3px}
+  .gm-sq.l .gm-co{color:#8a5a22}.gm-sq.d .gm-co{color:#f6e3b4}
+  .gm-sq.last::before{content:'';position:absolute;inset:0;background:rgba(255,226,70,.42)}
+  .gm-sq.sel{box-shadow:inset 0 0 0 3px #fff3a0,inset 0 0 18px 4px rgba(255,215,0,.8)}
+  .gm-sq.check::before{content:'';position:absolute;inset:0;background:radial-gradient(circle,rgba(255,40,40,.95) 0%,rgba(255,40,40,.45) 45%,transparent 72%)}
+  .gm-sq.tgt::after{content:'';position:absolute;width:30%;height:30%;border-radius:50%;background:rgba(30,20,10,.38);box-shadow:0 0 0 2px rgba(255,255,255,.25);z-index:1}
+  .gm-sq.tgt.cap::after{width:88%;height:88%;background:transparent;border:5px solid rgba(220,38,38,.75);box-shadow:none}
+  .gm-sq.tgt:hover{filter:brightness(1.12)}
+  .gm-p{position:relative;z-index:2;line-height:1;font-size:min(9.2vw,50px);font-size:9.4cqw;font-family:'Segoe UI Symbol','Noto Sans Symbols 2','Apple Symbols','DejaVu Sans',serif;pointer-events:none}
+  .gm-p.w{color:#fffdf4;-webkit-text-stroke:1.3px #3b2a12;text-shadow:0 2px 3px rgba(0,0,0,.45)}
+  .gm-p.b{color:#17110a;-webkit-text-stroke:.7px #f3d680;text-shadow:0 2px 3px rgba(0,0,0,.5)}
+  .gm-p.moved{animation:gmPop .35s ease-out}
+
+  .gm-bar{display:flex;align-items:center;gap:10px;padding:8px 12px;border-radius:14px;background:rgba(255,255,255,.06);border:1px solid transparent;transition:all .25s}
+  .gm-bar.turn{border-color:#ffd75e;box-shadow:0 0 18px rgba(255,200,60,.5);background:rgba(255,215,0,.1)}
+  .gm-av{width:38px;height:38px;border-radius:50%;display:flex;align-items:center;justify-content:center;font-size:1.3rem;background:radial-gradient(circle at 30% 30%,#fff,#d9c690);color:#2b1700;flex:0 0 auto}
+  .gm-av.b{background:radial-gradient(circle at 30% 30%,#555,#0d0a06);color:#ffe9a8}
+  .gm-binfo{flex:1;min-width:0}
+  .gm-bname{font-weight:800;font-size:.98rem;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
+  .gm-bsub{font-size:.75rem;opacity:.75;min-height:1em}
+  .gm-cap{font-size:1rem;letter-spacing:-2px;direction:ltr;text-align:right;line-height:1.2;min-height:1.2em}
+  .gm-cap .w{color:#fffdf4;-webkit-text-stroke:.8px #3b2a12}
+  .gm-cap .b{color:#17110a;-webkit-text-stroke:.5px #f3d680}
+  .gm-adv{font-weight:800;color:#86efac;font-size:.8rem;margin-right:6px;letter-spacing:0}
+
+  .gm-status{padding:9px 12px;border-radius:12px;text-align:center;font-weight:800;background:rgba(255,255,255,.07);border:1px solid rgba(255,215,120,.2)}
+  .gm-status.me{background:linear-gradient(135deg,rgba(34,197,94,.25),rgba(34,197,94,.1));border-color:#22c55e}
+  .gm-status.warn{background:rgba(239,68,68,.22);border-color:#ef4444;animation:gmPulseBg 1.2s infinite}
+  .gm-status.end{background:linear-gradient(135deg,rgba(255,215,0,.3),rgba(255,215,0,.1));border-color:#ffd75e}
+
+  .gm-hint{border-radius:16px;padding:12px 14px;background:linear-gradient(160deg,rgba(139,92,246,.22),rgba(139,92,246,.07));border:1px solid rgba(167,139,250,.5);line-height:1.7;font-size:.9rem;animation:gmFade .25s ease}
+  .gm-hint p{margin:2px 0 6px}
+  .gm-hint-head{display:flex;align-items:center;gap:10px;margin-bottom:4px}
+  .gm-hint-ic{font-size:2.1rem;line-height:1;filter:drop-shadow(0 2px 4px rgba(0,0,0,.5));font-family:'Segoe UI Symbol','Noto Sans Symbols 2','Apple Symbols','DejaVu Sans',serif}
+  .gm-hint-ic.w{color:#fffdf4;-webkit-text-stroke:1px #3b2a12}
+  .gm-hint-ic.b{color:#17110a;-webkit-text-stroke:.6px #f3d680}
+  .gm-hint b{color:#ffe08a;font-size:1.02rem}
+  .gm-hint small{opacity:.75}
+  .gm-hint .tag{display:inline-block;padding:1px 9px;margin:2px 3px;border-radius:10px;background:rgba(255,255,255,.12);font-weight:700;font-size:.82rem}
+  .gm-hint .tag.cap{background:rgba(239,68,68,.35)}
+  .gm-hint .tag.sp{background:rgba(245,158,11,.4)}
+  .gm-hint .warn{color:#fca5a5;font-weight:700}
+
+  .gm-hist{display:flex;gap:6px;overflow-x:auto;padding:6px 2px;direction:ltr;scrollbar-width:thin}
+  .gm-mv{flex:0 0 auto;padding:3px 9px;border-radius:9px;background:rgba(255,255,255,.08);font-size:.8rem;font-weight:700;white-space:nowrap}
+  .gm-mv i{opacity:.6;font-style:normal;margin-right:5px}
+  .gm-ctrls{display:flex;flex-wrap:wrap;gap:8px}
+  .gm-ctrls .gm-btn{flex:1 1 auto;position:relative}
+  .gm-badge{position:absolute;top:-6px;left:-6px;min-width:18px;height:18px;border-radius:9px;background:#ef4444;color:#fff;font-size:.7rem;display:none;align-items:center;justify-content:center;padding:0 4px}
+
+  .gm-chat{display:none;flex-direction:column;gap:8px}
+  .gm-chat.open{display:flex}
+  .gm-msgs{height:150px;overflow-y:auto;padding:8px;border-radius:12px;background:rgba(0,0,0,.28);display:flex;flex-direction:column;gap:6px}
+  .gm-msg{max-width:85%;padding:6px 10px;border-radius:12px;background:rgba(255,255,255,.1);font-size:.88rem;word-break:break-word;align-self:flex-start}
+  .gm-msg.me{align-self:flex-end;background:rgba(255,215,0,.22)}
+  .gm-msg small{display:block;opacity:.6;font-size:.7rem}
+  .gm-chatform{display:flex;gap:8px}
+  .gm-chatform input{flex:1;min-width:0;padding:10px 12px;border-radius:12px;border:1px solid rgba(255,215,120,.35);background:rgba(255,255,255,.08);color:#fff8dc;font:inherit}
+  .gm-chatform input::placeholder{color:rgba(255,233,168,.5)}
+
+  .gm-result{position:absolute;inset:10px;z-index:5;display:flex;flex-direction:column;align-items:center;justify-content:center;gap:10px;text-align:center;border-radius:12px;background:rgba(10,6,20,.84);backdrop-filter:blur(3px);animation:gmFade .4s ease;padding:16px}
+  .gm-result .gm-trophy{font-size:3.2rem;animation:gmBob 2s ease-in-out infinite}
+  .gm-result h2{margin:0;color:#ffe08a;font-size:1.35rem}
+  .gm-result p{margin:0;opacity:.85}
+  .gm-result .gm-btn{max-width:240px}
+  .gm-promo{position:absolute;inset:10px;z-index:6;display:flex;flex-direction:column;align-items:center;justify-content:center;gap:12px;background:rgba(10,6,20,.82);border-radius:12px;animation:gmFade .2s ease}
+  .gm-promo div{display:flex;gap:10px}
+  .gm-promo button{width:62px;height:62px;border-radius:14px;border:1px solid #ffd75e;background:rgba(255,255,255,.1);cursor:pointer;font-size:2.3rem;line-height:1;font-family:'Segoe UI Symbol','Noto Sans Symbols 2','Apple Symbols','DejaVu Sans',serif}
+  .gm-promo button.w{color:#fffdf4;-webkit-text-stroke:1px #3b2a12}
+  .gm-promo button.b{color:#17110a;-webkit-text-stroke:.6px #f3d680;background:rgba(255,255,255,.35)}
+
+  .gm-toast{position:fixed;left:50%;bottom:22px;transform:translateX(-50%);z-index:10090;background:#1b1033;color:#ffe9a8;border:1px solid #ffd75e;padding:10px 18px;border-radius:14px;font-weight:700;box-shadow:0 10px 30px rgba(0,0,0,.5);max-width:90vw;text-align:center;animation:gmFade .25s ease}
+  .gm-invites{position:fixed;inset:auto;top:70px;left:50%;transform:translateX(-50%);width:min(92vw,400px);margin:0;padding:0;border:0;background:transparent;display:none;flex-direction:column;gap:10px;z-index:10080;color:#f7efd2;direction:rtl;overflow:visible}
+  .gm-inv{padding:14px;border-radius:16px;background:linear-gradient(160deg,#3a2368,#1b1033);border:1px solid #ffd75e;box-shadow:0 12px 30px rgba(0,0,0,.55);animation:gmFade .3s}
+  .gm-inv p{margin:0 0 10px;line-height:1.6;font-weight:700}
+  .gm-inv div{display:flex;gap:8px}
+  `;
+  const styleEl = document.createElement('style');
+  styleEl.id = 'gm-style';
+  styleEl.textContent = css;
+  document.head.appendChild(styleEl);
+
+  /* ------------------------------------------------------------------ */
+  /*  ثوابت ومساعدات                                                      */
+  /* ------------------------------------------------------------------ */
+  const FILES = 'abcdefgh';
+  const GLYPH = { K: '♚', Q: '♛', R: '♜', B: '♝', N: '♞', P: '♟' };
+  const VS = '\uFE0E'; // يمنع ظهور القطع بشكل إيموجي
+  const VALUE = { P: 1, N: 3, B: 3, R: 5, Q: 9, K: 0 };
+  const PIECES = {
+    K: { name: 'الملك', how: 'يتحرك خانة واحدة فقط بأي اتجاه (أفقي أو عمودي أو قطري). هو أهم قطعة: لو انحاصر (كش مات) بتخسر. ما بيقدر يروح لخانة مهدّدة من الخصم، وممكن "يبيّت" مع القلعة مرة وحدة بشروط معيّنة.' },
+    Q: { name: 'الوزير', how: 'أقوى قطعة: بتتحرك أي عدد من الخانات أفقياً أو عمودياً أو قطرياً، بشرط ما يكون في قطعة بالطريق. بتأكل أول قطعة خصم بتقابلها.' },
+    R: { name: 'القلعة', how: 'بتتحرك أي عدد من الخانات أفقياً أو عمودياً فقط (مش قطرياً)، وما بتقفز فوق القطع. بتشارك الملك بحركة التبييت.' },
+    B: { name: 'الفيل', how: 'بيتحرك أي عدد من الخانات قطرياً فقط، وبيضل طول اللعبة على نفس لون الخانات اللي بدأ عليها.' },
+    N: { name: 'الحصان', how: 'بيتحرك على شكل حرف L: خانتين باتجاه ثم خانة للجنب. وهو القطعة الوحيدة اللي بتقفز فوق باقي القطع.' },
+    P: { name: 'الجندي', how: 'بيمشي للأمام خانة وحدة (وبأول حركة ممكن خانتين)، وبياكل بشكل قطري خانة وحدة للأمام. لما يوصل لآخر اللوحة بيترقّى لوزير أو قلعة أو فيل أو حصان.' }
+  };
+  const LEVELS = [
+    { n: 1, label: '🌱 مبتدئ', desc: 'بيغلط كتير، مناسب للتعلّم.' },
+    { n: 2, label: '🙂 سهل', desc: 'بيفكر بحركتين وبيغلط أحياناً.' },
+    { n: 3, label: '😎 متوسط', desc: 'لعب منطقي، بيحتاج تركيز.' },
+    { n: 4, label: '🔥 صعب', desc: 'بيفكر بعمق وبيستغل أخطاءك.' },
+    { n: 5, label: '👑 خبير', desc: 'أقوى مستوى، بيفكر لعدة ثواني.' }
+  ];
+  const REASONS = {
+    checkmate: 'كش مات!', resign: 'استسلام', stalemate: 'ستالميت (ما في حركات متاحة)',
+    fifty: 'قاعدة الخمسين نقلة', insufficient: 'مواد غير كافية للفوز', repetition: 'تكرار الوضع ثلاث مرات',
+    agreement: 'اتفاق على التعادل', abandon: 'انسحاب اللاعب'
+  };
+
+  const esc = (s) => String(s == null ? '' : s).replace(/&/g, '&amp;').replace(/</g, '&lt;').replace(/>/g, '&gt;').replace(/"/g, '&quot;');
+  const h = (tag, cls, html) => {
+    const e = document.createElement(tag);
+    if (cls) e.className = cls;
+    if (html !== undefined && html !== null) e.innerHTML = html;
+    return e;
+  };
+  const on = (el, ev, fn) => el.addEventListener(ev, fn);
+  const sqName = (i) => FILES[i & 7] + (8 - (i >> 3));
+  const glyph = (ch) => GLYPH[ch.toUpperCase()] + VS;
+  const isWhitePiece = (ch) => ch === ch.toUpperCase();
+
+  function fenBoard(fen) {
+    const board = new Array(64).fill('');
+    fen.split(' ')[0].split('/').forEach((row, r) => {
+      let f = 0;
+      for (const ch of row) {
+        if (ch >= '1' && ch <= '8') f += parseInt(ch, 10);
+        else board[r * 8 + f++] = ch;
+      }
+    });
+    return board;
+  }
+
+  function toast(msg) {
+    const t = h('div', 'gm-toast');
+    t.textContent = msg;
+    document.body.appendChild(t);
+    setTimeout(() => t.remove(), 3200);
+  }
+
+  /* ------------------------------------------------------------------ */
+  /*  محرك الشطرنج (للحركات المتاحة) + الذكاء الاصطناعي في Worker          */
+  /* ------------------------------------------------------------------ */
+  let Engine = null;
+  let engineLoading = false;
+  const engineWaiters = [];
+  function ensureEngine(cb) {
+    if (Engine) return cb();
+    engineWaiters.push(cb);
+    if (engineLoading) return;
+    engineLoading = true;
+    if (window.ChessEngine) { Engine = window.ChessEngine; engineWaiters.splice(0).forEach(f => f()); return; }
+    const s = document.createElement('script');
+    s.src = 'chess-engine.js';
+    s.onload = () => { Engine = window.ChessEngine; engineWaiters.splice(0).forEach(f => f()); };
+    s.onerror = () => { engineLoading = false; toast('تعذر تحميل محرك الشطرنج (chess-engine.js)'); };
+    document.head.appendChild(s);
+  }
+
+  function legalList(fen) {
+    const pos = new Engine.Position().load(fen);
+    return pos.legalMoves().map(m => ({ from: m & 63, to: (m >> 6) & 63, promo: (m >> 12) & 15, flags: m >> 16 }));
+  }
+  const PROMO_LETTER = { 2: 'n', 3: 'b', 4: 'r', 5: 'q' };
+
+  let worker = null;
+  let aiSeq = 0;
+  const aiCallbacks = {};
+  function getWorker() {
+    if (worker !== null) return worker;
+    try {
+      worker = new Worker('chess-engine.js');
+      worker.onmessage = (e) => {
+        const d = e.data || {};
+        const cb = aiCallbacks[d.id];
+        if (cb) { delete aiCallbacks[d.id]; cb(d.result); }
+      };
+      worker.onerror = () => {
+        worker = false;
+        Object.keys(aiCallbacks).forEach(k => { const cb = aiCallbacks[k]; delete aiCallbacks[k]; cb(null); });
+      };
+    } catch (e) { worker = false; }
+    return worker;
+  }
+  function askAI(fen, level, rep2, cb) {
+    const id = ++aiSeq;
+    const w = getWorker();
+    if (w) {
+      aiCallbacks[id] = cb;
+      w.postMessage({ id, fen, level, rep2 });
+    } else {
+      setTimeout(() => {
+        let r = null;
+        try { r = Engine.findBestMove(fen, level, rep2); } catch (e) {}
+        cb(r);
+      }, 50);
+    }
+  }
+
+  /* ------------------------------------------------------------------ */
+  /*  الحالة العامة للواجهة                                               */
+  /* ------------------------------------------------------------------ */
+  const S = {
+    open: false, screen: 'menu',
+    level: 3, color: 'white',
+    players: [], live: { sessions: [], busy: [] },
+    currentId: null, state: null, chat: [], unread: 0, chatOpen: false,
+    sel: null, board: [], byFrom: {}, myTurn: false,
+    hints: true, aiFen: null, aiRetries: 0,
+    outInvite: null, promo: null, lastRenderedFen: null
+  };
+  try { S.hints = localStorage.getItem('gmHints') !== '0'; } catch (e) {}
+  const myId = () => (typeof playerId !== 'undefined' ? playerId : null);
+
+  /* ------------------------------------------------------------------ */
+  /*  العناصر الثابتة: الزر + الطبقة + الدعوات                            */
+  /* ------------------------------------------------------------------ */
+  const launch = h('button', 'gm-launch');
+  launch.type = 'button';
+  launch.id = 'btn-games';
+  launch.innerHTML = '<span class="gm-ico">🎮</span><span>ألعاب متنوعة</span><span class="gm-dot"></span>';
+  const controls = document.querySelector('.controls');
+  const boardBtn = document.getElementById('btn-open-board');
+  if (boardBtn && boardBtn.parentNode) boardBtn.parentNode.insertBefore(launch, boardBtn.nextSibling);
+  else if (controls) controls.appendChild(launch);
+  else document.body.appendChild(launch);
+
+  const overlay = h('div', 'gm-overlay');
+  const wrap = h('div', 'gm-wrap');
+  overlay.appendChild(wrap);
+  document.body.appendChild(overlay);
+
+  const invitesBox = h('div', 'gm-invites');
+  document.body.appendChild(invitesBox);
+
+  function updateLaunchAlert() {
+    const alertOn = !!S.state && S.state.status === 'active' && !S.open;
+    launch.classList.toggle('has-alert', alertOn || invitesBox.children.length > 0);
+  }
+
+  function openOverlay() {
+    if (typeof closeAllDialogs === 'function') closeAllDialogs();
+    ensureEngine(() => {});
+    S.open = true;
+    overlay.classList.add('open');
+    document.body.style.overflow = 'hidden';
+    if (S.state && S.currentId) S.screen = 'game';
+    else if (S.screen === 'game') S.screen = 'menu';
+    render();
+    updateLaunchAlert();
+  }
+  function closeOverlay() {
+    S.open = false;
+    overlay.classList.remove('open');
+    document.body.style.overflow = '';
+    updateLaunchAlert();
+  }
+  on(launch, 'click', openOverlay);
+
+  /* ------------------------------------------------------------------ */
+  /*  رسم الشاشات                                                         */
+  /* ------------------------------------------------------------------ */
+  function render() {
+    if (!S.open) return;
+    if (S.screen === 'game' && S.state) renderGame();
+    else if (S.screen === 'hub') renderHub();
+    else renderMenu();
+  }
+
+  function header(title, backFn) {
+    const top = h('div', 'gm-top');
+    if (backFn) {
+      const b = h('button', 'gm-iconbtn', '➜');
+      b.type = 'button';
+      b.title = 'رجوع';
+      on(b, 'click', backFn);
+      top.appendChild(b);
+    }
+    top.appendChild(h('h2', 'gm-title', title));
+    const x = h('button', 'gm-iconbtn', '✕');
+    x.type = 'button';
+    x.title = 'إغلاق';
+    on(x, 'click', () => { if (S.screen === 'game') leaveIfNeeded(); closeOverlay(); });
+    top.appendChild(x);
+    return top;
+  }
+
+  /* ---------- قائمة الألعاب ---------- */
+  function renderMenu() {
+    S.screen = 'menu';
+    wrap.innerHTML = '';
+    wrap.appendChild(header('🎮 ألعاب متنوعة'));
+    wrap.appendChild(h('p', 'gm-sub', 'اختار لعبة والعب ضد الكمبيوتر أو ضد أصحابك اللي بالغرفة.'));
+
+    const grid = h('div', 'gm-games');
+    const chess = h('button', 'gm-game', '<div class="gm-big">♞</div><b>الشطرنج</b><small>ضد الكمبيوتر أو لاعبين</small>');
+    chess.type = 'button';
+    on(chess, 'click', () => { S.screen = S.state && S.currentId ? 'game' : 'hub'; if (S.screen === 'hub') requestLive(); render(); });
+    const xo = h('button', 'gm-game soon', '<span class="gm-tag">قريباً</span><div class="gm-big">✕◯</div><b>إكس أو</b><small>قريباً</small>');
+    xo.type = 'button';
+    on(xo, 'click', () => toast('لعبة إكس أو قريباً ✨'));
+    grid.appendChild(chess);
+    grid.appendChild(xo);
+    wrap.appendChild(grid);
+
+    if (S.state && S.currentId) {
+      const card = h('div', 'gm-card');
+      card.appendChild(h('h3', '', '▶️ عندك مباراة'));
+      const b = h('button', 'gm-btn', 'متابعة المباراة');
+      b.type = 'button';
+      on(b, 'click', () => { S.screen = 'game'; render(); });
+      card.appendChild(b);
+      wrap.appendChild(card);
+    }
+  }
+
+  /* ---------- شاشة الشطرنج: اختيار نوع اللعب ---------- */
+  function requestLive() { socket.emit('games:live_request'); }
+
+  function colorChips(parent) {
+    const chips = h('div', 'gm-chips');
+    [['white', '⚪ أبيض'], ['black', '⚫ أسود'], ['random', '🎲 عشوائي']].forEach(([val, label]) => {
+      const c = h('button', 'gm-chip' + (S.color === val ? ' on' : ''), label);
+      c.type = 'button';
+      on(c, 'click', () => { S.color = val; render(); });
+      chips.appendChild(c);
+    });
+    parent.appendChild(chips);
+  }
+
+  function renderHub() {
+    S.screen = 'hub';
+    wrap.innerHTML = '';
+    wrap.appendChild(header('♞ الشطرنج', () => { S.screen = 'menu'; render(); }));
+
+    if (S.state && S.currentId) {
+      const card = h('div', 'gm-card');
+      const a = S.state.slots[0], b = S.state.slots[1];
+      card.appendChild(h('h3', '', '▶️ مباراتك الحالية'));
+      card.appendChild(h('p', 'gm-sub', `${esc(a.name)} ⚔️ ${esc(b.name)}`));
+      const btn = h('button', 'gm-btn', 'متابعة المباراة');
+      btn.type = 'button';
+      on(btn, 'click', () => { S.screen = 'game'; render(); });
+      card.appendChild(btn);
+      wrap.appendChild(card);
+    }
+
+    if (S.outInvite) {
+      const w = h('div', 'gm-wait');
+      w.appendChild(h('span', '', `⏳ بانتظار رد ${esc(S.outInvite.name)}...`));
+      const c = h('button', 'gm-btn sm danger', 'إلغاء');
+      c.type = 'button';
+      on(c, 'click', () => { socket.emit('games:invite_cancel', { id: S.outInvite.id }); S.outInvite = null; render(); });
+      w.appendChild(c);
+      wrap.appendChild(w);
+    }
+
+    // ضد الكمبيوتر
+    const ai = h('div', 'gm-card');
+    ai.appendChild(h('h3', '', '🤖 ضد الكمبيوتر'));
+    ai.appendChild(h('p', 'gm-sub', 'اختار مستوى الصعوبة ولونك:'));
+    const lv = h('div', 'gm-chips');
+    LEVELS.forEach(L => {
+      const c = h('button', 'gm-chip' + (S.level === L.n ? ' on' : ''), L.label);
+      c.type = 'button';
+      on(c, 'click', () => { S.level = L.n; render(); });
+      lv.appendChild(c);
+    });
+    ai.appendChild(lv);
+    ai.appendChild(h('p', 'gm-sub', esc(LEVELS[S.level - 1].desc)));
+    colorChips(ai);
+    const start = h('button', 'gm-btn', '⚔️ ابدأ المباراة');
+    start.type = 'button';
+    start.disabled = !!S.state && S.state.status === 'active';
+    on(start, 'click', () => {
+      ensureEngine(() => socket.emit('games:create_ai', { game: 'chess', level: S.level, color: S.color }));
+    });
+    ai.appendChild(start);
+    wrap.appendChild(ai);
+
+    // ضد لاعب
+    const pv = h('div', 'gm-card');
+    pv.appendChild(h('h3', '', '👥 ضد لاعب من الروم'));
+    pv.appendChild(h('p', 'gm-sub', 'اختار لونك، ثم اضغط "تحدّي" على اللاعب. إذا قبل الدعوة بتبدأ المباراة فوراً.'));
+    colorChips(pv);
+    const me = myId();
+    const others = S.players.filter(p => p.id !== me);
+    if (!others.length) pv.appendChild(h('div', 'gm-empty', 'ما في لاعبين ثانيين بالغرفة هلأ.'));
+    others.forEach(p => {
+      const busy = S.live.busy.indexOf(p.id) >= 0;
+      const row = h('div', 'gm-row');
+      row.appendChild(h('span', 'gm-dot2', ''));
+      row.lastChild.style.color = p.color || '#00e5ff';
+      row.lastChild.style.background = p.color || '#00e5ff';
+      row.appendChild(h('span', 'gm-name', `${esc(p.name)} ${busy ? '<small>(بمباراة)</small>' : ''}`));
+      const b = h('button', 'gm-btn sm', '⚔️ تحدّي');
+      b.type = 'button';
+      b.disabled = busy || (!!S.state && S.state.status === 'active');
+      on(b, 'click', () => { socket.emit('games:invite', { game: 'chess', to: p.id, color: S.color }); });
+      row.appendChild(b);
+      pv.appendChild(row);
+    });
+    wrap.appendChild(pv);
+
+    // مباريات جارية
+    const lv2 = h('div', 'gm-card');
+    lv2.appendChild(h('h3', '', '📺 مباريات جارية'));
+    lv2.appendChild(h('p', 'gm-sub', 'تقدر تشاهد أي مباراة، أو تتحدى لاعب ثاني، أو تلعب ضد الكمبيوتر.'));
+    const sessions = (S.live.sessions || []).filter(s => s.game === 'chess');
+    if (!sessions.length) lv2.appendChild(h('div', 'gm-empty', 'ما في مباريات جارية الآن.'));
+    sessions.forEach(s => {
+      const row = h('div', 'gm-row');
+      const nm = (x) => (x.ai ? '🤖 ' : '') + esc(x.name);
+      row.appendChild(h('span', 'gm-name', `${nm(s.white)} ⚔️ ${nm(s.black)}<br><small>${s.moves} نقلة · 👁 ${s.spectators}</small>`));
+      const mine = S.currentId === s.id;
+      const b = h('button', 'gm-btn sm' + (mine ? '' : ' ghost'), mine ? 'مباراتك' : '👁 مشاهدة');
+      b.type = 'button';
+      on(b, 'click', () => {
+        if (mine) { S.screen = 'game'; render(); return; }
+        if (S.state && S.state.status === 'active') return toast('أنت داخل مباراة جارية.');
+        S.currentId = s.id; S.state = null; S.chat = []; S.sel = null; S.screen = 'game';
+        chatEl = null; chatMsgsEl = null; chatForId = null;
+        ensureEngine(() => socket.emit('games:spectate', { id: s.id }));
+      });
+      row.appendChild(b);
+      lv2.appendChild(row);
+    });
+    wrap.appendChild(lv2);
+  }
+
+  /* ---------- شاشة المباراة ---------- */
+  const mySlot = (st) => st.slots.findIndex(s => s.id && s.id === myId());
+  const turnIdx = (st) => (st.turn === 'w' ? 0 : 1);
+
+  function materialDiff(board) {
+    let w = 0, b = 0;
+    board.forEach(ch => { if (!ch) return; const v = VALUE[ch.toUpperCase()]; if (isWhitePiece(ch)) w += v; else b += v; });
+    return w - b;
+  }
+
+  function resultText(st) {
+    const reason = REASONS[st.reason] || '';
+    if (st.result === '1-0') return { icon: '🏆', title: `فاز ${esc(st.slots[0].name)} (الأبيض)`, sub: reason };
+    if (st.result === '0-1') return { icon: '🏆', title: `فاز ${esc(st.slots[1].name)} (الأسود)`, sub: reason };
+    return { icon: '🤝', title: 'تعادل', sub: reason };
+  }
+
+  function lastMoveText(st) {
+    if (!st.lastMove) return '';
+    const to = FILES.indexOf(st.lastMove.to[0]) + (8 - parseInt(st.lastMove.to[1], 10)) * 8;
+    const ch = S.board[to];
+    if (!ch) return '';
+    return `آخر نقلة: ${PIECES[ch.toUpperCase()].name} من ${st.lastMove.from} إلى ${st.lastMove.to}`;
+  }
+
+  function hintHtml(st, sq) {
+    const ch = S.board[sq];
+    const info = PIECES[ch.toUpperCase()];
+    const mine = mySlot(st) >= 0 && (isWhitePiece(ch) === (mySlot(st) === 0));
+    let html = `<div class="gm-hint-head"><span class="gm-hint-ic ${isWhitePiece(ch) ? 'w' : 'b'}">${glyph(ch)}</span><div><b>${info.name}</b> <small>${mine ? '(قطعتك)' : '(قطعة الخصم)'} · على ${sqName(sq)}</small></div></div>`;
+    html += `<p>📖 <b>كيف بتتحرك:</b> ${info.how}</p>`;
+    if (mine && S.myTurn) {
+      const moves = S.byFrom[sq] || [];
+      if (moves.length) {
+        const tags = moves.map(m => {
+          const target = S.board[m.to];
+          let cls = 'tag', txt = sqName(m.to);
+          if (m.flags & 2) { cls += ' cap'; txt += ' ⚔️ أكل بالمرور'; }
+          else if (target) { cls += ' cap'; txt += ` ⚔️ بتاكل ${PIECES[target.toUpperCase()].name}`; }
+          if (m.flags & 12) { cls += ' sp'; txt += ' 🏰 تبييت'; }
+          if (m.promo) txt += ' 👑 ترقية';
+          return `<span class="${cls}">${txt}</span>`;
+        });
+        const uniq = [];
+        const seen = {};
+        tags.forEach(t => { if (!seen[t]) { seen[t] = 1; uniq.push(t); } });
+        html += `<p>🎯 <b>وين بتقدر تروح الآن (${uniq.length}):</b><br>${uniq.join('')}</p>`;
+      } else {
+        html += `<p class="warn">⛔ هذه القطعة ما إلها حركات الآن${st.check ? ': ملكك في كش، لازم تحميه أولاً.' : ': هي محاصرة أو حركتها بتعرّض ملكك للكش.'}</p>`;
+      }
+    } else if (mine) {
+      html += '<p><small>استنى دورك لتشوف حركاتك المتاحة.</small></p>';
+    }
+    return html;
+  }
+
+  function renderGame() {
+    const st = S.state;
+    S.screen = 'game';
+    if (!Engine) { ensureEngine(render); }
+    const me = mySlot(st);
+    const flipped = me === 1;
+    S.board = fenBoard(st.fen);
+    S.myTurn = st.status === 'active' && me >= 0 && turnIdx(st) === me;
+    S.byFrom = {};
+    if (S.myTurn && Engine) {
+      try { legalList(st.fen).forEach(m => { (S.byFrom[m.from] = S.byFrom[m.from] || []).push(m); }); } catch (e) {}
+    }
+    if (S.sel !== null && !S.board[S.sel]) S.sel = null;
+
+    wrap.innerHTML = '';
+    const back = () => {
+      if (me < 0 || st.status === 'finished') { leaveIfNeeded(); S.screen = 'hub'; requestLive(); }
+      else S.screen = 'hub';
+      render();
+    };
+    wrap.appendChild(header(me >= 0 ? '♞ الشطرنج' : '👁 مشاهدة', back));
+
+    const topIdx = flipped ? 0 : 1, botIdx = flipped ? 1 : 0;
+    wrap.appendChild(playerBar(st, topIdx));
+
+    // اللوحة
+    const boardBox = h('div', 'gm-board');
+    const grid = h('div', 'gm-grid');
+    const check = st.check && st.status === 'active';
+    const kingCh = st.turn === 'w' ? 'K' : 'k';
+    const tgts = {};
+    if (S.sel !== null) (S.byFrom[S.sel] || []).forEach(m => { tgts[m.to] = m; });
+    for (let i = 0; i < 64; i++) {
+      const sq = flipped ? 63 - i : i;
+      const f = sq & 7, r = sq >> 3;
+      const ch = S.board[sq];
+      let cls = 'gm-sq ' + (((f + r) & 1) ? 'd' : 'l');
+      if (st.lastMove && (sqName(sq) === st.lastMove.from || sqName(sq) === st.lastMove.to)) cls += ' last';
+      if (S.sel === sq) cls += ' sel';
+      if (check && ch === kingCh) cls += ' check';
+      if (tgts[sq]) cls += ' tgt' + ((S.board[sq] || (tgts[sq].flags & 2)) ? ' cap' : '');
+      const cell = h('div', cls);
+      cell.dataset.sq = String(sq);
+      if (i % 8 === 0) cell.appendChild(h('span', 'gm-co r', String(8 - r)));
+      if (i >= 56) cell.appendChild(h('span', 'gm-co f', FILES[f]));
+      if (ch) {
+        const moved = st.lastMove && sqName(sq) === st.lastMove.to && S.lastRenderedFen !== st.fen;
+        cell.appendChild(h('span', 'gm-p ' + (isWhitePiece(ch) ? 'w' : 'b') + (moved ? ' moved' : ''), glyph(ch)));
+      }
+      on(cell, 'click', () => onSquare(sq));
+      grid.appendChild(cell);
+    }
+    S.lastRenderedFen = st.fen;
+    boardBox.appendChild(grid);
+
+    if (S.promo) boardBox.appendChild(promoPicker(st, me));
+    if (st.status === 'finished') boardBox.appendChild(resultCard(st, me));
+    wrap.appendChild(boardBox);
+
+    wrap.appendChild(playerBar(st, botIdx));
+
+    // الحالة
+    const stat = h('div', 'gm-status');
+    if (st.status === 'finished') {
+      const r = resultText(st); stat.classList.add('end'); stat.innerHTML = `${r.icon} ${r.title}${r.sub ? ' — ' + esc(r.sub) : ''}`;
+    } else if (S.myTurn) {
+      stat.classList.add(st.check ? 'warn' : 'me');
+      stat.textContent = st.check ? '⚠️ كش! ملكك في خطر — دورك' : '✅ دورك الآن';
+    } else {
+      const cur = st.slots[turnIdx(st)];
+      stat.textContent = cur.ai ? '🤔 الكمبيوتر يفكر...' : (cur.online === false ? `⚠️ ${cur.name} غير متصل حالياً` : `⏳ دور ${cur.name}`);
+      if (st.check) { stat.classList.add('warn'); stat.textContent += ' — كش!'; }
+    }
+    wrap.appendChild(stat);
+
+    // عرض تعادل
+    if (st.status === 'active' && st.drawOffer !== null && me >= 0) {
+      if (st.drawOffer !== me) {
+        const box = h('div', 'gm-wait');
+        box.appendChild(h('span', '', '🤝 خصمك بيعرض عليك التعادل'));
+        const y = h('button', 'gm-btn sm', 'قبول'); y.type = 'button';
+        const n = h('button', 'gm-btn sm danger', 'رفض'); n.type = 'button';
+        on(y, 'click', () => socket.emit('games:draw_reply', { id: st.id, accept: true }));
+        on(n, 'click', () => socket.emit('games:draw_reply', { id: st.id, accept: false }));
+        box.appendChild(y); box.appendChild(n);
+        wrap.appendChild(box);
+      } else {
+        wrap.appendChild(h('div', 'gm-wait', '<span>⏳ بانتظار رد خصمك على عرض التعادل...</span>'));
+      }
+    }
+
+    // التلميحات
+    if (S.hints) {
+      const hint = h('div', 'gm-hint');
+      if (S.sel !== null && S.board[S.sel]) hint.innerHTML = hintHtml(st, S.sel);
+      else {
+        const lm = lastMoveText(st);
+        hint.innerHTML = (S.myTurn
+          ? '👆 <b>اضغط على أي قطعة</b> لتعرف كيف بتتحرك وين تقدر تروح.'
+          : '👆 اضغط على أي قطعة على اللوحة لتعرف كيف بتتحرك.') + (lm ? `<p><small>${lm}</small></p>` : '');
+      }
+      wrap.appendChild(hint);
+    }
+
+    // الأزرار
+    const ctrls = h('div', 'gm-ctrls');
+    const hintBtn = h('button', 'gm-btn sm ghost', S.hints ? '💡 التلميحات: تشغيل' : '💡 التلميحات: إيقاف');
+    hintBtn.type = 'button';
+    on(hintBtn, 'click', () => { S.hints = !S.hints; try { localStorage.setItem('gmHints', S.hints ? '1' : '0'); } catch (e) {} render(); });
+    ctrls.appendChild(hintBtn);
+    if (me >= 0 && st.status === 'active') {
+      const rs = h('button', 'gm-btn sm danger', '🏳️ استسلام'); rs.type = 'button';
+      on(rs, 'click', () => { if (confirm('متأكد بدك تستسلم؟')) socket.emit('games:resign', { id: st.id }); });
+      ctrls.appendChild(rs);
+      if (st.mode === 'pvp' && st.drawOffer === null) {
+        const dr = h('button', 'gm-btn sm ghost', '🤝 عرض تعادل'); dr.type = 'button';
+        on(dr, 'click', () => socket.emit('games:draw_offer', { id: st.id }));
+        ctrls.appendChild(dr);
+      }
+    }
+    if (me >= 0 && st.mode === 'pvp') {
+      const cb = h('button', 'gm-btn sm ghost', '💬 شات خاص'); cb.type = 'button';
+      const badge = h('span', 'gm-badge', String(S.unread));
+      badge.style.display = S.unread > 0 && !S.chatOpen ? 'flex' : 'none';
+      cb.appendChild(badge);
+      on(cb, 'click', () => { S.chatOpen = !S.chatOpen; if (S.chatOpen) S.unread = 0; render(); });
+      ctrls.appendChild(cb);
+    }
+    if (me < 0) ctrls.appendChild(h('div', 'gm-sub', `👁 أنت تشاهد المباراة · ${st.spectators} مشاهد`));
+    wrap.appendChild(ctrls);
+
+    // الشات الخاص (اللاعبان فقط)
+    if (me >= 0 && st.mode === 'pvp') wrap.appendChild(chatPanel(st, me));
+
+    // سجل النقلات
+    if (st.moves.length) {
+      const hist = h('div', 'gm-hist');
+      st.moves.forEach((san, i) => {
+        const mv = h('span', 'gm-mv', (i % 2 === 0 ? `<i>${(i >> 1) + 1}.</i>` : '') + esc(san));
+        hist.appendChild(mv);
+      });
+      wrap.appendChild(hist);
+      setTimeout(() => { hist.scrollLeft = hist.scrollWidth; }, 0);
+    }
+  }
+
+  function playerBar(st, idx) {
+    const slot = st.slots[idx];
+    const white = idx === 0;
+    const bar = h('div', 'gm-bar' + (st.status === 'active' && turnIdx(st) === idx ? ' turn' : ''));
+    bar.appendChild(h('div', 'gm-av' + (white ? '' : ' b'), slot.ai ? '🤖' : (white ? '♔' : '♚')));
+    const info = h('div', 'gm-binfo');
+    const nm = h('div', 'gm-bname');
+    nm.textContent = (slot.ai ? 'الكمبيوتر' : slot.name);
+    info.appendChild(nm);
+    const sub = slot.ai ? `مستوى: ${LEVELS[(slot.level || 3) - 1].label}` : (slot.online === false ? '⚠️ غير متصل' : (white ? 'الأبيض' : 'الأسود'));
+    info.appendChild(h('div', 'gm-bsub', esc(sub)));
+    bar.appendChild(info);
+    const caps = (st.captured && st.captured[white ? 'w' : 'b']) || [];
+    const order = { q: 0, r: 1, b: 2, n: 3, p: 4 };
+    const sorted = caps.slice().sort((a, b) => order[a] - order[b]);
+    const cap = h('div', 'gm-cap');
+    cap.innerHTML = sorted.map(c => `<span class="${white ? 'b' : 'w'}">${GLYPH[c.toUpperCase()] + VS}</span>`).join('');
+    const diff = materialDiff(S.board);
+    const adv = white ? diff : -diff;
+    if (adv > 0) cap.innerHTML += `<span class="gm-adv">+${adv}</span>`;
+    bar.appendChild(cap);
+    return bar;
+  }
+
+  function resultCard(st, me) {
+    const r = resultText(st);
+    const box = h('div', 'gm-result');
+    box.appendChild(h('div', 'gm-trophy', r.icon));
+    box.appendChild(h('h2', '', r.title));
+    if (r.sub) box.appendChild(h('p', '', esc(r.sub)));
+    if (me >= 0) {
+      const again = h('button', 'gm-btn', '🔁 مباراة جديدة (نفس الخصم)'); again.type = 'button';
+      on(again, 'click', () => socket.emit('games:rematch', { id: st.id }));
+      box.appendChild(again);
+    }
+    const hub = h('button', 'gm-btn ghost', 'القائمة'); hub.type = 'button';
+    on(hub, 'click', () => { leaveIfNeeded(); S.screen = 'hub'; requestLive(); render(); });
+    box.appendChild(hub);
+    const view = h('button', 'gm-btn ghost', 'عرض اللوحة'); view.type = 'button';
+    on(view, 'click', () => box.remove());
+    box.appendChild(view);
+    return box;
+  }
+
+  function promoPicker(st, me) {
+    const box = h('div', 'gm-promo');
+    box.appendChild(h('b', '', 'اختار القطعة للترقية:'));
+    const row = h('div');
+    const white = me === 0;
+    [['q', 'Q'], ['r', 'R'], ['b', 'B'], ['n', 'N']].forEach(([l, up]) => {
+      const b = h('button', white ? 'w' : 'b', GLYPH[up] + VS); b.type = 'button';
+      on(b, 'click', () => { const p = S.promo; S.promo = null; sendMove(p.from, p.to, l); });
+      row.appendChild(b);
+    });
+    box.appendChild(row);
+    const cancel = h('button', 'gm-btn sm ghost', 'إلغاء'); cancel.type = 'button';
+    on(cancel, 'click', () => { S.promo = null; render(); });
+    box.appendChild(cancel);
+    return box;
+  }
+
+  /* ---------- الشات الخاص ---------- */
+  let chatEl = null, chatMsgsEl = null, chatForId = null;
+  function chatPanel(st, me) {
+    if (!chatEl || chatForId !== st.id) {
+      chatForId = st.id;
+      chatEl = h('div', 'gm-chat');
+      chatMsgsEl = h('div', 'gm-msgs');
+      const form = h('form', 'gm-chatform');
+      const input = h('input');
+      input.type = 'text'; input.maxLength = 300; input.placeholder = 'اكتب رسالة لخصمك... (خاصة بينكم فقط)'; input.autocomplete = 'off';
+      const send = h('button', 'gm-btn sm', 'إرسال'); send.type = 'submit';
+      form.appendChild(input); form.appendChild(send);
+      on(form, 'submit', (e) => {
+        e.preventDefault();
+        const text = input.value.trim();
+        if (!text) return;
+        socket.emit('games:chat', { id: st.id, text });
+        input.value = '';
+      });
+      chatEl.appendChild(chatMsgsEl);
+      chatEl.appendChild(form);
+      S.chat.forEach(m => addChatBubble(m, me));
+    }
+    chatEl.classList.toggle('open', S.chatOpen);
+    return chatEl;
+  }
+  function addChatBubble(msg, me) {
+    if (!chatMsgsEl) return;
+    const b = h('div', 'gm-msg' + (msg.from === me ? ' me' : ''));
+    const who = h('small'); who.textContent = msg.name;
+    const txt = h('span'); txt.textContent = msg.text;
+    b.appendChild(who); b.appendChild(txt);
+    chatMsgsEl.appendChild(b);
+    chatMsgsEl.scrollTop = chatMsgsEl.scrollHeight;
+  }
+
+  /* ---------- التفاعل مع اللوحة ---------- */
+  function onSquare(sq) {
+    const st = S.state;
+    if (!st || S.promo) return;
+    if (S.sel !== null && S.myTurn) {
+      const cands = (S.byFrom[S.sel] || []).filter(m => m.to === sq);
+      if (cands.length) {
+        if (cands[0].promo) { S.promo = { from: S.sel, to: sq }; render(); return; }
+        sendMove(S.sel, sq, '');
+        return;
+      }
+    }
+    S.sel = (S.board[sq] && S.sel !== sq) ? sq : null;
+    render();
+  }
+
+  function sendMove(fromSq, toSq, promo) {
+    const st = S.state;
+    if (!st) return;
+    S.sel = null;
+    socket.emit('games:move', { id: st.id, from: sqName(fromSq), to: sqName(toSq), promo: promo || '' });
+    render();
+  }
+  function leaveIfNeeded() {
+    const st = S.state;
+    if (!st) return;
+    const me = mySlot(st);
+    if (me < 0 || st.status === 'finished') {
+      socket.emit('games:leave', { id: st.id });
+      S.state = null; S.currentId = null; S.chat = []; S.unread = 0; S.chatOpen = false; S.sel = null; S.aiFen = null;
+      chatEl = null; chatMsgsEl = null; chatForId = null;
+    }
+  }
+
+  /* ---------- حركة الكمبيوتر (بيحسبها جهازك والسيرفر بيتحقق) ---------- */
+  function maybeAI() {
+    const st = S.state;
+    if (!st || st.mode !== 'ai' || st.status !== 'active' || !Engine) return;
+    const slot = st.slots[turnIdx(st)];
+    if (!slot.ai) return;
+    const host = st.slots[st.hostSlot];
+    if (!host || host.id !== myId()) return;
+    if (S.aiFen === st.fen) return;
+    S.aiFen = st.fen;
+    const t0 = Date.now();
+    askAI(st.fen, slot.level || 3, st.rep2 || [], (res) => {
+      setTimeout(() => {
+        const cur = S.state;
+        if (!cur || cur.id !== st.id || cur.fen !== st.fen || cur.status !== 'active') return;
+        let mv = null;
+        try {
+          const legal = legalList(cur.fen);
+          if (res && legal.some(m => sqName(m.from) === res.from && sqName(m.to) === res.to)) mv = res;
+          else if (legal.length) {
+            const r = legal[Math.floor(Math.random() * legal.length)];
+            mv = { from: sqName(r.from), to: sqName(r.to), promo: r.promo ? PROMO_LETTER[r.promo] : '' };
+          }
+        } catch (e) {}
+        if (mv) socket.emit('games:ai_move', { id: st.id, from: mv.from, to: mv.to, promo: mv.promo || '' });
+      }, Math.max(0, 700 - (Date.now() - t0)));
+    });
+  }
+
+  /* ------------------------------------------------------------------ */
+  /*  الدعوات                                                             */
+  /* ------------------------------------------------------------------ */
+  function showInviteBox() {
+    if (invitesBox.children.length) { invitesBox.style.display = 'flex'; if (typeof topLayerShow === 'function') topLayerShow(invitesBox); }
+    else { if (typeof topLayerHide === 'function') topLayerHide(invitesBox); invitesBox.style.display = 'none'; }
+    updateLaunchAlert();
+  }
+  function removeInvite(id) {
+    [...invitesBox.children].forEach(c => { if (c.dataset.id === id) c.remove(); });
+    showInviteBox();
+  }
+
+  socket.on('games:invite', (d) => {
+    const side = d.pref === 'white' ? 'الأسود' : d.pref === 'black' ? 'الأبيض' : 'لون عشوائي';
+    const card = h('div', 'gm-inv');
+    card.dataset.id = d.id;
+    const p = h('p');
+    p.textContent = `♞ ${d.from.name} بيتحداك بمباراة شطرنج — رح تلعب بـ${side}`;
+    const row = h('div');
+    const y = h('button', 'gm-btn sm', '✅ قبول'); y.type = 'button';
+    const n = h('button', 'gm-btn sm danger', '⛔ رفض'); n.type = 'button';
+    on(y, 'click', () => {
+      ensureEngine(() => socket.emit('games:invite_reply', { id: d.id, accept: true }));
+      removeInvite(d.id);
+    });
+    on(n, 'click', () => { socket.emit('games:invite_reply', { id: d.id, accept: false }); removeInvite(d.id); });
+    row.appendChild(y); row.appendChild(n);
+    card.appendChild(p); card.appendChild(row);
+    invitesBox.appendChild(card);
+    showInviteBox();
+    if (typeof playNotificationSound === 'function') playNotificationSound();
+    setTimeout(() => removeInvite(d.id), 62000);
+  });
+
+  socket.on('games:invite_sent', (d) => { S.outInvite = { id: d.id, name: d.to.name }; render(); });
+
+  socket.on('games:invite_result', (d) => {
+    removeInvite(d.id);
+    if (S.outInvite && S.outInvite.id === d.id) {
+      S.outInvite = null;
+      if (d.status === 'declined') toast(`${d.by || 'اللاعب'} رفض الدعوة`);
+      else if (d.status === 'expired') toast('انتهت مهلة الدعوة بدون رد');
+      else if (d.status === 'cancelled') toast('تم إلغاء الدعوة');
+      render();
+    }
+  });
+
+  /* ------------------------------------------------------------------ */
+  /*  أحداث السيرفر                                                       */
+  /* ------------------------------------------------------------------ */
+  function adopt(st, chat) {
+    S.currentId = st.id;
+    S.state = st;
+    if (chat) { S.chat = chat; chatEl = null; chatMsgsEl = null; chatForId = null; }
+  }
+
+  socket.on('updatePlayers', (list) => { S.players = list || []; if (S.open && S.screen === 'hub') render(); });
+
+  socket.on('games:live', (d) => { S.live = d || { sessions: [], busy: [] }; if (S.open && S.screen === 'hub') render(); });
+
+  socket.on('games:started', (d) => {
+    S.currentId = d.id; S.chat = []; S.unread = 0; S.chatOpen = false; S.sel = null; S.aiFen = null; S.outInvite = null;
+    chatEl = null; chatMsgsEl = null; chatForId = null;
+    ensureEngine(() => { if (!S.open) openOverlay(); S.screen = 'game'; render(); });
+  });
+
+  socket.on('games:state', (st) => {
+    if (!st || !S.currentId || st.id !== S.currentId) return;
+    adopt(st);
+    ensureEngine(() => {
+      if (S.open) render();
+      maybeAI();
+      updateLaunchAlert();
+    });
+  });
+
+  socket.on('games:resume', (d) => {
+    if (!d || !d.state) return;
+    adopt(d.state, d.chat || []);
+    S.aiFen = null;
+    ensureEngine(() => {
+      if (d.state.status === 'active' && !S.open) openOverlay();
+      if (S.open) { S.screen = 'game'; render(); }
+      maybeAI();
+      updateLaunchAlert();
+    });
+  });
+
+  socket.on('games:chat', (d) => {
+    if (!d || d.id !== S.currentId) return;
+    S.chat.push(d.msg);
+    const me = S.state ? mySlot(S.state) : -1;
+    addChatBubble(d.msg, me);
+    if (d.msg.from !== me && !(S.open && S.chatOpen)) {
+      S.unread++;
+      if (S.open) render();
+      if (typeof playNotificationSound === 'function') playNotificationSound();
+    }
+  });
+
+  socket.on('games:closed', (d) => {
+    if (d && d.id === S.currentId) {
+      S.state = null; S.currentId = null; S.chat = []; S.sel = null; S.promo = null;
+      chatEl = null; chatMsgsEl = null; chatForId = null;
+      if (S.open) { S.screen = 'hub'; render(); }
+      updateLaunchAlert();
+    }
+  });
+
+  socket.on('games:error', (d) => {
+    if (d && d.message) toast(d.message);
+    if (d && d.id && S.state && d.id === S.state.id && S.state.mode === 'ai' && S.aiRetries < 3) {
+      S.aiRetries++; S.aiFen = null; setTimeout(maybeAI, 800);
+    }
+  });
+
+  // لو انحجب اللاعب أو انطرد: بنسكّر كل شي
+  socket.on('gate:blocked', () => {
+    closeOverlay();
+    S.state = null; S.currentId = null; S.chat = []; S.sel = null; S.outInvite = null; S.screen = 'menu';
+    invitesBox.innerHTML = ''; showInviteBox();
+  });
+
+  socket.on('connect', () => { S.aiFen = null; S.aiRetries = 0; });
+})();
+
