@@ -745,6 +745,7 @@ function joinGame(socket, ident) {
   }
 
   updatePlayersList();
+  gamesHub.onJoin(socket, player);
   if (owner) reevaluateGated();
 }
 
@@ -757,6 +758,7 @@ function removePlayer(p, announce) {
   authenticatedAdmins.delete(p.id);
   ownerSockets.delete(p.id);
   allowedMuteBypass.delete(p.id);
+  gamesHub.onLeave(p.id, announce === false);
 }
 
 function sendAdminBootstrap(socket, owner) {
@@ -823,10 +825,35 @@ setInterval(() => {
 // 🔌 الاتصال عبر Socket.io
 // ==========================================================================
 
+// 🎮 الألعاب المتنوعة (شطرنج وإكس أو) في ملف مستقل: games-server.js
+let gamesHub;
+try {
+  const createGamesHub = require('./games-server');
+  gamesHub = createGamesHub({ io, players, effMuted, effFrozen, cleanText });
+
+  // لو chess-engine.js موجود بجانب السيرفر (مش داخل public) بنقدّمه للمتصفح بنفس الاسم
+  if (createGamesHub.enginePath && !createGamesHub.enginePath.includes(path.join(__dirname, 'public'))) {
+    app.get('/chess-engine.js', (req, res) => res.sendFile(createGamesHub.enginePath));
+  }
+} catch (e) {
+  // لو ملف ناقص: اللعبة الأساسية بتضل شغالة، واللاعب بيشوف رسالة واضحة بدل ما يضيع
+  console.error('⚠️ الألعاب المتنوعة معطّلة:', e.message);
+  const reason = e.message;
+  gamesHub = {
+    attachSocket(socket) {
+      ['games:live_request', 'games:create_ai', 'games:invite'].forEach(ev => {
+        socket.on(ev, () => socket.emit('games:error', { id: null, message: 'الألعاب غير مفعّلة على السيرفر: ' + reason }));
+      });
+    },
+    onJoin() {}, onLeave() {}
+  };
+}
+
 io.on('connection', (socket) => {
   const clientIP = normalizeIp(getClientIP(socket));
   const isAdmin = () => authenticatedAdmins.has(socket.id);
   const isOwner = () => ownerSockets.has(socket.id);
+  gamesHub.attachSocket(socket);
 
   // ==========================================
   // 🪪 التعريف: اللاعب يرسل هويته (اسمه + توكن جهازه) وبعدها بيتقرر دخوله
