@@ -1505,3 +1505,582 @@ async function shutdown() {
 }
 process.on('SIGTERM', shutdown);
 process.on('SIGINT', shutdown);
+
+/* ==========================================================================
+   🎮 سيرفر الألعاب المتنوعة (الشطرنج حالياً)
+   - مباريات ضد الكمبيوتر أو ضد لاعبين من الروم (بدعوة)
+   - مشاهدون، وشات خاص باللاعبين الاثنين فقط
+   - السيرفر هو اللي بيتحقق من كل حركة (ما حدا يقدر يغش)
+   ========================================================================== */
+'use strict';
+
+const path = require('path');
+const fs = require('fs');
+
+// محرك الشطرنج: بندوّر عليه بمجلد public (المكان الصحيح) أو بجانب السيرفر
+const ENGINE_CANDIDATES = [path.join(__dirname, 'public', 'chess-engine.js'), path.join(__dirname, 'chess-engine.js')];
+const ENGINE_PATH = ENGINE_CANDIDATES.find(p => fs.existsSync(p));
+if (!ENGINE_PATH) {
+  throw new Error('ملف chess-engine.js غير موجود. ضعه داخل مجلد public (بجانب game.js).');
+}
+const Chess = require(ENGINE_PATH);
+
+// ---------- محرك إكس أو (مدمج هنا، ما في ملف إضافي) ----------
+const Xo = (() => {
+/* ==========================================================================
+   ✕◯ محرك لعبة إكس أو: القواعد + الذكاء الاصطناعي (5 مستويات)
+   اللاعب الأول (slot 0) = X ويبدأ، والثاني (slot 1) = O
+   ========================================================================== */
+
+const LINES = [[0, 1, 2], [3, 4, 5], [6, 7, 8], [0, 3, 6], [1, 4, 7], [2, 5, 8], [0, 4, 8], [2, 4, 6]];
+
+function winLine(b) {
+  for (const l of LINES) {
+    if (b[l[0]] && b[l[0]] === b[l[1]] && b[l[0]] === b[l[2]]) return l;
+  }
+  return null;
+}
+
+class XoGame {
+  constructor() {
+    this.board = new Array(9).fill('');
+    this.turn = 0;          // 0 = X, 1 = O
+    this.count = 0;
+    this.lastMove = null;
+    this.line = null;
+  }
+  mark(turn) { return turn === 0 ? 'X' : 'O'; }
+  // يرجع null إذا الحركة غير صالحة
+  play(cell) {
+    if (!Number.isInteger(cell) || cell < 0 || cell > 8 || this.board[cell]) return null;
+    this.board[cell] = this.mark(this.turn);
+    this.count++;
+    this.lastMove = cell;
+    this.line = winLine(this.board);
+    if (this.line) return { over: true, result: this.turn === 0 ? '1-0' : '0-1', reason: 'line' };
+    if (this.count === 9) return { over: true, result: '1/2-1/2', reason: 'full' };
+    this.turn = 1 - this.turn;
+    return { over: false };
+  }
+}
+
+const empties = (b) => { const o = []; for (let i = 0; i < 9; i++) if (!b[i]) o.push(i); return o; };
+const pick = (arr) => arr[Math.floor(Math.random() * arr.length)];
+
+// خانة تكمل ثلاثة لهذا اللاعب (للفوز أو للحجب)
+function findWin(b, mark) {
+  for (const l of LINES) {
+    const cells = l.map(i => b[i]);
+    if (cells.filter(c => c === mark).length === 2 && cells.includes('')) return l[cells.indexOf('')];
+  }
+  return -1;
+}
+
+// منطق بسيط: فوز، حجب، وسط، زاوية، أي خانة
+function smartMove(b, mark) {
+  const opp = mark === 'X' ? 'O' : 'X';
+  let m = findWin(b, mark); if (m >= 0) return m;
+  m = findWin(b, opp); if (m >= 0) return m;
+  if (!b[4]) return 4;
+  const corners = [0, 2, 6, 8].filter(i => !b[i]);
+  if (corners.length) return pick(corners);
+  return pick(empties(b));
+}
+
+// لعب مثالي: ما بيخسر أبداً
+function minimax(b, turnMark, me, depth) {
+  const line = winLine(b);
+  if (line) return b[line[0]] === me ? 10 - depth : depth - 10;
+  const free = empties(b);
+  if (!free.length) return 0;
+  const opp = me === 'X' ? 'O' : 'X';
+  let best = turnMark === me ? -Infinity : Infinity;
+  for (const i of free) {
+    b[i] = turnMark;
+    const sc = minimax(b, turnMark === 'X' ? 'O' : 'X', me, depth + 1);
+    b[i] = '';
+    best = turnMark === me ? Math.max(best, sc) : Math.min(best, sc);
+  }
+  return best;
+}
+function perfectMove(b, mark) {
+  const free = empties(b);
+  if (free.length === 9) return pick([0, 2, 4, 6, 8]);
+  let best = -Infinity, bestCells = [];
+  for (const i of free) {
+    b[i] = mark;
+    const sc = minimax(b, mark === 'X' ? 'O' : 'X', mark, 1);
+    b[i] = '';
+    if (sc > best) { best = sc; bestCells = [i]; } else if (sc === best) bestCells.push(i);
+  }
+  return pick(bestCells);
+}
+
+// level: 1 مبتدئ ... 5 خبير
+function bestMove(board, mark, level) {
+  const b = board.slice();
+  const free = empties(b);
+  if (!free.length) return -1;
+  const r = Math.random();
+  switch (level) {
+    case 1: return pick(free);
+    case 2: return r < 0.45 ? smartMove(b, mark) : pick(free);
+    case 3: return r < 0.15 ? pick(free) : smartMove(b, mark);
+    case 4: return r < 0.12 ? pick(free) : perfectMove(b, mark);
+    default: return perfectMove(b, mark);
+  }
+}
+
+return { XoGame, bestMove, winLine, LINES };
+
+})();
+const GAMES = ['chess', 'xo'];
+
+const createGamesHub = function ({ io, players, effMuted, effFrozen, cleanText }) {
+  const sessions = new Map();
+  const invites = new Map();
+  let seq = 0;
+
+  const RESUME_MS = 90 * 1000;          // مهلة العودة بعد رفرش أو انقطاع
+  const INVITE_MS = 60 * 1000;          // مدة صلاحية الدعوة
+  const FINISHED_KEEP_MS = 10 * 60 * 1000;
+  const MAX_SESSIONS = 30;
+
+  const room = (id) => 'gm:' + id;
+  const sockOf = (id) => (id ? io.sockets.sockets.get(id) : null);
+  const err = (socket, id, message) => socket.emit('games:error', { id: id || null, message });
+
+  function slotIndexOf(s, socketId) {
+    return s.slots.findIndex(sl => sl.id && sl.id === socketId);
+  }
+  const turnIdxOf = (s) => (s.game === 'xo' ? s.g.turn : (s.g.pos.turn === 1 ? 0 : 1));
+  const movesOf = (s) => (s.game === 'xo' ? s.g.count : s.g.sanList.length);
+  function isBusy(socketId) {
+    for (const s of sessions.values()) {
+      if (s.status === 'active' && slotIndexOf(s, socketId) >= 0) return true;
+    }
+    return false;
+  }
+
+  // ---------- تلخيص المباريات الجارية ----------
+  function slotInfo(sl) {
+    const p = sl.id ? players.get(sl.id) : null;
+    if (p) sl.name = p.name;
+    return { name: sl.name, ai: !!sl.ai, level: sl.level || 0 };
+  }
+  function liveSummary() {
+    const list = [];
+    const busy = [];
+    sessions.forEach((s) => {
+      if (s.status !== 'active') return;
+      list.push({
+        id: s.id, game: s.game, mode: s.mode,
+        white: slotInfo(s.slots[0]), black: slotInfo(s.slots[1]),
+        moves: movesOf(s), spectators: s.spectators.size
+      });
+      s.slots.forEach(sl => { if (sl.id) busy.push(sl.id); });
+    });
+    return { sessions: list, busy };
+  }
+  let liveTimer = null;
+  function scheduleLive() {
+    if (liveTimer) return;
+    liveTimer = setTimeout(() => {
+      liveTimer = null;
+      io.to('game').emit('games:live', liveSummary());
+    }, 150);
+  }
+
+  // ---------- حالة المباراة ----------
+  function serialize(s) {
+    const base = {
+      id: s.id, game: s.game, mode: s.mode, status: s.status, result: s.result, reason: s.reason,
+      slots: s.slots.map(sl => {
+        const info = slotInfo(sl);
+        return { id: sl.id, name: info.name, ai: info.ai, level: info.level, online: !!sl.ai || !!sl.id };
+      }),
+      hostSlot: s.hostSlot, drawOffer: s.drawOffer, spectators: s.spectators.size
+    };
+    if (s.game === 'xo') {
+      return Object.assign(base, {
+        board: s.g.board.slice(), turn: s.g.turn === 0 ? 'x' : 'o', line: s.g.line,
+        lastMove: s.g.lastMove, moves: s.g.count
+      });
+    }
+    return Object.assign(base, {
+      fen: s.g.fen(), turn: s.g.pos.turn === 1 ? 'w' : 'b',
+      moves: s.g.sanList.slice(), lastMove: s.g.lastMove,
+      check: s.g.pos.inCheck(), captured: s.g.captured, rep2: s.g.rep2()
+    });
+  }
+  function broadcast(s) {
+    io.to(room(s.id)).emit('games:state', serialize(s));
+    scheduleLive();
+  }
+
+  function finish(s, result, reason) {
+    if (s.status !== 'active') return;
+    s.status = 'finished';
+    s.result = result;
+    s.reason = reason;
+    s.finishedAt = Date.now();
+    s.drawOffer = null;
+    broadcast(s);
+  }
+
+  function removeSession(s) {
+    clearTimeout(s.aiTimer);
+    io.to(room(s.id)).emit('games:closed', { id: s.id });
+    const ids = [];
+    s.slots.forEach(sl => { if (sl.id) ids.push(sl.id); });
+    s.spectators.forEach(id => ids.push(id));
+    ids.forEach(id => { const k = sockOf(id); if (k) k.leave(room(s.id)); });
+    sessions.delete(s.id);
+    scheduleLive();
+  }
+
+  function createSession({ game, mode, slots, hostSlot }) {
+    const id = 'g' + (++seq) + Math.random().toString(36).slice(2, 6);
+    const s = {
+      id, game, mode, status: 'active', result: null, reason: '',
+      slots, hostSlot, g: game === 'xo' ? new Xo.XoGame() : new Chess.Game(), aiTimer: null, spectators: new Set(),
+      drawOffer: null, chat: [], createdAt: Date.now(), finishedAt: 0
+    };
+    sessions.set(id, s);
+    slots.forEach(sl => { const k = sockOf(sl.id); if (k) k.join(room(id)); });
+    return s;
+  }
+
+  function humanSlot(socketId) {
+    const p = players.get(socketId);
+    return { token: p.tokenHash, id: socketId, name: p.name, ai: false, level: 0, offlineAt: null, left: false };
+  }
+
+  function startAi(socket, level, color, game) {
+    if (sessions.size >= MAX_SESSIONS) return err(socket, null, 'عدد المباريات وصل للحد الأقصى، حاول بعد شوي.');
+    const humanWhite = color === 'random' ? Math.random() < 0.5 : color !== 'black';
+    const human = humanSlot(socket.id);
+    const ai = { token: null, id: null, name: 'الكمبيوتر', ai: true, level, offlineAt: null, left: false };
+    const s = createSession({
+      game, mode: 'ai', slots: humanWhite ? [human, ai] : [ai, human], hostSlot: humanWhite ? 0 : 1
+    });
+    io.to(room(s.id)).emit('games:started', { id: s.id });
+    broadcast(s);
+    kickAi(s);
+    return s;
+  }
+
+  function startPvp(inviterId, inviteeId, pref, game) {
+    const white = pref === 'random' ? Math.random() < 0.5 : pref !== 'black';
+    const a = humanSlot(inviterId), b = humanSlot(inviteeId);
+    const s = createSession({ game, mode: 'pvp', slots: white ? [a, b] : [b, a], hostSlot: -1 });
+    io.to(room(s.id)).emit('games:started', { id: s.id });
+    broadcast(s);
+    return s;
+  }
+
+  // ---------- الدعوات ----------
+  function dropInvite(inv, status) {
+    clearTimeout(inv.timer);
+    invites.delete(inv.id);
+    if (status) {
+      const a = sockOf(inv.from), b = sockOf(inv.to);
+      if (a) a.emit('games:invite_result', { id: inv.id, status });
+      if (b) b.emit('games:invite_result', { id: inv.id, status });
+    }
+  }
+  function cancelInvitesOf(socketId) {
+    [...invites.values()].forEach(inv => {
+      if (inv.from === socketId || inv.to === socketId) dropInvite(inv, 'cancelled');
+    });
+  }
+  function sendInvite(socket, targetId, pref, game) {
+    const me = players.get(socket.id), target = players.get(targetId);
+    if (!me || !target || target.id === me.id || target.isHiddenFromRoom) return err(socket, null, 'اللاعب غير متاح.');
+    if (isBusy(me.id)) return err(socket, null, 'أنت داخل مباراة جارية.');
+    if (isBusy(target.id)) return err(socket, null, `${target.name} داخل مباراة جارية.`);
+    if (sessions.size >= MAX_SESSIONS) return err(socket, null, 'عدد المباريات وصل للحد الأقصى، حاول بعد شوي.');
+    [...invites.values()].forEach(inv => { if (inv.from === me.id) dropInvite(inv, 'cancelled'); });
+
+    const id = 'i' + (++seq) + Math.random().toString(36).slice(2, 6);
+    const inv = { id, from: me.id, to: target.id, game: GAMES.includes(game) ? game : 'chess', pref: ['white', 'black', 'random'].includes(pref) ? pref : 'random' };
+    inv.timer = setTimeout(() => dropInvite(inv, 'expired'), INVITE_MS);
+    invites.set(id, inv);
+    io.to(target.id).emit('games:invite', { id, game: inv.game, from: { id: me.id, name: me.name }, pref: inv.pref });
+    socket.emit('games:invite_sent', { id, to: { id: target.id, name: target.name } });
+  }
+
+  // ---------- تنفيذ الحركات ----------
+  function applyMove(s, socket, data) {
+    if (s.game === 'xo') {
+      const r = s.g.play(typeof data.cell === 'number' ? data.cell : parseInt(data.cell, 10));
+      if (!r) {
+        err(socket, s.id, 'هذه الخانة غير متاحة.');
+        socket.emit('games:state', serialize(s));
+        return;
+      }
+      if (r.over) finish(s, r.result, r.reason);
+      else { broadcast(s); kickAi(s); }
+      return;
+    }
+    const r = s.g.move(data.from, data.to, data.promo);
+    if (!r) {
+      err(socket, s.id, 'حركة غير قانونية.');
+      socket.emit('games:state', serialize(s)); // مزامنة اللوحة عند اللاعب
+      return;
+    }
+    s.drawOffer = null;
+    const st = s.g.status();
+    if (st.over) finish(s, st.result, st.reason);
+    else broadcast(s);
+  }
+
+  // حركة الكمبيوتر في إكس أو (بسيطة، فالسيرفر بيحسبها بنفسه)
+  function kickAi(s) {
+    if (s.game !== 'xo' || s.mode !== 'ai' || s.status !== 'active' || s.aiTimer) return;
+    if (!s.slots[s.g.turn].ai) return;
+    s.aiTimer = setTimeout(() => {
+      s.aiTimer = null;
+      if (!sessions.has(s.id) || s.status !== 'active') return;
+      const slot = s.slots[s.g.turn];
+      if (!slot.ai) return;
+      const cell = Xo.bestMove(s.g.board, s.g.mark(s.g.turn), slot.level || 3);
+      const r = s.g.play(cell);
+      if (!r) return;
+      if (r.over) finish(s, r.result, r.reason);
+      else { broadcast(s); kickAi(s); }
+    }, 750);
+  }
+
+  function forfeit(s, idx) {
+    if (s.status !== 'active') return;
+    if (s.mode === 'ai') { removeSession(s); return; }
+    finish(s, idx === 0 ? '0-1' : '1-0', 'abandon');
+  }
+
+  function detach(s, idx) {
+    const sl = s.slots[idx];
+    const k = sockOf(sl.id);
+    if (k) k.leave(room(s.id));
+    sl.id = null;
+    sl.left = true;
+    const anyHuman = s.slots.some(x => !x.ai && !x.left);
+    if (!anyHuman) removeSession(s);
+    else broadcast(s);
+  }
+
+  // ======================================================================
+  // 🔌 تسجيل أحداث الاتصال
+  // ======================================================================
+  function attachSocket(socket) {
+    const me = () => players.get(socket.id);
+    const get = (data) => (data && typeof data.id === 'string' ? sessions.get(data.id) : null);
+
+    socket.on('games:live_request', () => {
+      if (!me()) return;
+      socket.emit('games:live', liveSummary());
+    });
+
+    socket.on('games:create_ai', (data) => {
+      if (!me() || !data) return;
+      if (!GAMES.includes(data.game)) return err(socket, null, 'هذه اللعبة غير متاحة بعد.');
+      if (isBusy(socket.id)) return err(socket, null, 'أنت داخل مباراة جارية.');
+      const level = Math.min(5, Math.max(1, parseInt(data.level) || 3));
+      const color = ['white', 'black', 'random'].includes(data.color) ? data.color : 'white';
+      startAi(socket, level, color, data.game);
+    });
+
+    socket.on('games:invite', (data) => {
+      if (!me() || !data || !GAMES.includes(data.game)) return;
+      sendInvite(socket, data.to, data.color, data.game);
+    });
+
+    socket.on('games:invite_cancel', (data) => {
+      const inv = data && invites.get(data.id);
+      if (inv && inv.from === socket.id) dropInvite(inv, 'cancelled');
+    });
+
+    socket.on('games:invite_reply', (data) => {
+      const inv = data && invites.get(data.id);
+      if (!inv || inv.to !== socket.id || !me()) return;
+      if (!data.accept) {
+        const a = sockOf(inv.from);
+        const nm = me().name;
+        dropInvite(inv, null);
+        if (a) a.emit('games:invite_result', { id: inv.id, status: 'declined', by: nm });
+        return;
+      }
+      if (!players.get(inv.from) || isBusy(inv.from) || isBusy(inv.to)) {
+        dropInvite(inv, 'cancelled');
+        return err(socket, null, 'ما عاد ممكن تبدأ هذه المباراة.');
+      }
+      const pref = inv.pref;
+      const game = inv.game;
+      const from = inv.from, to = inv.to;
+      dropInvite(inv, null);
+      const a = sockOf(from);
+      if (a) a.emit('games:invite_result', { id: inv.id, status: 'accepted' });
+      startPvp(from, to, pref, game);
+    });
+
+    socket.on('games:move', (data) => {
+      const s = get(data);
+      if (!s || s.status !== 'active' || !me()) return;
+      const idx = slotIndexOf(s, socket.id);
+      if (idx < 0) return;
+      if (idx !== turnIdxOf(s)) return err(socket, s.id, 'مش دورك الآن.');
+      applyMove(s, socket, data);
+    });
+
+    // حركة الكمبيوتر: بيحسبها جهاز اللاعب (عشان ما نثقل السيرفر) والسيرفر بيتحقق منها
+    socket.on('games:ai_move', (data) => {
+      const s = get(data);
+      if (!s || s.game !== 'chess' || s.status !== 'active' || s.mode !== 'ai' || !me()) return;
+      if (s.slots[s.hostSlot].id !== socket.id) return;
+      if (!s.slots[turnIdxOf(s)].ai) return;
+      applyMove(s, socket, data);
+    });
+
+    socket.on('games:resign', (data) => {
+      const s = get(data);
+      if (!s || s.status !== 'active') return;
+      const idx = slotIndexOf(s, socket.id);
+      if (idx < 0) return;
+      finish(s, idx === 0 ? '0-1' : '1-0', 'resign');
+    });
+
+    socket.on('games:draw_offer', (data) => {
+      const s = get(data);
+      if (!s || s.game !== 'chess' || s.status !== 'active' || s.mode !== 'pvp') return;
+      const idx = slotIndexOf(s, socket.id);
+      if (idx < 0 || s.drawOffer !== null) return;
+      s.drawOffer = idx;
+      broadcast(s);
+    });
+
+    socket.on('games:draw_reply', (data) => {
+      const s = get(data);
+      if (!s || s.status !== 'active' || s.mode !== 'pvp' || s.drawOffer === null) return;
+      const idx = slotIndexOf(s, socket.id);
+      if (idx < 0 || idx === s.drawOffer) return;
+      if (data.accept) finish(s, '1/2-1/2', 'agreement');
+      else { s.drawOffer = null; broadcast(s); }
+    });
+
+    // الشات: فقط بين اللاعبين الاثنين (المشاهدون ما بيشوفوه ولا بيوصلهم)
+    socket.on('games:chat', (data) => {
+      const s = get(data);
+      const p = me();
+      if (!s || !p || s.mode !== 'pvp') return;
+      const idx = slotIndexOf(s, socket.id);
+      if (idx < 0) return;
+      if (effFrozen(p)) return;
+      if (effMuted(p)) return err(socket, s.id, 'أنت ممنوع من الكتابة.');
+      const text = cleanText(data.text, 300);
+      if (!text) return;
+      const msg = { from: idx, name: p.name, text, ts: Date.now() };
+      s.chat.push(msg);
+      if (s.chat.length > 100) s.chat.shift();
+      s.slots.forEach(sl => { if (sl.id) io.to(sl.id).emit('games:chat', { id: s.id, msg }); });
+    });
+
+    socket.on('games:spectate', (data) => {
+      const s = get(data);
+      if (!s || !me()) return;
+      const idx = slotIndexOf(s, socket.id);
+      if (idx >= 0) { socket.emit('games:state', serialize(s)); return; }
+      if (isBusy(socket.id)) return err(socket, s.id, 'أنت داخل مباراة جارية.');
+      if (s.status === 'finished' && Date.now() - s.finishedAt > FINISHED_KEEP_MS) return;
+      s.spectators.add(socket.id);
+      socket.join(room(s.id));
+      socket.emit('games:state', serialize(s));
+      broadcast(s);
+    });
+
+    socket.on('games:leave', (data) => {
+      const s = get(data);
+      if (!s) return;
+      if (s.spectators.has(socket.id)) {
+        s.spectators.delete(socket.id);
+        socket.leave(room(s.id));
+        broadcast(s);
+        return;
+      }
+      const idx = slotIndexOf(s, socket.id);
+      if (idx < 0) return;
+      if (s.mode === 'ai') { removeSession(s); return; }
+      if (s.status === 'active') finish(s, idx === 0 ? '0-1' : '1-0', 'resign');
+      detach(s, idx);
+    });
+
+    socket.on('games:rematch', (data) => {
+      const s = get(data);
+      if (!s || s.status !== 'finished' || !me()) return;
+      const idx = slotIndexOf(s, socket.id);
+      if (idx < 0 || isBusy(socket.id)) return;
+      if (s.mode === 'ai') {
+        const level = s.slots[s.hostSlot === 0 ? 1 : 0].level || 3;
+        const wasWhite = s.hostSlot === 0;
+        const game = s.game;
+        removeSession(s);
+        startAi(socket, level, wasWhite ? 'black' : 'white', game);
+        return;
+      }
+      const other = s.slots[idx === 0 ? 1 : 0];
+      if (!other.id) return err(socket, s.id, 'الخصم غير متواجد.');
+      sendInvite(socket, other.id, idx === 0 ? 'black' : 'white', s.game);
+    });
+  }
+
+  // ---------- دخول/خروج اللاعب ----------
+  // بعد الرفرش: بيرجع اللاعب لمباراته إذا كانت لسا مستمرة
+  function onJoin(socket, player) {
+    socket.emit('games:live', liveSummary());
+    sessions.forEach((s) => {
+      s.slots.forEach((sl, idx) => {
+        if (sl.ai || sl.left || sl.token !== player.tokenHash) return;
+        if (s.status === 'finished' && Date.now() - s.finishedAt > FINISHED_KEEP_MS) return;
+        sl.id = socket.id;
+        sl.offlineAt = null;
+        sl.name = player.name;
+        socket.join(room(s.id));
+        socket.emit('games:resume', { state: serialize(s), chat: s.mode === 'pvp' ? s.chat : [] });
+        broadcast(s);
+        kickAi(s);
+      });
+    });
+  }
+
+  function onLeave(socketId, immediate) {
+    cancelInvitesOf(socketId);
+    sessions.forEach((s) => {
+      if (s.spectators.delete(socketId)) broadcast(s);
+      const idx = slotIndexOf(s, socketId);
+      if (idx < 0) return;
+      const sl = s.slots[idx];
+      sl.id = null;
+      sl.offlineAt = Date.now();
+      if (immediate) forfeit(s, idx);
+      else broadcast(s);
+    });
+  }
+
+  // تنظيف دوري: انتهاء مهلة العودة، وحذف المباريات المنتهية القديمة
+  setInterval(() => {
+    const now = Date.now();
+    [...sessions.values()].forEach((s) => {
+      if (s.status === 'active') {
+        s.slots.forEach((sl, idx) => {
+          if (!sl.ai && !sl.left && !sl.id && sl.offlineAt && now - sl.offlineAt > RESUME_MS) forfeit(s, idx);
+        });
+      } else if (s.finishedAt && now - s.finishedAt > FINISHED_KEEP_MS) {
+        removeSession(s);
+      }
+    });
+  }, 5000).unref();
+
+  return { attachSocket, onJoin, onLeave };
+};
+
+module.exports = createGamesHub;
+module.exports.enginePath = ENGINE_PATH;
