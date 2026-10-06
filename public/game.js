@@ -3166,3 +3166,623 @@ socket.on('gate:approved', (d) => {
   socket.on('connect', () => { S.aiFen = null; S.aiRetries = 0; });
 })();
 
+/* ==========================================================================
+   ♟️ محرك الشطرنج - قواعد كاملة + ذكاء اصطناعي بخمس مستويات
+   نفس الملف بيشتغل على السيرفر (للتحقق من الحركات) وعلى المتصفح، وكـ Web Worker للذكاء الاصطناعي
+   ========================================================================== */
+(function (root, factory) {
+  if (typeof module === 'object' && module.exports) module.exports = factory();
+  else root.ChessEngine = factory();
+})(typeof self !== 'undefined' ? self : this, function () {
+  'use strict';
+
+  var P = 1, N = 2, B = 3, R = 4, Q = 5, K = 6;
+  var WK = 1, WQ = 2, BK = 4, BQ = 8;
+  var F_DOUBLE = 1, F_EP = 2, F_CK = 4, F_CQ = 8, F_CAP = 16;
+  var FILES = 'abcdefgh';
+  var LETTER = { 1: 'P', 2: 'N', 3: 'B', 4: 'R', 5: 'Q', 6: 'K' };
+  var TYPE_OF = { p: 1, n: 2, b: 3, r: 4, q: 5, k: 6 };
+  var START_FEN = 'rnbqkbnr/pppppppp/8/8/8/8/PPPPPPPP/RNBQKBNR w KQkq - 0 1';
+
+  // المربع 0 = a8 ... 63 = h1
+  function sqName(s) { return FILES[s & 7] + (8 - (s >> 3)); }
+  function nameSq(n) { return (8 - (n.charCodeAt(1) - 48)) * 8 + (n.charCodeAt(0) - 97); }
+
+  var KNIGHT = [], KING = [], RAY = [];
+  var DIRS = [[-1, 0], [1, 0], [0, -1], [0, 1], [-1, -1], [-1, 1], [1, -1], [1, 1]];
+  (function init() {
+    var KN = [[-2, -1], [-2, 1], [-1, -2], [-1, 2], [1, -2], [1, 2], [2, -1], [2, 1]];
+    for (var s = 0; s < 64; s++) {
+      var r = s >> 3, f = s & 7, kn = [], kg = [];
+      KN.forEach(function (d) {
+        var rr = r + d[0], ff = f + d[1];
+        if (rr >= 0 && rr < 8 && ff >= 0 && ff < 8) kn.push(rr * 8 + ff);
+      });
+      DIRS.forEach(function (d) {
+        var rr = r + d[0], ff = f + d[1];
+        if (rr >= 0 && rr < 8 && ff >= 0 && ff < 8) kg.push(rr * 8 + ff);
+      });
+      KNIGHT[s] = kn;
+      KING[s] = kg;
+      RAY[s] = DIRS.map(function (d) {
+        var out = [], rr = r + d[0], ff = f + d[1];
+        while (rr >= 0 && rr < 8 && ff >= 0 && ff < 8) { out.push(rr * 8 + ff); rr += d[0]; ff += d[1]; }
+        return out;
+      });
+    }
+  })();
+
+  var CASTLE_MASK = new Int8Array(64).fill(15);
+  CASTLE_MASK[60] = 15 & ~(WK | WQ); CASTLE_MASK[63] = 15 & ~WK; CASTLE_MASK[56] = 15 & ~WQ;
+  CASTLE_MASK[4] = 15 & ~(BK | BQ); CASTLE_MASK[7] = 15 & ~BK; CASTLE_MASK[0] = 15 & ~BQ;
+
+  /* ======================================================================
+     الرقعة
+     ====================================================================== */
+  function Position() {
+    this.board = new Int8Array(64);
+    this.turn = 1; this.castle = 0; this.ep = -1; this.half = 0; this.full = 1;
+    this.wk = -1; this.bk = -1;
+    this.stMove = new Int32Array(2048);
+    this.stCap = new Int8Array(2048);
+    this.stCastle = new Int8Array(2048);
+    this.stEp = new Int8Array(2048);
+    this.stHalf = new Int16Array(2048);
+    this.ply = 0;
+  }
+
+  Position.prototype.load = function (fen) {
+    var parts = fen.trim().split(/\s+/), rows = parts[0].split('/');
+    this.board.fill(0);
+    for (var r = 0; r < 8; r++) {
+      var f = 0;
+      for (var i = 0; i < rows[r].length; i++) {
+        var ch = rows[r][i];
+        if (ch >= '1' && ch <= '8') { f += +ch; continue; }
+        var lower = ch.toLowerCase(), t = TYPE_OF[lower], color = ch === lower ? -1 : 1, s = r * 8 + f;
+        this.board[s] = color * t;
+        if (t === K) { if (color === 1) this.wk = s; else this.bk = s; }
+        f++;
+      }
+    }
+    this.turn = parts[1] === 'b' ? -1 : 1;
+    var cs = parts[2] || '-', c = 0;
+    if (cs.indexOf('K') >= 0) c |= WK;
+    if (cs.indexOf('Q') >= 0) c |= WQ;
+    if (cs.indexOf('k') >= 0) c |= BK;
+    if (cs.indexOf('q') >= 0) c |= BQ;
+    this.castle = c;
+    this.ep = parts[3] && parts[3] !== '-' ? nameSq(parts[3]) : -1;
+    this.half = parseInt(parts[4] || '0', 10) || 0;
+    this.full = parseInt(parts[5] || '1', 10) || 1;
+    this.ply = 0;
+    return this;
+  };
+
+  Position.prototype.fen = function () {
+    var out = [];
+    for (var r = 0; r < 8; r++) {
+      var row = '', empty = 0;
+      for (var f = 0; f < 8; f++) {
+        var p = this.board[r * 8 + f];
+        if (!p) { empty++; continue; }
+        if (empty) { row += empty; empty = 0; }
+        var ch = 'pnbrqk'.charAt(Math.abs(p) - 1);
+        row += p > 0 ? ch.toUpperCase() : ch;
+      }
+      if (empty) row += empty;
+      out.push(row);
+    }
+    var c = '';
+    if (this.castle & WK) c += 'K';
+    if (this.castle & WQ) c += 'Q';
+    if (this.castle & BK) c += 'k';
+    if (this.castle & BQ) c += 'q';
+    return out.join('/') + ' ' + (this.turn === 1 ? 'w' : 'b') + ' ' + (c || '-') + ' ' +
+      (this.ep >= 0 ? sqName(this.ep) : '-') + ' ' + this.half + ' ' + this.full;
+  };
+
+  // مفتاح الوضعية لكشف التكرار (الـ en passant يُحسب فقط لو ممكن فعلاً)
+  Position.prototype.key = function () {
+    var parts = this.fen().split(' ');
+    var epOk = false;
+    if (this.ep >= 0) {
+      var b = this.board, ep = this.ep, f = ep & 7;
+      if (this.turn === 1) epOk = (f > 0 && b[ep + 7] === P) || (f < 7 && b[ep + 9] === P);
+      else epOk = (f > 0 && b[ep - 9] === -P) || (f < 7 && b[ep - 7] === -P);
+    }
+    return parts[0] + ' ' + parts[1] + ' ' + parts[2] + ' ' + (epOk ? parts[3] : '-');
+  };
+
+  Position.prototype.isAttacked = function (sq, by) {
+    var b = this.board, r = sq >> 3, f = sq & 7, i, j, ray, p;
+    if (by === 1) {
+      if (r < 7) { if (f > 0 && b[sq + 7] === P) return true; if (f < 7 && b[sq + 9] === P) return true; }
+    } else {
+      if (r > 0) { if (f > 0 && b[sq - 9] === -P) return true; if (f < 7 && b[sq - 7] === -P) return true; }
+    }
+    var kn = KNIGHT[sq], nn = by * N;
+    for (i = 0; i < kn.length; i++) if (b[kn[i]] === nn) return true;
+    var kg = KING[sq], kk = by * K;
+    for (i = 0; i < kg.length; i++) if (b[kg[i]] === kk) return true;
+    var rr = by * R, qq = by * Q, bb = by * B;
+    for (i = 0; i < 4; i++) {
+      ray = RAY[sq][i];
+      for (j = 0; j < ray.length; j++) { p = b[ray[j]]; if (p) { if (p === rr || p === qq) return true; break; } }
+    }
+    for (i = 4; i < 8; i++) {
+      ray = RAY[sq][i];
+      for (j = 0; j < ray.length; j++) { p = b[ray[j]]; if (p) { if (p === bb || p === qq) return true; break; } }
+    }
+    return false;
+  };
+
+  Position.prototype.inCheck = function () {
+    return this.isAttacked(this.turn === 1 ? this.wk : this.bk, -this.turn);
+  };
+
+  var PROMOS = [Q, R, B, N];
+
+  // توليد الحركات (شبه قانونية). capsOnly = الأكل والترقية فقط (للبحث الهادئ)
+  Position.prototype.genMoves = function (capsOnly, onlySq) {
+    var b = this.board, us = this.turn, moves = [], s, p, t, i, j, to, tp, ray, kn, kg;
+    var from0 = onlySq === undefined ? 0 : onlySq, to0 = onlySq === undefined ? 64 : onlySq + 1;
+    for (s = from0; s < to0; s++) {
+      p = b[s];
+      if (!p || (p > 0 ? 1 : -1) !== us) continue;
+      t = p * us;
+      if (t === P) {
+        var r = s >> 3, f = s & 7, dir = us === 1 ? -8 : 8;
+        var promoRank = us === 1 ? 1 : 6, startRank = us === 1 ? 6 : 1, one = s + dir;
+        if (!b[one]) {
+          if (r === promoRank) {
+            if (capsOnly) moves.push(s | (one << 6) | (Q << 12));
+            else for (j = 0; j < 4; j++) moves.push(s | (one << 6) | (PROMOS[j] << 12));
+          } else if (!capsOnly) {
+            moves.push(s | (one << 6));
+            if (r === startRank && !b[one + dir]) moves.push(s | ((one + dir) << 6) | (F_DOUBLE << 16));
+          }
+        }
+        for (var df = -1; df <= 1; df += 2) {
+          var ff = f + df;
+          if (ff < 0 || ff > 7) continue;
+          to = one + df; tp = b[to];
+          if (tp && (tp > 0 ? 1 : -1) !== us) {
+            if (r === promoRank) for (j = 0; j < 4; j++) moves.push(s | (to << 6) | (PROMOS[j] << 12) | (F_CAP << 16));
+            else moves.push(s | (to << 6) | (F_CAP << 16));
+          } else if (!tp && to === this.ep) {
+            moves.push(s | (to << 6) | ((F_EP | F_CAP) << 16));
+          }
+        }
+      } else if (t === N) {
+        kn = KNIGHT[s];
+        for (i = 0; i < kn.length; i++) {
+          to = kn[i]; tp = b[to];
+          if (!tp) { if (!capsOnly) moves.push(s | (to << 6)); }
+          else if ((tp > 0 ? 1 : -1) !== us) moves.push(s | (to << 6) | (F_CAP << 16));
+        }
+      } else if (t === K) {
+        kg = KING[s];
+        for (i = 0; i < kg.length; i++) {
+          to = kg[i]; tp = b[to];
+          if (!tp) { if (!capsOnly) moves.push(s | (to << 6)); }
+          else if ((tp > 0 ? 1 : -1) !== us) moves.push(s | (to << 6) | (F_CAP << 16));
+        }
+        if (!capsOnly) {
+          if (us === 1 && s === 60) {
+            if ((this.castle & WK) && !b[61] && !b[62] && b[63] === R &&
+              !this.isAttacked(60, -1) && !this.isAttacked(61, -1) && !this.isAttacked(62, -1))
+              moves.push(s | (62 << 6) | (F_CK << 16));
+            if ((this.castle & WQ) && !b[59] && !b[58] && !b[57] && b[56] === R &&
+              !this.isAttacked(60, -1) && !this.isAttacked(59, -1) && !this.isAttacked(58, -1))
+              moves.push(s | (58 << 6) | (F_CQ << 16));
+          } else if (us === -1 && s === 4) {
+            if ((this.castle & BK) && !b[5] && !b[6] && b[7] === -R &&
+              !this.isAttacked(4, 1) && !this.isAttacked(5, 1) && !this.isAttacked(6, 1))
+              moves.push(s | (6 << 6) | (F_CK << 16));
+            if ((this.castle & BQ) && !b[3] && !b[2] && !b[1] && b[0] === -R &&
+              !this.isAttacked(4, 1) && !this.isAttacked(3, 1) && !this.isAttacked(2, 1))
+              moves.push(s | (2 << 6) | (F_CQ << 16));
+          }
+        }
+      } else {
+        var d0 = t === B ? 4 : 0, d1 = t === R ? 4 : 8;
+        for (i = d0; i < d1; i++) {
+          ray = RAY[s][i];
+          for (j = 0; j < ray.length; j++) {
+            to = ray[j]; tp = b[to];
+            if (!tp) { if (!capsOnly) moves.push(s | (to << 6)); }
+            else {
+              if ((tp > 0 ? 1 : -1) !== us) moves.push(s | (to << 6) | (F_CAP << 16));
+              break;
+            }
+          }
+        }
+      }
+    }
+    return moves;
+  };
+
+  Position.prototype.make = function (m) {
+    var b = this.board, from = m & 63, to = (m >> 6) & 63, promo = (m >> 12) & 15, fl = m >> 16;
+    var piece = b[from], us = piece > 0 ? 1 : -1, cap = b[to], ply = this.ply;
+    this.stMove[ply] = m; this.stCastle[ply] = this.castle; this.stEp[ply] = this.ep; this.stHalf[ply] = this.half;
+    if (fl & F_EP) { var cs = to + (us === 1 ? 8 : -8); cap = b[cs]; b[cs] = 0; }
+    this.stCap[ply] = cap;
+    b[to] = promo ? us * promo : piece;
+    b[from] = 0;
+    if (fl & F_CK) { b[to - 1] = b[to + 1]; b[to + 1] = 0; }
+    else if (fl & F_CQ) { b[to + 1] = b[to - 2]; b[to - 2] = 0; }
+    if (piece === K * us) { if (us === 1) this.wk = to; else this.bk = to; }
+    this.castle &= CASTLE_MASK[from] & CASTLE_MASK[to];
+    this.ep = (fl & F_DOUBLE) ? (from + to) >> 1 : -1;
+    if (piece === P * us || cap) this.half = 0; else this.half++;
+    if (us === -1) this.full++;
+    this.turn = -us;
+    this.ply = ply + 1;
+  };
+
+  Position.prototype.unmake = function () {
+    var ply = --this.ply, m = this.stMove[ply];
+    var from = m & 63, to = (m >> 6) & 63, promo = (m >> 12) & 15, fl = m >> 16;
+    var b = this.board, us = -this.turn;
+    var piece = promo ? us * P : b[to], cap = this.stCap[ply];
+    b[from] = piece;
+    if (fl & F_EP) { b[to] = 0; b[to + (us === 1 ? 8 : -8)] = cap; } else b[to] = cap;
+    if (fl & F_CK) { b[to + 1] = b[to - 1]; b[to - 1] = 0; }
+    else if (fl & F_CQ) { b[to - 2] = b[to + 1]; b[to + 1] = 0; }
+    if (piece === K * us) { if (us === 1) this.wk = from; else this.bk = from; }
+    this.castle = this.stCastle[ply]; this.ep = this.stEp[ply]; this.half = this.stHalf[ply];
+    if (us === -1) this.full--;
+    this.turn = us;
+  };
+
+  function filterLegal(pos, pseudo) {
+    var out = [], us = pos.turn;
+    for (var i = 0; i < pseudo.length; i++) {
+      pos.make(pseudo[i]);
+      if (!pos.isAttacked(us === 1 ? pos.wk : pos.bk, -us)) out.push(pseudo[i]);
+      pos.unmake();
+    }
+    return out;
+  }
+
+  Position.prototype.legalMoves = function () { return filterLegal(this, this.genMoves(false)); };
+  Position.prototype.legalMovesFrom = function (sq) { return filterLegal(this, this.genMoves(false, sq)); };
+  Position.prototype.pseudoMovesFrom = function (sq) { return this.genMoves(false, sq); };
+
+  function perft(pos, depth) {
+    if (depth === 0) return 1;
+    var moves = pos.genMoves(false), n = 0, us = pos.turn;
+    for (var i = 0; i < moves.length; i++) {
+      pos.make(moves[i]);
+      if (!pos.isAttacked(us === 1 ? pos.wk : pos.bk, -us)) n += depth === 1 ? 1 : perft(pos, depth - 1);
+      pos.unmake();
+    }
+    return n;
+  }
+
+  /* ======================================================================
+     اللعبة: حركات + SAN + نتيجة
+     ====================================================================== */
+  function insufficient(pos) {
+    var b = pos.board, minors = 0, bishopColors = {}, knights = 0;
+    for (var s = 0; s < 64; s++) {
+      var t = Math.abs(b[s]);
+      if (!t || t === K) continue;
+      if (t === P || t === R || t === Q) return false;
+      minors++;
+      if (t === N) knights++;
+      else bishopColors[((s >> 3) + (s & 7)) & 1] = true;
+    }
+    if (minors <= 1) return true;
+    if (knights === 0 && Object.keys(bishopColors).length === 1) return true;
+    return false;
+  }
+
+  function Game(fen) {
+    this.pos = new Position().load(fen || START_FEN);
+    this.sanList = [];
+    this.lastMove = null;
+    this.captured = { w: [], b: [] };
+    this.keys = {};
+    this._addKey();
+  }
+  Game.prototype._addKey = function () {
+    var k = this.pos.key();
+    this.keys[k] = (this.keys[k] || 0) + 1;
+  };
+  Game.prototype.fen = function () { return this.pos.fen(); };
+  Game.prototype.rep2 = function () {
+    var self = this;
+    return Object.keys(this.keys).filter(function (k) { return self.keys[k] >= 2; });
+  };
+
+  Game.prototype.findMove = function (from, to, promo) {
+    if (typeof from !== 'string' || typeof to !== 'string' || !/^[a-h][1-8]$/.test(from) || !/^[a-h][1-8]$/.test(to)) return null;
+    var legal = this.pos.legalMoves(), f = nameSq(from), t = nameSq(to);
+    var pr = promo ? (TYPE_OF[String(promo).toLowerCase()] || 0) : 0;
+    for (var i = 0; i < legal.length; i++) {
+      var m = legal[i];
+      if ((m & 63) !== f || ((m >> 6) & 63) !== t) continue;
+      var mp = (m >> 12) & 15;
+      if (mp) { if ((pr || Q) === mp) return m; }
+      else return m;
+    }
+    return null;
+  };
+
+  Game.prototype.san = function (m, legal) {
+    var pos = this.pos, from = m & 63, to = (m >> 6) & 63, promo = (m >> 12) & 15, fl = m >> 16;
+    var piece = Math.abs(pos.board[from]), s, i;
+    if (fl & F_CK) s = 'O-O';
+    else if (fl & F_CQ) s = 'O-O-O';
+    else {
+      var cap = (fl & F_CAP) !== 0;
+      if (piece === P) {
+        s = cap ? FILES[from & 7] + 'x' : '';
+        s += sqName(to);
+        if (promo) s += '=' + LETTER[promo];
+      } else {
+        s = LETTER[piece];
+        var ambiguous = false, sameFile = false, sameRank = false;
+        for (i = 0; i < legal.length; i++) {
+          var o = legal[i];
+          if (o === m) continue;
+          var of = o & 63;
+          if (((o >> 6) & 63) === to && Math.abs(pos.board[of]) === piece) {
+            ambiguous = true;
+            if ((of & 7) === (from & 7)) sameFile = true;
+            if ((of >> 3) === (from >> 3)) sameRank = true;
+          }
+        }
+        if (ambiguous) {
+          if (!sameFile) s += FILES[from & 7];
+          else if (!sameRank) s += (8 - (from >> 3));
+          else s += sqName(from);
+        }
+        if (cap) s += 'x';
+        s += sqName(to);
+      }
+    }
+    pos.make(m);
+    var chk = pos.inCheck(), hasMove = true;
+    if (chk) hasMove = pos.legalMoves().length > 0;
+    pos.unmake();
+    if (chk) s += hasMove ? '+' : '#';
+    return s;
+  };
+
+  // ينفذ حركة. بيرجع null لو غير قانونية
+  Game.prototype.move = function (from, to, promo) {
+    var m = this.findMove(from, to, promo);
+    if (m === null) return null;
+    var legal = this.pos.legalMoves();
+    var san = this.san(m, legal);
+    var mover = this.pos.turn;
+    var mf = m & 63, mt = (m >> 6) & 63;
+    this.pos.make(m);
+    var cap = Math.abs(this.pos.stCap[this.pos.ply - 1]);
+    if (cap) this.captured[mover === 1 ? 'w' : 'b'].push(LETTER[cap].toLowerCase());
+    this.sanList.push(san);
+    this.lastMove = { from: sqName(mf), to: sqName(mt) };
+    this._addKey();
+    return { san: san, from: sqName(mf), to: sqName(mt), captured: cap ? LETTER[cap].toLowerCase() : '', flags: m >> 16, promo: (m >> 12) & 15 ? LETTER[(m >> 12) & 15].toLowerCase() : '' };
+  };
+
+  Game.prototype.status = function () {
+    var pos = this.pos, legal = pos.legalMoves();
+    if (!legal.length) {
+      if (pos.inCheck()) return { over: true, result: pos.turn === 1 ? '0-1' : '1-0', reason: 'checkmate' };
+      return { over: true, result: '1/2-1/2', reason: 'stalemate' };
+    }
+    if (pos.half >= 100) return { over: true, result: '1/2-1/2', reason: 'fifty' };
+    if (insufficient(pos)) return { over: true, result: '1/2-1/2', reason: 'insufficient' };
+    if (this.keys[pos.key()] >= 3) return { over: true, result: '1/2-1/2', reason: 'repetition' };
+    return { over: false, check: pos.inCheck() };
+  };
+
+  /* ======================================================================
+     الذكاء الاصطناعي
+     ====================================================================== */
+  var VALUE = [0, 100, 320, 330, 500, 900, 0];
+  var PST = {
+    1: [0, 0, 0, 0, 0, 0, 0, 0, 50, 50, 50, 50, 50, 50, 50, 50, 10, 10, 20, 30, 30, 20, 10, 10, 5, 5, 10, 25, 25, 10, 5, 5, 0, 0, 0, 20, 20, 0, 0, 0, 5, -5, -10, 0, 0, -10, -5, 5, 5, 10, 10, -20, -20, 10, 10, 5, 0, 0, 0, 0, 0, 0, 0, 0],
+    2: [-50, -40, -30, -30, -30, -30, -40, -50, -40, -20, 0, 0, 0, 0, -20, -40, -30, 0, 10, 15, 15, 10, 0, -30, -30, 5, 15, 20, 20, 15, 5, -30, -30, 0, 15, 20, 20, 15, 0, -30, -30, 5, 10, 15, 15, 10, 5, -30, -40, -20, 0, 5, 5, 0, -20, -40, -50, -40, -30, -30, -30, -30, -40, -50],
+    3: [-20, -10, -10, -10, -10, -10, -10, -20, -10, 0, 0, 0, 0, 0, 0, -10, -10, 0, 5, 10, 10, 5, 0, -10, -10, 5, 5, 10, 10, 5, 5, -10, -10, 0, 10, 10, 10, 10, 0, -10, -10, 10, 10, 10, 10, 10, 10, -10, -10, 5, 0, 0, 0, 0, 5, -10, -20, -10, -10, -10, -10, -10, -10, -20],
+    4: [0, 0, 0, 0, 0, 0, 0, 0, 5, 10, 10, 10, 10, 10, 10, 5, -5, 0, 0, 0, 0, 0, 0, -5, -5, 0, 0, 0, 0, 0, 0, -5, -5, 0, 0, 0, 0, 0, 0, -5, -5, 0, 0, 0, 0, 0, 0, -5, -5, 0, 0, 0, 0, 0, 0, -5, 0, 0, 0, 5, 5, 0, 0, 0],
+    5: [-20, -10, -10, -5, -5, -10, -10, -20, -10, 0, 0, 0, 0, 0, 0, -10, -10, 0, 5, 5, 5, 5, 0, -10, -5, 0, 5, 5, 5, 5, 0, -5, 0, 0, 5, 5, 5, 5, 0, -5, -10, 5, 5, 5, 5, 5, 0, -10, -10, 0, 5, 0, 0, 0, 0, -10, -20, -10, -10, -5, -5, -10, -10, -20],
+    6: [-30, -40, -40, -50, -50, -40, -40, -30, -30, -40, -40, -50, -50, -40, -40, -30, -30, -40, -40, -50, -50, -40, -40, -30, -30, -40, -40, -50, -50, -40, -40, -30, -20, -30, -30, -40, -40, -30, -30, -20, -10, -20, -20, -20, -20, -20, -20, -10, 20, 20, 0, 0, 0, 0, 20, 20, 20, 30, 10, 0, 0, 10, 30, 20]
+  };
+  var KING_END = [-50, -40, -30, -20, -20, -30, -40, -50, -30, -20, -10, 0, 0, -10, -20, -30, -30, -10, 20, 30, 30, 20, -10, -30, -30, -10, 30, 40, 40, 30, -10, -30, -30, -10, 30, 40, 40, 30, -10, -30, -30, -10, 20, 30, 30, 20, -10, -30, -30, -30, 0, 0, 0, 0, -30, -30, -50, -30, -30, -30, -30, -30, -30, -50];
+
+  var MATE = 100000, INF = 1000000;
+
+  // التقييم من وجهة نظر اللي عليه الدور
+  function evaluate(pos) {
+    var b = pos.board, s, p, t, npm = 0, score = 0, wB = 0, bBi = 0;
+    for (s = 0; s < 64; s++) {
+      p = b[s];
+      if (!p) continue;
+      t = p > 0 ? p : -p;
+      if (t !== P && t !== K) npm += VALUE[t];
+    }
+    var endgame = npm <= 2400;
+    for (s = 0; s < 64; s++) {
+      p = b[s];
+      if (!p) continue;
+      if (p > 0) {
+        score += VALUE[p] + (p === K ? (endgame ? KING_END[s] : PST[6][s]) : PST[p][s]);
+        if (p === B) wB++;
+      } else {
+        t = -p;
+        score -= VALUE[t] + (t === K ? (endgame ? KING_END[s ^ 56] : PST[6][s ^ 56]) : PST[t][s ^ 56]);
+        if (t === B) bBi++;
+      }
+    }
+    if (wB >= 2) score += 30;
+    if (bBi >= 2) score -= 30;
+    return pos.turn === 1 ? score : -score;
+  }
+
+  function moveScore(pos, m, pv, st, ply) {
+    if (m === pv) return 1e9;
+    var fl = m >> 16, promo = (m >> 12) & 15;
+    if (fl & F_CAP) {
+      var victim = (fl & F_EP) ? P : Math.abs(pos.board[(m >> 6) & 63]);
+      return 100000 + victim * 10 - Math.abs(pos.board[m & 63]) + (promo ? 5000 : 0);
+    }
+    if (promo) return 90000 + promo;
+    if (st && st.killers[ply * 2] === m) return 80000;
+    if (st && st.killers[ply * 2 + 1] === m) return 79000;
+    return st ? Math.min(st.hist[m & 4095], 70000) : 0;
+  }
+
+  function orderMoves(pos, moves, pv, st, ply) {
+    var n = moves.length, sc = new Array(n), i, j, m, s;
+    for (i = 0; i < n; i++) sc[i] = moveScore(pos, moves[i], pv, st, ply);
+    for (i = 1; i < n; i++) {
+      m = moves[i]; s = sc[i]; j = i - 1;
+      while (j >= 0 && sc[j] < s) { moves[j + 1] = moves[j]; sc[j + 1] = sc[j]; j--; }
+      moves[j + 1] = m; sc[j + 1] = s;
+    }
+  }
+
+  function qsearch(pos, alpha, beta, st, qd) {
+    st.nodes++;
+    var stand = evaluate(pos);
+    if (qd >= 6 || stand >= beta) return stand;
+    if (stand > alpha) alpha = stand;
+    var moves = pos.genMoves(true), us = pos.turn, i, score;
+    orderMoves(pos, moves, 0, null, 0);
+    for (i = 0; i < moves.length; i++) {
+      pos.make(moves[i]);
+      if (pos.isAttacked(us === 1 ? pos.wk : pos.bk, -us)) { pos.unmake(); continue; }
+      score = -qsearch(pos, -beta, -alpha, st, qd + 1);
+      pos.unmake();
+      if (score >= beta) return score;
+      if (score > alpha) alpha = score;
+    }
+    return alpha;
+  }
+
+  function negamax(pos, depth, alpha, beta, ply, st) {
+    st.nodes++;
+    if ((st.nodes & 2047) === 0 && Date.now() > st.deadline) st.abort = true;
+    if (st.abort) return 0;
+    if (pos.half >= 100) return 0;
+    var us = pos.turn, inCheck = pos.inCheck();
+    if (inCheck && ply < 40) depth++;
+    if (depth <= 0) return qsearch(pos, alpha, beta, st, 0);
+
+    var moves = pos.genMoves(false), best = -INF, legal = 0, i, m, score;
+    orderMoves(pos, moves, 0, st, ply);
+    for (i = 0; i < moves.length; i++) {
+      m = moves[i];
+      pos.make(m);
+      if (pos.isAttacked(us === 1 ? pos.wk : pos.bk, -us)) { pos.unmake(); continue; }
+      legal++;
+      score = -negamax(pos, depth - 1, -beta, -alpha, ply + 1, st);
+      pos.unmake();
+      if (st.abort) return 0;
+      if (score > best) best = score;
+      if (score > alpha) alpha = score;
+      if (alpha >= beta) {
+        if (!(m >> 16 & F_CAP) && !((m >> 12) & 15)) {
+          if (st.killers[ply * 2] !== m) { st.killers[ply * 2 + 1] = st.killers[ply * 2]; st.killers[ply * 2] = m; }
+          st.hist[m & 4095] += depth * depth;
+        }
+        break;
+      }
+    }
+    if (!legal) return inCheck ? -MATE + ply : 0;
+    return best;
+  }
+
+  var LEVELS = {
+    1: { depth: 1, noise: 220, time: 400 },
+    2: { depth: 2, noise: 90, time: 800 },
+    3: { depth: 3, noise: 25, time: 1500 },
+    4: { depth: 5, noise: 0, time: 2200 },
+    5: { depth: 9, noise: 0, time: 4000 }
+  };
+
+  function toMoveObj(m) {
+    var promo = (m >> 12) & 15;
+    return { from: sqName(m & 63), to: sqName((m >> 6) & 63), promo: promo ? LETTER[promo].toLowerCase() : '' };
+  }
+
+  // أفضل حركة حسب المستوى (1 = مبتدئ ... 5 = خبير)
+  function findBestMove(fen, level, rep2) {
+    var cfg = LEVELS[level] || LEVELS[3];
+    var pos = new Position().load(fen);
+    var rep = {};
+    (rep2 || []).forEach(function (k) { rep[k] = true; });
+    var st = { nodes: 0, abort: false, deadline: Date.now() + cfg.time, killers: new Int32Array(256), hist: new Int32Array(4096) };
+    var rootMoves = pos.legalMoves();
+    if (!rootMoves.length) return null;
+    if (rootMoves.length === 1) return Object.assign(toMoveObj(rootMoves[0]), { score: 0, depth: 0, nodes: 0 });
+
+    // خلط عشوائي حتى ما تتكرر نفس الحركات بالتعادل
+    for (var i = rootMoves.length - 1; i > 0; i--) {
+      var j = Math.floor(Math.random() * (i + 1)), tmp = rootMoves[i]; rootMoves[i] = rootMoves[j]; rootMoves[j] = tmp;
+    }
+    var us = pos.turn;
+
+    function scoreRoot(m, depth, alpha, beta) {
+      pos.make(m);
+      var sc;
+      if (rep[pos.key()]) sc = 0;                       // يتجنب التكرار الثلاثي لو متقدم
+      else sc = -negamax(pos, depth - 1, -beta, -alpha, 1, st);
+      pos.unmake();
+      return sc;
+    }
+
+    // مستويات ضعيفة: تقييم كل حركة + ضوضاء عشوائية
+    if (cfg.noise > 0) {
+      var bestM = rootMoves[0], bestS = -INF, k;
+      for (k = 0; k < rootMoves.length; k++) {
+        var sc = scoreRoot(rootMoves[k], cfg.depth, -INF, INF);
+        sc += (Math.random() * 2 - 1) * cfg.noise;
+        if (sc > bestS) { bestS = sc; bestM = rootMoves[k]; }
+      }
+      return Object.assign(toMoveObj(bestM), { score: bestS, depth: cfg.depth, nodes: st.nodes });
+    }
+
+    // مستويات قوية: تعميق تدريجي مع حد زمني
+    orderMoves(pos, rootMoves, 0, st, 0);
+    var bestMove = rootMoves[0], bestScore = -INF, doneDepth = 0, d;
+    for (d = 1; d <= cfg.depth; d++) {
+      var iterBest = null, iterScore = -INF, alpha = -INF, n;
+      for (n = 0; n < rootMoves.length; n++) {
+        var s2 = scoreRoot(rootMoves[n], d, alpha, INF);
+        if (st.abort) break;
+        if (s2 > iterScore) { iterScore = s2; iterBest = rootMoves[n]; }
+        if (s2 > alpha) alpha = s2;
+      }
+      if (st.abort) break;
+      bestMove = iterBest; bestScore = iterScore; doneDepth = d;
+      // أفضل حركة أول شي بالتكرار القادم
+      var idx = rootMoves.indexOf(bestMove);
+      if (idx > 0) { rootMoves.splice(idx, 1); rootMoves.unshift(bestMove); }
+      if (bestScore > MATE - 100 || Date.now() > st.deadline) break;
+    }
+    return Object.assign(toMoveObj(bestMove), { score: bestScore, depth: doneDepth, nodes: st.nodes });
+  }
+
+  var api = {
+    START_FEN: START_FEN, Position: Position, Game: Game, perft: perft,
+    findBestMove: findBestMove, LEVELS: LEVELS, sqName: sqName, nameSq: nameSq, evaluate: evaluate
+  };
+
+  // داخل Web Worker: استقبل المطلوب وأرجع الحركة
+  if (typeof importScripts === 'function' && typeof document === 'undefined' && typeof self !== 'undefined' && typeof self.postMessage === 'function') {
+    self.onmessage = function (e) {
+      var d = e.data || {}, res = null;
+      try { res = findBestMove(d.fen, d.level, d.rep2 || []); } catch (err) { res = null; }
+      self.postMessage({ id: d.id, result: res });
+    };
+  }
+
+  return api;
+});
