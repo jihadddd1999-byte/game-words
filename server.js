@@ -67,7 +67,11 @@ const specialNamesColors = {
 const DATA_DIR = path.join(__dirname, 'data');
 const STATE_FILE = path.join(DATA_DIR, 'state.json');
 
-const persisted = { ownerHash: null, ownerName: '', allowed: {}, stealthMode: 0 };
+const persisted = { allowed: {}, stealthMode: 0 };
+const ownerHashes = new Set();   // أجهزة الأدمن الأساسي (توكن الجهاز)
+// عناوين IP الخاصة بك: من متغير البيئة OWNER_IP (افصل بينها بفاصلة) + اللي يتعلمها السيرفر لما تدخل
+const envOwnerIps = new Set((process.env.OWNER_IP || '').split(',').map(x => normalizeIp(x)).filter(Boolean));
+let learnedOwnerIps = [];
 
 // ==========================================================================
 // 📊 الذاكرة والحالة العامة
@@ -113,45 +117,128 @@ const roomState = {
   tickerSpeed: 40
 };
 
-function loadPersisted() {
-  try {
-    const raw = JSON.parse(fs.readFileSync(STATE_FILE, 'utf8'));
-    if (raw.ownerHash) persisted.ownerHash = raw.ownerHash;
-    persisted.ownerName = raw.ownerName || '';
-    persisted.allowed = raw.allowed || {};
-    persisted.stealthMode = raw.stealthMode || 0;
-    if (raw.ticker) {
-      if (typeof raw.ticker.text === 'string') roomState.tickerText = raw.ticker.text;
-      roomState.tickerVisible = !!raw.ticker.visible;
-      if (raw.ticker.speed) roomState.tickerSpeed = raw.ticker.speed;
+// ---- التخزين: ملف محلي + (اختياري) Upstash Redis عشان البيانات تبقى حتى لو Render سكّر وفتح من جديد ----
+const REMOTE_URL = process.env.UPSTASH_REDIS_REST_URL || '';
+const REMOTE_TOKEN = process.env.UPSTASH_REDIS_REST_TOKEN || '';
+const REMOTE_KEY = 'wordgame:state';
+const remoteEnabled = !!(REMOTE_URL && REMOTE_TOKEN && typeof fetch === 'function');
+let remoteWritable = remoteEnabled;
+
+async function remoteCommand(cmd) {
+  const res = await fetch(REMOTE_URL, {
+    method: 'POST',
+    headers: { Authorization: `Bearer ${REMOTE_TOKEN}`, 'Content-Type': 'application/json' },
+    body: JSON.stringify(cmd)
+  });
+  if (!res.ok) throw new Error(`remote status ${res.status}`);
+  return res.json();
+}
+
+async function readStored() {
+  if (remoteEnabled) {
+    for (let i = 0; i < 3; i++) {
+      try {
+        const j = await remoteCommand(['GET', REMOTE_KEY]);
+        remoteWritable = true;
+        if (j && j.result) return JSON.parse(j.result);
+        break; // ما في حفظ سابق
+      } catch (e) {
+        console.error('تعذر قراءة التخزين البعيد:', e.message);
+        remoteWritable = false; // ما نكتب فوق بيانات قديمة لو القراءة فشلت
+        await new Promise(r => setTimeout(r, 1000));
+      }
     }
-    (raw.bans || []).forEach(b => { if (b && b.id) bans.set(b.id, b); });
-    (raw.kicks || []).forEach(k => { if (k && k.tokenHash) kicks.set(k.tokenHash, k); });
-  } catch (e) { /* أول تشغيل */ }
+  }
+  try { return JSON.parse(fs.readFileSync(STATE_FILE, 'utf8')); } catch (e) { return null; }
+}
+
+function snapshotFlags() {
+  const now = Date.now();
+  const out = {};
+  const put = (hash, f) => {
+    const keep = { muted: !!f.muted, frozen: !!f.frozen, blinded: !!f.blinded, isVip: !!f.isVip, until: f.until || {} };
+    ['muted', 'frozen', 'blinded'].forEach(k => {
+      if (keep[k] && keep.until[k] && now >= keep.until[k]) keep[k] = false;
+    });
+    if (keep.muted || keep.frozen || keep.blinded || keep.isVip) out[hash] = keep;
+  };
+  savedFlags.forEach((v, k) => put(k, v));
+  players.forEach(p => { delete out[p.tokenHash]; put(p.tokenHash, p); });
+  return out;
+}
+
+function buildSnapshot() {
+  return {
+    ownerHashes: [...ownerHashes],
+    ownerIps: learnedOwnerIps,
+    allowed: persisted.allowed,
+    stealthMode: persisted.stealthMode,
+    room: {
+      isLocked: roomState.isLocked,
+      isMutedAll: roomState.isMutedAll,
+      isFrozenAll: roomState.isFrozenAll,
+      isDoubleRound: roomState.isDoubleRound,
+      winningScore: roomState.winningScore,
+      maxScorers: roomState.maxScorers,
+      pointsPerAnswer: roomState.pointsPerAnswer
+    },
+    ticker: { text: roomState.tickerText, visible: roomState.tickerVisible, speed: roomState.tickerSpeed },
+    lockPass: [...lockPass],
+    lockDenied: [...lockDenied],
+    flags: snapshotFlags(),
+    bans: [...bans.values()],
+    kicks: [...kicks.values()]
+  };
+}
+
+async function writeStored() {
+  const text = JSON.stringify(buildSnapshot());
+  try {
+    fs.mkdirSync(DATA_DIR, { recursive: true });
+    fs.writeFileSync(STATE_FILE, text);
+  } catch (e) { /* بعض الاستضافات ما بتسمح بالكتابة، عادي */ }
+  if (remoteWritable) {
+    try { await remoteCommand(['SET', REMOTE_KEY, text]); }
+    catch (e) { console.error('تعذر حفظ التخزين البعيد:', e.message); }
+  }
 }
 
 let saveTimer = null;
 function savePersisted() {
   clearTimeout(saveTimer);
-  saveTimer = setTimeout(() => {
-    try {
-      fs.mkdirSync(DATA_DIR, { recursive: true });
-      fs.writeFileSync(STATE_FILE, JSON.stringify({
-        ownerHash: persisted.ownerHash,
-        ownerName: persisted.ownerName,
-        allowed: persisted.allowed,
-        stealthMode: persisted.stealthMode,
-        ticker: { text: roomState.tickerText, visible: roomState.tickerVisible, speed: roomState.tickerSpeed },
-        bans: [...bans.values()],
-        kicks: [...kicks.values()]
-      }));
-    } catch (e) {
-      console.error('تعذر حفظ البيانات:', e.message);
-    }
-  }, 400);
+  saveTimer = setTimeout(() => { writeStored(); }, 400);
+}
+async function flushPersisted() {
+  clearTimeout(saveTimer);
+  await Promise.race([writeStored(), new Promise(r => setTimeout(r, 4000))]);
 }
 
-loadPersisted();
+async function loadPersisted() {
+  const raw = await readStored();
+  if (!raw) return;
+
+  (raw.ownerHashes || []).forEach(h => ownerHashes.add(h));
+  if (raw.ownerHash) ownerHashes.add(raw.ownerHash); // صيغة الحفظ القديمة
+  learnedOwnerIps = Array.isArray(raw.ownerIps) ? raw.ownerIps.slice(-3) : [];
+  persisted.allowed = raw.allowed || {};
+  persisted.stealthMode = raw.stealthMode || 0;
+
+  const r = raw.room || {};
+  ['isLocked', 'isMutedAll', 'isFrozenAll', 'isDoubleRound'].forEach(k => { if (typeof r[k] === 'boolean') roomState[k] = r[k]; });
+  ['winningScore', 'maxScorers', 'pointsPerAnswer'].forEach(k => { if (Number.isFinite(r[k])) roomState[k] = r[k]; });
+
+  if (raw.ticker) {
+    if (typeof raw.ticker.text === 'string') roomState.tickerText = raw.ticker.text;
+    roomState.tickerVisible = !!raw.ticker.visible;
+    if (raw.ticker.speed) roomState.tickerSpeed = raw.ticker.speed;
+  }
+
+  (raw.lockPass || []).forEach(h => lockPass.add(h));
+  (raw.lockDenied || []).forEach(h => lockDenied.add(h));
+  Object.keys(raw.flags || {}).forEach(k => savedFlags.set(k, raw.flags[k]));
+  (raw.bans || []).forEach(b => { if (b && b.id) bans.set(b.id, b); });
+  (raw.kicks || []).forEach(k => { if (k && k.tokenHash) kicks.set(k.tokenHash, k); });
+}
 
 // ==========================================================================
 // 🛠️ الدوال المساعدة
@@ -164,7 +251,33 @@ function getClientIP(socket) {
 }
 
 const hashToken = (t) => crypto.createHash('sha256').update(String(t)).digest('hex').slice(0, 32);
-const isOwnerHash = (h) => !!persisted.ownerHash && h === persisted.ownerHash;
+function normalizeIp(ip) { return String(ip || '').replace(/^::ffff:/i, '').trim(); }
+const isOwnerIp = (ip) => !!ip && (envOwnerIps.has(ip) || learnedOwnerIps.includes(ip));
+const ownerIpsConfigured = () => envOwnerIps.size > 0 || learnedOwnerIps.length > 0;
+
+// بصمة الأدمن الأساسي: بتنحفظ بمتصفحك وبتتحقق منها حتى لو السيرفر نسي كل شي (Render سكّر)
+function makeOwnerProof(hash) {
+  return crypto.createHmac('sha256', ADMIN_PASSWORD).update('owner:' + hash).digest('hex');
+}
+function validOwnerProof(hash, proof) {
+  if (typeof proof !== 'string' || proof.length !== 64) return false;
+  try { return crypto.timingSafeEqual(Buffer.from(proof, 'hex'), Buffer.from(makeOwnerProof(hash), 'hex')); }
+  catch (e) { return false; }
+}
+function learnOwnerIp(ip) {
+  if (!ip || envOwnerIps.has(ip) || learnedOwnerIps.includes(ip)) return;
+  learnedOwnerIps.push(ip);
+  if (learnedOwnerIps.length > 3) learnedOwnerIps.shift();
+  savePersisted();
+}
+
+// زر لوحة الأدمن بيظهر فقط: للأدمن الأساسي، للأدمنية، للـ VIP، وللمسموح لهم. (وأول مرة قبل ما يتحدد أدمن أساسي)
+function canSeePanel(p) {
+  if (p.isAdmin || p.ownerIdent || p.ownerIpMatch || p.isVip || persisted.allowed[p.tokenHash]) return true;
+  return ownerHashes.size === 0 && !ownerIpsConfigured();
+}
+function emitAdminButton(p) { io.to(p.id).emit('admin:button', { visible: canSeePanel(p) }); }
+function refreshAdminButtons() { players.forEach(emitAdminButton); }
 const ownerPresent = () => ownerSockets.size > 0;
 const linkKey = (a, b) => [a, b].sort().join('|');
 
@@ -205,7 +318,7 @@ function publicState() {
     pointsPerAnswer: roomState.pointsPerAnswer
   };
 }
-function syncRoomState() { emitAll('roomState:sync', publicState()); }
+function syncRoomState() { emitAll('roomState:sync', publicState()); savePersisted(); }
 function tickerPayload() {
   return { text: roomState.tickerText, visible: roomState.tickerVisible, speed: roomState.tickerSpeed };
 }
@@ -298,7 +411,6 @@ function syncAudit() {
 function noteName(p) {
   nameByKey.set(p.tokenHash, p.name);
   if (persisted.allowed[p.tokenHash]) { persisted.allowed[p.tokenHash].name = p.name; savePersisted(); }
-  if (ownerSockets.has(p.id)) { persisted.ownerName = p.name; savePersisted(); }
 }
 
 // ---------- العقوبات ----------
@@ -324,7 +436,7 @@ function findBan(ip, tokenHash) {
   const now = Date.now();
   for (const [id, b] of bans) {
     if (b.until && now >= b.until) { bans.delete(id); continue; }
-    if (b.tokenHash === tokenHash || (b.ip && b.ip === ip)) return b;
+    if (b.tokenHash === tokenHash || (b.ip && b.ip === ip && !isOwnerIp(ip))) return b;
   }
   return null;
 }
@@ -336,7 +448,8 @@ function findKick(tokenHash) {
 
 function canTarget(actorId, target) {
   if (!target) return false;
-  if (ownerSockets.has(target.id)) return false;
+  // الأدمن الأساسي (بجهازه أو بعنوان الـ IP تاعه) محمي من أي أمر
+  if (ownerSockets.has(target.id) || target.ownerIdent || target.ownerIpMatch) return false;
   if (target.isAdmin && !ownerSockets.has(actorId)) return false;
   return true;
 }
@@ -352,6 +465,7 @@ function setFlag(p, key, value, minutes) {
   p[key] = !!value;
   p.until[key] = (value && minutes > 0) ? Date.now() + minutes * 60000 : null;
   pushStatus(p);
+  savePersisted();
   const n = FLAG_NOTICES[key];
   if (n) {
     const msg = n[value ? 0 : 1];
@@ -367,6 +481,8 @@ function setVip(p, value) {
   } else {
     sendSystemMessage(`👑 الأدمن أزال صفة VIP عن (${p.name}).`);
   }
+  emitAdminButton(p);
+  savePersisted();
   updatePlayersList();
 }
 
@@ -378,6 +494,7 @@ function saveFlags(p) {
   } else {
     savedFlags.delete(p.tokenHash);
   }
+  savePersisted();
 }
 function restoreFlags(p) {
   const s = savedFlags.get(p.tokenHash);
@@ -402,17 +519,13 @@ function applyStealth(p, mode) {
 
 function evaluateEntry(ident) {
   const h = ident.tokenHash;
-  if (isOwnerHash(h)) return { ok: true };
+  if (ident.ownerIdent) return { ok: true };
 
   const ban = findBan(ident.ip, h);
   if (ban) return { ok: false, type: 'banned', reason: ban.reason || '' };
 
   const kick = findKick(h);
   if (kick) return { ok: false, type: 'kicked', reason: kick.reason || '', canRequest: !kick.requestDenied, denied: !!kick.requestDenied };
-
-  if (persisted.ownerHash && !ownerPresent() && !persisted.allowed[h]) {
-    return { ok: false, type: 'owner_absent' };
-  }
 
   if (roomState.isLocked && !lockPass.has(h)) {
     return { ok: false, type: 'locked', canRequest: !lockDenied.has(h), denied: lockDenied.has(h) };
@@ -446,10 +559,6 @@ function buildGate(ev, g, note) {
       out.message = ev.denied
         ? 'رفض الأدمن طلبك. يمكنك الدخول عندما يفتح الأدمن الغرفة.'
         : 'الغرفة مغلقة حالياً من قبل الأدمن. يمكنك طلب الإذن للدخول.';
-      break;
-    case 'owner_absent':
-      out.title = '🛡️ لا يمكن الدخول الآن';
-      out.message = 'الأدمن الأساسي غير متواجد حالياً، لا يمكن الدخول إلى الغرفة في الوقت الحالي.';
       break;
     case 'full':
       out.title = '👥 الغرفة مكتملة';
@@ -598,9 +707,12 @@ function joinGame(socket, ident) {
     color: specialNamesColors[name] || ident.color || '#00e5ff'
   };
   restoreFlags(player);
+  player.ownerIdent = !!ident.ownerIdent;
+  player.ownerIpMatch = isOwnerIp(player.ip);
 
-  const owner = isOwnerHash(player.tokenHash);
+  const owner = player.ownerIdent;
   if (owner) {
+    learnOwnerIp(player.ip);
     player.isAdmin = true;
     authenticatedAdmins.add(socket.id);
     ownerSockets.add(socket.id);
@@ -623,14 +735,17 @@ function joinGame(socket, ident) {
   else socket.emit('newWord', roomState.currentWord);
   socket.emit('updateScore', player.score);
   pushStatus(player);
+  emitAdminButton(player);
 
   if (owner) {
-    socket.emit('admin:session', { isOwner: true, stealthMode: player.stealthMode });
+    socket.emit('admin:owner_proof', { proof: makeOwnerProof(player.tokenHash) });
+    socket.emit('admin:session', { isOwner: true, stealthMode: player.stealthMode, ip: player.ip });
     sendAdminBootstrap(socket, true);
     socket.emit('chatMessage', { system: true, message: `👑 مرحباً بالأدمن الأساسي ${player.name}!` });
   }
 
   updatePlayersList();
+  gamesHub.onJoin(socket, player);
   if (owner) reevaluateGated();
 }
 
@@ -643,6 +758,7 @@ function removePlayer(p, announce) {
   authenticatedAdmins.delete(p.id);
   ownerSockets.delete(p.id);
   allowedMuteBypass.delete(p.id);
+  gamesHub.onLeave(p.id, announce === false);
 }
 
 function sendAdminBootstrap(socket, owner) {
@@ -661,6 +777,16 @@ function sendAdminBootstrap(socket, owner) {
   }
 }
 
+function becomeOwner(socket, player) {
+  player.ownerIdent = true;
+  ownerHashes.add(player.tokenHash);
+  learnOwnerIp(player.ip);
+  savePersisted();
+  socket.emit('admin:owner_proof', { proof: makeOwnerProof(player.tokenHash) });
+  grantAdmin(socket, true);
+  refreshAdminButtons();
+}
+
 function grantAdmin(socket, owner) {
   const p = players.get(socket.id);
   if (!p) return;
@@ -671,7 +797,8 @@ function grantAdmin(socket, owner) {
     applyStealth(p, persisted.stealthMode);
   }
   pushStatus(p);
-  socket.emit('admin:session', { isOwner: !!owner, stealthMode: p.stealthMode || 0 });
+  emitAdminButton(p);
+  socket.emit('admin:session', { isOwner: !!owner, stealthMode: p.stealthMode || 0, ip: p.ip });
   sendAdminBootstrap(socket, !!owner);
   if (owner) {
     socket.emit('chatMessage', { system: true, message: `👑 مرحباً بالأدمن الأساسي ${p.name}!` });
@@ -698,10 +825,35 @@ setInterval(() => {
 // 🔌 الاتصال عبر Socket.io
 // ==========================================================================
 
+// 🎮 الألعاب المتنوعة (شطرنج وإكس أو) في ملف مستقل: games-server.js
+let gamesHub;
+try {
+  const createGamesHub = require('./games-server');
+  gamesHub = createGamesHub({ io, players, effMuted, effFrozen, cleanText });
+
+  // لو chess-engine.js موجود بجانب السيرفر (مش داخل public) بنقدّمه للمتصفح بنفس الاسم
+  if (createGamesHub.enginePath && !createGamesHub.enginePath.includes(path.join(__dirname, 'public'))) {
+    app.get('/chess-engine.js', (req, res) => res.sendFile(createGamesHub.enginePath));
+  }
+} catch (e) {
+  // لو ملف ناقص: اللعبة الأساسية بتضل شغالة، واللاعب بيشوف رسالة واضحة بدل ما يضيع
+  console.error('⚠️ الألعاب المتنوعة معطّلة:', e.message);
+  const reason = e.message;
+  gamesHub = {
+    attachSocket(socket) {
+      ['games:live_request', 'games:create_ai', 'games:invite'].forEach(ev => {
+        socket.on(ev, () => socket.emit('games:error', { id: null, message: 'الألعاب غير مفعّلة على السيرفر: ' + reason }));
+      });
+    },
+    onJoin() {}, onLeave() {}
+  };
+}
+
 io.on('connection', (socket) => {
-  const clientIP = getClientIP(socket);
+  const clientIP = normalizeIp(getClientIP(socket));
   const isAdmin = () => authenticatedAdmins.has(socket.id);
   const isOwner = () => ownerSockets.has(socket.id);
+  gamesHub.attachSocket(socket);
 
   // ==========================================
   // 🪪 التعريف: اللاعب يرسل هويته (اسمه + توكن جهازه) وبعدها بيتقرر دخوله
@@ -714,12 +866,22 @@ io.on('connection', (socket) => {
     data = data || {};
     const token = (typeof data.token === 'string' && data.token.length >= 16 && data.token.length <= 200)
       ? data.token : socket.id;
+    const tokenHash = hashToken(token);
     const ident = {
-      tokenHash: hashToken(token),
+      tokenHash,
       ip: clientIP,
       name: cleanName(data.name, 20),
-      color: validColor(data.color)
+      color: validColor(data.color),
+      ownerIdent: false
     };
+    if (ownerHashes.has(tokenHash)) {
+      ident.ownerIdent = true;
+    } else if (validOwnerProof(tokenHash, data.proof)) {
+      // السيرفر نسي بس بصمتك صحيحة: بنرجّعك أدمن أساسي
+      ident.ownerIdent = true;
+      ownerHashes.add(tokenHash);
+      savePersisted();
+    }
     attemptEnter(socket, ident);
   });
 
@@ -868,32 +1030,34 @@ io.on('connection', (socket) => {
     const reply = (obj) => { if (typeof callback === 'function') callback(obj); };
     const player = players.get(socket.id);
     if (!player) return reply({ success: false, reason: 'not_joined' });
-    if (!data || data.password !== ADMIN_PASSWORD) return reply({ success: false });
-
     if (isAdmin()) return reply({ success: true, isOwner: isOwner() });
 
-    // أول شخص يكتب كلمة المرور الصحيحة يصير الأدمن الأساسي للأبد
-    if (!persisted.ownerHash) {
-      persisted.ownerHash = player.tokenHash;
-      persisted.ownerName = player.name;
-      savePersisted();
-      grantAdmin(socket, true);
+    // مين مسموح له يجرب أصلاً: الأدمن الأساسي، الـ VIP، المسموح لهم، (وأول مرة قبل ما يتحدد أدمن أساسي)
+    const openClaim = ownerHashes.size === 0 && !ownerIpsConfigured();
+    const mayTry = openClaim || player.ownerIdent || player.ownerIpMatch || player.isVip || !!persisted.allowed[player.tokenHash];
+    if (!mayTry) return reply({ success: false, reason: 'not_allowed' });
+    if (!data || data.password !== ADMIN_PASSWORD) return reply({ success: false });
+
+    // الأدمن الأساسي: جهازه معروف، أو من عنوان IP تاعه، أو أول مرة
+    if (player.ownerIdent || player.ownerIpMatch || openClaim) {
+      becomeOwner(socket, player);
       return reply({ success: true, isOwner: true });
     }
 
-    // الأدمن الأساسي نفسه (من جهاز مختلف أو بعد مسح الكاش لكن بنفس التوكن)
-    if (player.tokenHash === persisted.ownerHash) {
-      grantAdmin(socket, true);
-      return reply({ success: true, isOwner: true });
+    // لاعب ثاني (VIP): لازم موافقة الأدمن الأساسي إذا موجود
+    if (ownerPresent()) {
+      if (pendingAdminApprovals.has(socket.id)) return reply({ success: true, pending: true });
+      pendingAdminApprovals.set(socket.id, { name: player.name });
+      emitToOwners('admin:approval_request', { requestId: socket.id, name: player.name });
+      return reply({ success: true, pending: true });
     }
 
-    // أي لاعب آخر: لازم موافقة الأدمن الأساسي
-    if (!ownerPresent()) return reply({ success: false, reason: 'owner_absent' });
-    if (pendingAdminApprovals.has(socket.id)) return reply({ success: true, pending: true });
-
-    pendingAdminApprovals.set(socket.id, { name: player.name });
-    emitToOwners('admin:approval_request', { requestId: socket.id, name: player.name });
-    reply({ success: true, pending: true });
+    // الأدمن الأساسي غايب: ما بدخل اللوحة إلا إذا هو مسمّحله من قبل
+    if (persisted.allowed[player.tokenHash]) {
+      grantAdmin(socket, false);
+      return reply({ success: true, isOwner: false });
+    }
+    return reply({ success: false, reason: 'owner_absent' });
   });
 
   socket.on('admin:approval_response', (data) => {
@@ -927,6 +1091,7 @@ io.on('connection', (socket) => {
     applyStealth(t, 0);
     io.to(t.id).emit('admin:revoked', {});
     pushStatus(t);
+    emitAdminButton(t);
     updatePlayersList();
   });
 
@@ -937,6 +1102,7 @@ io.on('connection', (socket) => {
     if (data.allow) persisted.allowed[t.tokenHash] = { name: t.name };
     else delete persisted.allowed[t.tokenHash];
     savePersisted();
+    emitAdminButton(t);
     emitToOwners('admin:allowed_updated', allowedPayload());
     updatePlayersList();
     reevaluateGated();
@@ -961,6 +1127,7 @@ io.on('connection', (socket) => {
 
     emitToOwners('admin:request_cancelled', { requestId: id });
     g.requested = false;
+    savePersisted();
 
     if (data.approve) {
       if (g.ev.type === 'kicked') {
@@ -1318,4 +1485,23 @@ io.on('connection', (socket) => {
 
 app.get('/ping', (req, res) => res.status(200).send('alive'));
 
-server.listen(PORT, () => console.log(`🚀 Server running successfully on port: ${PORT}`));
+// يعرضلك عنوان الـ IP تاعك (افتح /my-ip من جهازك وحطه بمتغير OWNER_IP في Render)
+app.get('/my-ip', (req, res) => {
+  const fwd = req.headers['x-forwarded-for'];
+  const ip = normalizeIp(fwd ? fwd.split(',')[0].trim() : req.socket.remoteAddress);
+  res.type('text/plain').send(`عنوان IP تاعك: ${ip}`);
+});
+
+async function start() {
+  await loadPersisted();
+  server.listen(PORT, () => console.log(`🚀 Server running successfully on port: ${PORT}`));
+}
+start();
+
+// لما Render يسكّر السيرفر بنحفظ كل شي قبل ما يطفي
+async function shutdown() {
+  try { await flushPersisted(); } catch (e) {}
+  process.exit(0);
+}
+process.on('SIGTERM', shutdown);
+process.on('SIGINT', shutdown);
