@@ -1137,12 +1137,13 @@ socket.on('gate:approved', (d) => {
   const admBtnResetGame = $('adm-btn-reset-game');
   const admBtnCleanRoom = $('adm-btn-clean-room');
 
-  // زر لوحة الأدمن مخفي عن الجميع، والسيرفر بيظهره فقط للأدمن الأساسي وللـ VIP
+  // زر لوحة الأدمن بيظهره السيرفر بعد ما يتعرف على اللاعب
   if (btnAdminAuth) btnAdminAuth.style.display = 'none';
 
   // ---------- الحالة المحلية ----------
   let isAdminAuthenticated = false;
   let isOwner = false;
+  let vipEntry = false; // الـ VIP بيدخل لوحة الأدمن بدون كلمة سر
   let activePlayersList = [];
   let roomStateLocal = {};
   let sanctions = { bans: [], kicks: [], at: Date.now() };
@@ -1335,6 +1336,9 @@ socket.on('gate:approved', (d) => {
   // ---------- تسجيل الدخول وفتح/إغلاق اللوحة ----------
   function updateOwnerUI() {
     if (ownerSection) ownerSection.style.display = isOwner ? '' : 'none';
+    // سجل المراقبة وزر الاختفاء للأدمن الأساسي فقط
+    if (auditSection) auditSection.style.display = isOwner ? '' : 'none';
+    if (admBtnStealth) admBtnStealth.style.display = isOwner ? '' : 'none';
     renderAllowed();
   }
 
@@ -1345,10 +1349,39 @@ socket.on('gate:approved', (d) => {
     renderPlayerCards(activePlayersList);
   }
 
+  // نتيجة محاولة الدخول للوحة (بكلمة سر أو بدونها للـ VIP)
+  function handleAuthResponse(response) {
+    if (response && response.success && response.pending) {
+      closeAdminLoginModal();
+      alert('✅ كلمة المرور صحيحة. تم إرسال طلبك إلى الأدمن الأساسي، انتظر موافقته.');
+    } else if (response && response.success) {
+      onAdminGranted(!!response.isOwner);
+      closeAdminLoginModal();
+      openAdminPanel();
+      logAudit('تم تسجيل الدخول كأدمن بنجاح.', 'info');
+    } else if (response && response.reason === 'owner_absent') {
+      alert('⛔ الأدمن الأساسي غير متواجد حالياً ولم يسمح لك بدخول اللوحة وهو غائب.');
+    } else if (response && response.reason === 'not_allowed') {
+      alert('⛔ ما عندك صلاحية لفتح لوحة الأدمن.');
+    } else {
+      alert('كلمة المرور غير صحيحة!');
+      logAudit('محاولة فاشلة لتسجيل دخول الأدمن.', 'danger');
+    }
+  }
+
   if (btnAdminAuth) {
     btnAdminAuth.addEventListener('click', () => {
-      if (isAdminAuthenticated) openAdminPanel();
-      else openAdminLoginModal();
+      if (isAdminAuthenticated) {
+        openAdminPanel();
+      } else if (vipEntry) {
+        // VIP: بدون كلمة سر. لو السيرفر رفض (مثلاً انسحبت منه الـ VIP) نفتح نافذة كلمة السر
+        socket.emit('admin:authenticate', {}, (response) => {
+          if (response && (response.success || response.reason === 'owner_absent')) handleAuthResponse(response);
+          else openAdminLoginModal();
+        });
+      } else {
+        openAdminLoginModal();
+      }
     });
   }
 
@@ -1375,24 +1408,7 @@ socket.on('gate:approved', (d) => {
         return;
       }
 
-      socket.emit('admin:authenticate', { password }, (response) => {
-        if (response && response.success && response.pending) {
-          closeAdminLoginModal();
-          alert('✅ كلمة المرور صحيحة. تم إرسال طلبك إلى الأدمن الأساسي، انتظر موافقته.');
-        } else if (response && response.success) {
-          onAdminGranted(!!response.isOwner);
-          closeAdminLoginModal();
-          openAdminPanel();
-          logAudit('تم تسجيل الدخول كأدمن بنجاح.', 'info');
-        } else if (response && response.reason === 'owner_absent') {
-          alert('⛔ الأدمن الأساسي غير متواجد حالياً ولم يسمح لك بدخول اللوحة وهو غائب.');
-        } else if (response && response.reason === 'not_allowed') {
-          alert('⛔ ما عندك صلاحية لفتح لوحة الأدمن.');
-        } else {
-          alert('كلمة المرور غير صحيحة!');
-          logAudit('محاولة فاشلة لتسجيل دخول الأدمن.', 'danger');
-        }
-      });
+      socket.emit('admin:authenticate', { password }, handleAuthResponse);
     });
   }
 
@@ -1495,7 +1511,7 @@ socket.on('gate:approved', (d) => {
           <div class="player-info">
             <span class="player-avatar">👤</span>
             <span class="player-card-name">${escapeHtml(player.rawName || player.name)}</span>
-            ${player.isAdmin ? '<span class="vip-badge">أدمن</span>' : ''}
+            ${player.isAdmin ? '<span class="vip-badge">ادمن ثانوي</span>' : ''}
             ${player.isVip ? '<span class="vip-badge">VIP</span>' : ''}
           </div>
           <span class="player-card-score">${player.score} pt</span>
@@ -1541,10 +1557,10 @@ socket.on('gate:approved', (d) => {
             <span>👁️ عمياء</span>
             <span class="tooltip-icon" title="تعتيم شاشة اللاعب بالكامل. اضغط مرة ثانية لإلغائه في أي وقت">❓</span>
           </button>
-          <button class="btn-action ${ledClass(player.isVip)}" data-act="vip" data-id="${id}">
+          ${isOwner ? `<button class="btn-action ${ledClass(player.isVip)}" data-act="vip" data-id="${id}">
             <span>👑 VIP</span>
-            <span class="tooltip-icon" title="منح أو سحب رتبة VIP وتظهر رسالة بالشات">❓</span>
-          </button>
+            <span class="tooltip-icon" title="يخلي اللاعب يدخل لوحة الأدمن بدون كلمة سر كأدمن ثانوي (الغير VIP لازم كلمة السر وموافقتك). اضغط مرة ثانية للإلغاء">❓</span>
+          </button>` : ''}
           ${ownerExtras}
         </div>
 
@@ -2086,6 +2102,7 @@ socket.on('gate:approved', (d) => {
   socket.on('connect', () => {
     isAdminAuthenticated = false;
     isOwner = false;
+    vipEntry = false;
     if (btnAdminAuth) btnAdminAuth.style.display = 'none';
     updateOwnerUI();
   });
@@ -2095,12 +2112,13 @@ socket.on('gate:approved', (d) => {
     renderStealth();
     onAdminGranted(!!d.isOwner);
     if (ownerIpLine && d.isOwner && d.ip) {
-      ownerIpLine.textContent = `عنوان IP تاعك الحالي: ${d.ip} — اللعبة بتميّزه وبتحميك من أي أمر. لتثبيته حتى بعد إعادة تشغيل Render ضعه بمتغير البيئة OWNER_IP (أو افتح /my-ip).`;
+      ownerIpLine.textContent = `عنوان IP تاعك الحالي: ${d.ip}`;
     }
   });
 
   // إظهار/إخفاء زر لوحة الأدمن حسب قرار السيرفر
   socket.on('admin:button', (d) => {
+    vipEntry = !!(d && d.vip);
     if (btnAdminAuth) btnAdminAuth.style.display = (d && d.visible) ? '' : 'none';
   });
 
