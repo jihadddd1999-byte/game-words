@@ -1,6 +1,6 @@
 /* ==========================================================================
    🛡️ سيرفر لعبة الكلمات السريعة - النسخة الكاملة والمشاملة بدون حذف
-   كلمة السر: 20018151070792005932
+   كلمة السر: Code Geass@2001815107
    ========================================================================== */
 
 const express = require('express');
@@ -17,7 +17,7 @@ const io = new Server(server, {
 });
 
 const PORT = process.env.PORT || 3000;
-const ADMIN_PASSWORD = process.env.ADMIN_PASSWORD || '20018151070792005932';
+const ADMIN_PASSWORD = process.env.ADMIN_PASSWORD || 'Code Geass@2001815107';
 const MAX_PLAYERS = 30;
 
 app.use(express.static(path.join(__dirname, 'public')));
@@ -217,8 +217,10 @@ async function loadPersisted() {
   const raw = await readStored();
   if (!raw) return;
 
-  (raw.ownerHashes || []).forEach(h => ownerHashes.add(h));
-  if (raw.ownerHash) ownerHashes.add(raw.ownerHash); // صيغة الحفظ القديمة
+  // الأدمن الأساسي واحد فقط (أول واحد تسجّل): لو كان محفوظ أكثر من جهاز نحتفظ بالأول فقط
+  const savedOwners = [...(raw.ownerHashes || [])];
+  if (raw.ownerHash) savedOwners.push(raw.ownerHash); // صيغة الحفظ القديمة
+  if (savedOwners.length > 0) ownerHashes.add(savedOwners[0]);
   learnedOwnerIps = Array.isArray(raw.ownerIps) ? raw.ownerIps.slice(-3) : [];
   persisted.allowed = raw.allowed || {};
   persisted.stealthMode = raw.stealthMode || 0;
@@ -271,12 +273,11 @@ function learnOwnerIp(ip) {
   savePersisted();
 }
 
-// زر لوحة الأدمن بيظهر فقط: للأدمن الأساسي، للأدمنية، للـ VIP، وللمسموح لهم. (وأول مرة قبل ما يتحدد أدمن أساسي)
+// زر لوحة الأدمن بيظهر لكل اللاعبين: الـ VIP بيدخل بدون كلمة سر، وأي حدا ثاني لازم يكتب كلمة السر ويوافق عليه الأدمن الأساسي
 function canSeePanel(p) {
-  if (p.isAdmin || p.ownerIdent || p.ownerIpMatch || p.isVip || persisted.allowed[p.tokenHash]) return true;
-  return ownerHashes.size === 0 && !ownerIpsConfigured();
+  return true;
 }
-function emitAdminButton(p) { io.to(p.id).emit('admin:button', { visible: canSeePanel(p) }); }
+function emitAdminButton(p) { io.to(p.id).emit('admin:button', { visible: canSeePanel(p), vip: !!p.isVip }); }
 function refreshAdminButtons() { players.forEach(emitAdminButton); }
 const ownerPresent = () => ownerSockets.size > 0;
 const linkKey = (a, b) => [a, b].sort().join('|');
@@ -340,14 +341,22 @@ function syncScores() {
   players.forEach(p => io.to(p.id).emit('updateScore', p.score));
 }
 
+// الشارة بجانب الاسم: الأدمن الأساسي "[الأدمن]" (وبقدر يخفيها)، وأي أدمن ثاني "[ادمن ثانوي]" وما بقدر يخفيها
+function adminLabel(p) {
+  if (!p.isAdmin) return null;
+  if (ownerSockets.has(p.id)) return p.hideAdminBadge ? null : '[الأدمن]';
+  return '[ادمن ثانوي]';
+}
+
 function getFormattedPlayersList(forAdmin = false) {
   const list = [];
   players.forEach((p) => {
     if (!forAdmin && p.isHiddenFromRoom) return;
 
+    const label = adminLabel(p);
     let displayName = p.name;
-    if (p.isAdmin && !p.hideAdminBadge) {
-      displayName = `[الأدمن] ${p.name}`;
+    if (label) {
+      displayName = `${label} ${p.name}`;
     }
 
     const item = {
@@ -361,7 +370,7 @@ function getFormattedPlayersList(forAdmin = false) {
       frozen: p.frozen,
       blinded: p.blinded,
       canDraw: p.canDraw,
-      isAdmin: forAdmin ? p.isAdmin : (p.isAdmin && !p.hideAdminBadge),
+      isAdmin: forAdmin ? p.isAdmin : !!label,
       color: specialNamesColors[p.name] || p.color || '#00e5ff'
     };
     if (forAdmin) {
@@ -448,8 +457,8 @@ function findKick(tokenHash) {
 
 function canTarget(actorId, target) {
   if (!target) return false;
-  // الأدمن الأساسي (بجهازه أو بعنوان الـ IP تاعه) محمي من أي أمر
-  if (ownerSockets.has(target.id) || target.ownerIdent || target.ownerIpMatch) return false;
+  // الأدمن الأساسي (بجهازه) محمي من أي أمر
+  if (ownerSockets.has(target.id) || target.ownerIdent) return false;
   if (target.isAdmin && !ownerSockets.has(actorId)) return false;
   return true;
 }
@@ -477,7 +486,7 @@ function setFlag(p, key, value, minutes) {
 function setVip(p, value) {
   p.isVip = !!value;
   if (p.isVip) {
-    sendSystemMessage(`👑 الأدمن وضع (${p.name}) كـ VIP، يستطيع اللاعب الآن الدخول للأدمن بشرط موافقة الأدمن.`);
+    sendSystemMessage(`👑 الأدمن وضع (${p.name}) كـ VIP، يستطيع اللاعب الآن الدخول للوحة الأدمن بدون كلمة سر كأدمن ثانوي.`);
   } else {
     sendSystemMessage(`👑 الأدمن أزال صفة VIP عن (${p.name}).`);
   }
@@ -795,6 +804,8 @@ function grantAdmin(socket, owner) {
   if (owner) {
     ownerSockets.add(socket.id);
     applyStealth(p, persisted.stealthMode);
+  } else {
+    applyStealth(p, 0); // الأدمن الثانوي دايماً ظاهر وما بقدر يخفي حاله
   }
   pushStatus(p);
   emitAdminButton(p);
@@ -876,8 +887,8 @@ io.on('connection', (socket) => {
     };
     if (ownerHashes.has(tokenHash)) {
       ident.ownerIdent = true;
-    } else if (validOwnerProof(tokenHash, data.proof)) {
-      // السيرفر نسي بس بصمتك صحيحة: بنرجّعك أدمن أساسي
+    } else if (ownerHashes.size === 0 && validOwnerProof(tokenHash, data.proof)) {
+      // السيرفر نسي (ما في أدمن أساسي مسجّل) بس بصمتك صحيحة: بنرجّعك أدمن أساسي
       ident.ownerIdent = true;
       ownerHashes.add(tokenHash);
       savePersisted();
@@ -1032,20 +1043,30 @@ io.on('connection', (socket) => {
     if (!player) return reply({ success: false, reason: 'not_joined' });
     if (isAdmin()) return reply({ success: true, isOwner: isOwner() });
 
-    // مين مسموح له يجرب أصلاً: الأدمن الأساسي، الـ VIP، المسموح لهم، (وأول مرة قبل ما يتحدد أدمن أساسي)
-    const openClaim = ownerHashes.size === 0 && !ownerIpsConfigured();
-    const mayTry = openClaim || player.ownerIdent || player.ownerIpMatch || player.isVip || !!persisted.allowed[player.tokenHash];
-    if (!mayTry) return reply({ success: false, reason: 'not_allowed' });
-    if (!data || data.password !== ADMIN_PASSWORD) return reply({ success: false });
+    const passwordOk = !!data && typeof data.password === 'string' && data.password === ADMIN_PASSWORD;
 
-    // الأدمن الأساسي: جهازه معروف، أو من عنوان IP تاعه، أو أول مرة
-    if (player.ownerIdent || player.ownerIpMatch || openClaim) {
+    // الأدمن الأساسي (جهازه معروف): يدخل دايماً بدون كلمة سر
+    if (player.ownerIdent) {
       becomeOwner(socket, player);
       return reply({ success: true, isOwner: true });
     }
 
-    // لاعب ثاني (VIP): لازم موافقة الأدمن الأساسي إذا موجود
+    // أول مرة وما في أدمن أساسي مسجّل: أول واحد بكتب كلمة السر الصحيحة بصير الأدمن الأساسي للأبد
+    if (ownerHashes.size === 0) {
+      if (!passwordOk) return reply({ success: false });
+      becomeOwner(socket, player);
+      return reply({ success: true, isOwner: true });
+    }
+
+    // من هون وطالع: أي حدا غير الأدمن الأساسي بدخل كأدمن ثانوي
     if (ownerPresent()) {
+      // الـ VIP بيدخل بدون كلمة سر وبدون موافقة
+      if (player.isVip) {
+        grantAdmin(socket, false);
+        return reply({ success: true, isOwner: false });
+      }
+      // غير الـ VIP: لازم كلمة السر + موافقة الأدمن الأساسي
+      if (!passwordOk) return reply({ success: false });
       if (pendingAdminApprovals.has(socket.id)) return reply({ success: true, pending: true });
       pendingAdminApprovals.set(socket.id, { name: player.name });
       emitToOwners('admin:approval_request', { requestId: socket.id, name: player.name });
@@ -1053,11 +1074,12 @@ io.on('connection', (socket) => {
     }
 
     // الأدمن الأساسي غايب: ما بدخل اللوحة إلا إذا هو مسمّحله من قبل
-    if (persisted.allowed[player.tokenHash]) {
+    if (!persisted.allowed[player.tokenHash]) return reply({ success: false, reason: 'owner_absent' });
+    if (player.isVip || passwordOk) {
       grantAdmin(socket, false);
       return reply({ success: true, isOwner: false });
     }
-    return reply({ success: false, reason: 'owner_absent' });
+    return reply({ success: false });
   });
 
   socket.on('admin:approval_response', (data) => {
@@ -1156,7 +1178,7 @@ io.on('connection', (socket) => {
   });
 
   socket.on('admin:set_stealth', (data) => {
-    if (!isAdmin() || !data) return;
+    if (!isOwner() || !data) return; // الاختفاء للأدمن الأساسي فقط
     const p = players.get(socket.id);
     if (!p) return;
     applyStealth(p, parseInt(data.mode));
@@ -1238,6 +1260,7 @@ io.on('connection', (socket) => {
     if (!canTarget(socket.id, target)) return;
 
     if (data.key === 'isVip') {
+      if (!isOwner()) return; // الـ VIP بيفعّله الأدمن الأساسي فقط
       setVip(target, data.value === undefined ? !target.isVip : !!data.value);
       return;
     }
@@ -1440,9 +1463,10 @@ io.on('connection', (socket) => {
     const message = escapeChat(msg.trim().substring(0, 10000));
     if (!message) return;
 
+    const label = adminLabel(player);
     let displayName = player.name;
-    if (player.isAdmin && !player.hideAdminBadge) {
-      displayName = `[الأدمن] ${player.name}`;
+    if (label) {
+      displayName = `${label} ${player.name}`;
     }
 
     emitAll('chatMessage', { name: displayName, message, system: false, color: player.color });
