@@ -113,6 +113,16 @@ function colorizeName(name, color = null) {
   return `<span style="color: ${color}; font-weight: 700;">${name}</span>`;
 }
 
+// اسم بتأثير خاص (مثل REDO للأدمن الأساسي): السيرفر هو اللي بيحدد مين له التأثير (fx)
+function nameHtml(displayName, rawName, color, fx) {
+  if (fx === 'redo' && rawName && String(displayName).endsWith(String(rawName))) {
+    const prefix = String(displayName).slice(0, String(displayName).length - String(rawName).length);
+    const pre = prefix ? `<span style="color: ${color || '#00e5ff'}; font-weight: 700;">${prefix}</span>` : '';
+    return `${pre}<span class="redo-name">${rawName}</span>`;
+  }
+  return colorizeName(displayName, color);
+}
+
 // تمييز كلمات خاصة في نص الرسائل مع اهتزاز إن لزم الأمر
 function highlightSpecialWords(text) {
   const specialWords = {
@@ -136,7 +146,7 @@ function highlightSpecialWords(text) {
 }
 
 // إضافة رسالة جديدة للشات
-function addChatMessage({ name, message, system = false, color = null, time = '' }) {
+function addChatMessage({ name, message, system = false, color = null, time = '', fx = null, rawName = '' }) {
   const div = document.createElement('div');
   div.classList.add('chat-message');
 
@@ -159,7 +169,7 @@ function addChatMessage({ name, message, system = false, color = null, time = ''
   } else {
     const nameSpan = document.createElement('span');
     nameSpan.classList.add('chat-name');
-    nameSpan.innerHTML = colorizeName(name, color);
+    nameSpan.innerHTML = nameHtml(name, rawName, color, fx);
 
     const messageSpan = document.createElement('span');
     messageSpan.classList.add('chat-text');
@@ -215,7 +225,7 @@ function updatePlayersList(players) {
     li.style.color = color;
     
     // بناء النص الأساسي للاعب
-    let playerHtml = `${i + 1}. ${colorizeName(p.name, p.color)} - ${p.score} نقطة`;
+    let playerHtml = `${i + 1}. ${nameHtml(p.name, p.rawName, p.color, p.fx)} - ${p.score} نقطة`;
 
     li.innerHTML = playerHtml;
     playersList.appendChild(li);
@@ -326,7 +336,9 @@ socket.on('chatMessage', data => {
     message: data.message,
     system: data.system,
     color: data.color || null,
-    time: data.time || ''
+    time: data.time || '',
+    fx: data.fx || null,
+    rawName: data.rawName || ''
   });
 });
 
@@ -856,6 +868,241 @@ initStudio();
 })();
 
 /* ==========================================================================
+   ⚡ تأثير REDO: اسم بنفسجي بتأثير رعد + ضربات رعد (مع صوت) على الشاشات
+   السيرفر هو اللي بيحدد مين له التأثير، وكل قد إيش بيجي رعد، ولمين بيوصل
+   ========================================================================== */
+(() => {
+  const BOLT = `url("data:image/svg+xml;utf8,<svg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 16 22'><path d='M10 0 L2 12 H7 L4 22 L14 8 H9 Z' fill='%23f5eaff' stroke='%23a855f7' stroke-width='1.2' stroke-linejoin='round'/></svg>")`;
+
+  const css = `
+  .redo-name {
+    position: relative; display: inline-block; padding: 0 .3em;
+    font-weight: 900; letter-spacing: .08em; text-transform: uppercase;
+    color: #4c1d95; -webkit-text-stroke: .6px #f3e8ff; paint-order: stroke fill;
+    text-shadow: 0 0 3px #d8b4fe, 0 0 8px #a855f7, 0 0 16px #7e22ce, 0 0 28px rgba(126,34,206,.75);
+    animation: redoPulse 2.8s ease-in-out infinite;
+  }
+  @keyframes redoPulse {
+    0%, 100% { text-shadow: 0 0 3px #d8b4fe, 0 0 7px #a855f7, 0 0 14px #7e22ce, 0 0 24px rgba(126,34,206,.6); }
+    50%      { text-shadow: 0 0 4px #f3e8ff, 0 0 11px #c084fc, 0 0 22px #9333ea, 0 0 38px rgba(147,51,234,.9); }
+  }
+  .redo-name::before, .redo-name::after {
+    content: ''; position: absolute; width: .7em; height: 1.15em; pointer-events: none; opacity: 0;
+    background: ${BOLT} center / contain no-repeat; filter: drop-shadow(0 0 4px #c084fc);
+  }
+  .redo-name::before { top: -.6em; right: -.35em; animation: redoSpark 3.7s linear infinite .6s; }
+  .redo-name::after  { bottom: -.55em; left: -.35em; transform: rotate(180deg); animation: redoSpark 5.3s linear infinite 2.1s; }
+  @keyframes redoSpark { 0%, 86%, 100% { opacity: 0; } 88% { opacity: 1; } 90% { opacity: .15; } 92% { opacity: 1; } 96% { opacity: 0; } }
+
+  /* لحظة الضربة: الاسم بيتوهج بقوة وتطلع شرارات */
+  body.redo-striking .redo-name { animation: redoStrike .95s ease-out 1; }
+  body.redo-striking .redo-name::before, body.redo-striking .redo-name::after { animation: redoSparkNow .95s ease-out 1; }
+  @keyframes redoStrike {
+    0%   { text-shadow: 0 0 3px #d8b4fe, 0 0 8px #a855f7, 0 0 16px #7e22ce; }
+    8%   { text-shadow: 0 0 4px #fff, 0 0 12px #e9d5ff, 0 0 26px #c084fc, 0 0 48px #a855f7, 0 0 70px #7e22ce; }
+    22%  { text-shadow: 0 0 3px #d8b4fe, 0 0 8px #a855f7, 0 0 16px #7e22ce; }
+    32%  { text-shadow: 0 0 4px #fff, 0 0 10px #e9d5ff, 0 0 22px #c084fc, 0 0 40px #a855f7; }
+    100% { text-shadow: 0 0 3px #d8b4fe, 0 0 8px #a855f7, 0 0 16px #7e22ce, 0 0 28px rgba(126,34,206,.75); }
+  }
+  @keyframes redoSparkNow { 0% { opacity: 0; } 8% { opacity: 1; } 20% { opacity: .2; } 30% { opacity: 1; } 100% { opacity: 0; } }
+
+  /* طبقة البرق على الشاشة (فوق كل شي، ما بتمنع الضغط) */
+  #redo-fx-layer {
+    position: fixed; inset: 0; width: 100vw; height: 100vh; margin: 0; padding: 0; border: 0;
+    background: transparent; overflow: hidden; pointer-events: none; z-index: 10050;
+  }
+  #redo-fx-layer .redo-flash {
+    position: absolute; inset: 0; opacity: 0;
+    background: radial-gradient(ellipse at var(--fx-x, 50%) 0%, rgba(233,213,255,.55) 0%, rgba(126,34,206,.28) 38%, rgba(30,10,60,0) 75%);
+  }
+  #redo-fx-layer svg { position: absolute; inset: 0; width: 100%; height: 100%; overflow: visible; }
+
+  @media (prefers-reduced-motion: reduce) {
+    .redo-name, .redo-name::before, .redo-name::after,
+    body.redo-striking .redo-name, body.redo-striking .redo-name::before, body.redo-striking .redo-name::after { animation: none; }
+  }
+  `;
+  const st = document.createElement('style');
+  st.id = 'redo-fx-styles';
+  st.textContent = css;
+  document.head.appendChild(st);
+
+  const reduceMotion = () => !!(window.matchMedia && window.matchMedia('(prefers-reduced-motion: reduce)').matches);
+
+  // ---------- صوت الرعد (بيتولّد بالمتصفح، بدون ملفات) ----------
+  let actx = null;
+  function unlockAudio() {
+    try {
+      if (!actx) {
+        const AC = window.AudioContext || window.webkitAudioContext;
+        if (AC) actx = new AC();
+      }
+      if (actx && actx.state === 'suspended') actx.resume();
+    } catch (e) {}
+  }
+  // المتصفح بيمنع الصوت قبل أول لمسة، فنفعّله عند أول ضغطة أو كتابة
+  ['pointerdown', 'keydown', 'touchstart'].forEach(ev => window.addEventListener(ev, unlockAudio, { passive: true }));
+
+  function playThunder(volume) {
+    if (!volume || !actx || actx.state !== 'running') return;
+    try {
+      const v = Math.min(1, volume) * 0.8;
+      const t0 = actx.currentTime + 0.02;
+      const sr = actx.sampleRate;
+
+      // الهدير العميق: نويز بني بيخفت ويغمق تدريجياً
+      const dur = 3.4;
+      const n = Math.floor(sr * dur);
+      const buf = actx.createBuffer(1, n, sr);
+      const ch = buf.getChannelData(0);
+      let last = 0;
+      for (let i = 0; i < n; i++) {
+        last = (last + 0.025 * (Math.random() * 2 - 1)) / 1.025;
+        ch[i] = Math.max(-1, Math.min(1, last * 4));
+      }
+      const rumble = actx.createBufferSource();
+      rumble.buffer = buf;
+      const lp = actx.createBiquadFilter();
+      lp.type = 'lowpass';
+      lp.frequency.setValueAtTime(1100, t0);
+      lp.frequency.exponentialRampToValueAtTime(70, t0 + dur);
+      const g = actx.createGain();
+      g.gain.setValueAtTime(0.0001, t0);
+      g.gain.exponentialRampToValueAtTime(0.95 * v, t0 + 0.04);
+      g.gain.exponentialRampToValueAtTime(0.30 * v, t0 + 0.45);
+      g.gain.exponentialRampToValueAtTime(0.65 * v, t0 + 0.8);
+      g.gain.exponentialRampToValueAtTime(0.20 * v, t0 + 1.6);
+      g.gain.exponentialRampToValueAtTime(0.0001, t0 + dur);
+      rumble.connect(lp); lp.connect(g); g.connect(actx.destination);
+      rumble.start(t0);
+
+      // طقّة البرق بالبداية
+      const cn = Math.floor(sr * 0.22);
+      const cbuf = actx.createBuffer(1, cn, sr);
+      const cd = cbuf.getChannelData(0);
+      for (let i = 0; i < cn; i++) cd[i] = (Math.random() * 2 - 1) * Math.pow(1 - i / cn, 3);
+      const crack = actx.createBufferSource();
+      crack.buffer = cbuf;
+      const hp = actx.createBiquadFilter();
+      hp.type = 'highpass';
+      hp.frequency.value = 1500;
+      const cg = actx.createGain();
+      cg.gain.value = 0.45 * v;
+      crack.connect(hp); hp.connect(cg); cg.connect(actx.destination);
+      crack.start(t0);
+    } catch (e) {}
+  }
+
+  // ---------- شكل البرق على الشاشة ----------
+  function jag(x1, y1, x2, y2, off, iter) {
+    let pts = [[x1, y1], [x2, y2]];
+    for (let k = 0; k < iter; k++) {
+      const next = [pts[0]];
+      for (let i = 0; i < pts.length - 1; i++) {
+        const [ax, ay] = pts[i];
+        const [bx, by] = pts[i + 1];
+        const dx = bx - ax, dy = by - ay, len = Math.hypot(dx, dy) || 1;
+        const o = (Math.random() * 2 - 1) * off;
+        next.push([(ax + bx) / 2 + (-dy / len) * o, (ay + by) / 2 + (dx / len) * o], pts[i + 1]);
+      }
+      pts = next;
+      off *= 0.55;
+    }
+    return pts;
+  }
+  const toPath = (pts) => 'M' + pts.map(p => p[0].toFixed(1) + ' ' + p[1].toFixed(1)).join(' L');
+
+  let boltSeq = 0;
+  function boltSvg() {
+    const w = window.innerWidth, h = window.innerHeight;
+    const x0 = w * (0.12 + Math.random() * 0.76);
+    const main = jag(x0, -20, x0 + (Math.random() - 0.5) * w * 0.35, h * (0.55 + Math.random() * 0.35), w * 0.08, 6);
+    const paths = [toPath(main)];
+    const branches = 3 + Math.floor(Math.random() * 3);
+    for (let i = 0; i < branches; i++) {
+      const s = main[Math.floor(main.length * (0.2 + Math.random() * 0.6))];
+      const dir = Math.random() < 0.5 ? -1 : 1;
+      paths.push(toPath(jag(s[0], s[1], s[0] + dir * w * (0.08 + Math.random() * 0.2), s[1] + h * (0.1 + Math.random() * 0.25), w * 0.04, 5)));
+    }
+    const id = 'redoBlur' + (++boltSeq);
+    const all = paths.map(p => `<path d="${p}"/>`).join('');
+    return `<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 ${w} ${h}" preserveAspectRatio="none" aria-hidden="true">
+      <defs><filter id="${id}" x="-30%" y="-30%" width="160%" height="160%"><feGaussianBlur stdDeviation="7"/></filter></defs>
+      <g fill="none" stroke-linecap="round" stroke-linejoin="round">
+        <g filter="url(#${id})" stroke="#a855f7" stroke-width="13" opacity=".95">${all}</g>
+        <g stroke="#c084fc" stroke-width="5" opacity=".85">${all}</g>
+        <path d="${paths[0]}" stroke="#faf5ff" stroke-width="3.2"/>
+        ${paths.slice(1).map(p => `<path d="${p}" stroke="#f3e8ff" stroke-width="1.8"/>`).join('')}
+      </g></svg>`;
+  }
+
+  let layer = null;
+  let active = 0;
+  function getLayer() {
+    if (!layer) {
+      layer = document.createElement('div');
+      layer.id = 'redo-fx-layer';
+      layer.setAttribute('aria-hidden', 'true');
+      document.body.appendChild(layer);
+    }
+    return layer;
+  }
+
+  function screenFlash() {
+    const L = getLayer();
+    const flash = document.createElement('div');
+    flash.className = 'redo-flash';
+    flash.style.setProperty('--fx-x', (10 + Math.random() * 80) + '%');
+    L.appendChild(flash);
+
+    const count = Math.random() < 0.35 ? 2 : 1; // أحياناً برقين مع بعض
+    const svgs = [];
+    for (let i = 0; i < count; i++) {
+      const holder = document.createElement('div');
+      holder.innerHTML = boltSvg();
+      const svg = holder.firstElementChild;
+      L.appendChild(svg);
+      svgs.push(svg);
+    }
+
+    active++;
+    topLayerShow(L);
+
+    const fa = flash.animate(
+      [{ opacity: 0 }, { opacity: 1, offset: 0.06 }, { opacity: 0.25, offset: 0.14 }, { opacity: 0.6, offset: 0.22 }, { opacity: 0 }],
+      { duration: 950, easing: 'ease-out' }
+    );
+    fa.onfinish = () => {
+      flash.remove();
+      if (--active <= 0) { active = 0; topLayerHide(L); }
+    };
+    svgs.forEach((svg, i) => {
+      const a = svg.animate(
+        [{ opacity: 0 }, { opacity: 1, offset: 0.05 }, { opacity: 0.25, offset: 0.15 }, { opacity: 1, offset: 0.22 }, { opacity: 0 }],
+        { duration: 750, delay: i * 70, easing: 'linear', fill: 'both' }
+      );
+      a.onfinish = () => svg.remove();
+    });
+  }
+
+  let strikeTimer = null;
+  function nameStrike() {
+    document.body.classList.add('redo-striking');
+    clearTimeout(strikeTimer);
+    strikeTimer = setTimeout(() => document.body.classList.remove('redo-striking'), 1000);
+  }
+
+  // ---------- ضربة رعد جاية من السيرفر ----------
+  socket.on('fx:strike', (d) => {
+    d = d || {};
+    if (document.hidden) return;
+    nameStrike();
+    if (d.screen && !reduceMotion()) screenFlash();
+    if (d.volume) setTimeout(() => playThunder(d.volume), d.screen ? 250 + Math.random() * 450 : 0);
+  });
+})();
+
+/* ==========================================================================
    🧰 دوال مشتركة
    ========================================================================== */
 
@@ -1238,6 +1485,53 @@ socket.on('gate:approved', (d) => {
   const allowedListEl = $('admin-allowed-list');
   const ownerIpLine = $('owner-ip-line');
 
+  // ---------- ⚡ قسم تأثير الرعد (للأدمن الأساسي فقط) ----------
+  if (ownerSection) {
+    ownerSection.insertAdjacentHTML('afterend', `
+      <section class="admin-section" id="thunder-section" style="display:none">
+        <div class="section-header">
+          <div class="section-title">
+            <span class="sec-icon">⚡</span>
+            <h3>تأثير الرعد (اسم REDO)</h3>
+          </div>
+        </div>
+        <p class="section-hint">لما تكتب اسمك REDO بيظهر اسمك بتأثير الرعد البنفسجي بالمتصدرين والشات، وبيجي رعد كل فترة مع صوت. من هون بتتحكم فيه (الأخضر = مفعّل). ولإخفاء الرعد عن لاعب معين استخدم زر "إخفاء الرعد عنه" في بطاقته:</p>
+        <div class="global-actions-grid">
+          <button id="adm-thunder-screen" class="btn-action">
+            <span class="btn-icon">🌩️</span>
+            <span class="btn-label">الرعد على شاشات اللاعبين</span>
+            <span class="tooltip-icon" title="لما يكون مفعّل بيجي برق بشاشات كل اللاعبين (ما عدا اللي أخفيته عنهم). لما تطفيه بيضل التأثير على اسمك بس">❓</span>
+          </button>
+          <button id="adm-thunder-sound" class="btn-action">
+            <span class="btn-icon">🔊</span>
+            <span class="btn-label">صوت الرعد</span>
+            <span class="tooltip-icon" title="تشغيل أو إلغاء صوت الرعد عند اللاعبين (وعندك)">❓</span>
+          </button>
+          <button id="adm-thunder-now" class="btn-action highlight">
+            <span class="btn-icon">⚡</span>
+            <span class="btn-label">رعد الآن</span>
+            <span class="tooltip-icon" title="ضربة رعد فورية للتجربة أو للمفاجأة">❓</span>
+          </button>
+        </div>
+        <div class="control-card-row" style="margin-top:12px">
+          <div class="control-label-wrap">
+            <label>⏱️ الرعد كل كم ثانية تقريباً (10 - 600)</label>
+          </div>
+          <div class="input-with-btn">
+            <input type="number" id="adm-thunder-interval" class="custom-input" min="10" max="600" value="30">
+            <button id="adm-thunder-save" class="btn-custom btn-primary">حفظ</button>
+          </div>
+        </div>
+      </section>`);
+  }
+  const thunderSection = $('thunder-section');
+  const admThunderScreen = $('adm-thunder-screen');
+  const admThunderSound = $('adm-thunder-sound');
+  const admThunderNow = $('adm-thunder-now');
+  const admThunderInterval = $('adm-thunder-interval');
+  const admThunderSave = $('adm-thunder-save');
+  let thunderState = { screen: true, sound: true, interval: 30 };
+
   // ---------- أدوات مساعدة ----------
   function escapeHtml(str) {
     return String(str)
@@ -1339,6 +1633,7 @@ socket.on('gate:approved', (d) => {
     // سجل المراقبة وزر الاختفاء للأدمن الأساسي فقط
     if (auditSection) auditSection.style.display = isOwner ? '' : 'none';
     if (admBtnStealth) admBtnStealth.style.display = isOwner ? '' : 'none';
+    if (thunderSection) thunderSection.style.display = isOwner ? '' : 'none';
     renderAllowed();
   }
 
@@ -1497,6 +1792,11 @@ socket.on('gate:approved', (d) => {
             <span>✅ سماح بدخول اللوحة عند غيابي</span>
             <span class="tooltip-icon" title="يسمح لهذا اللاعب بدخول لوحة الأدمن (بكلمة المرور) حتى لو أنت غير موجود. بدون هذا السماح ما حدا بدخل اللوحة وأنت غايب. اضغط مرة ثانية للإلغاء">❓</span>
           </button>`;
+        ownerExtras += `
+          <button class="btn-action ${ledClass(player.thunderHidden)}" data-act="nothunder" data-id="${id}">
+            <span>⚡ إخفاء الرعد عنه</span>
+            <span class="tooltip-icon" title="لما يكون مفعّل (أخضر) ما بيظهر الرعد ولا صوته عند هذا اللاعب. اضغط مرة ثانية ليرجع يشوفه">❓</span>
+          </button>`;
         if (player.isAdmin) {
           ownerExtras += `
           <button class="btn-action danger" data-act="revoke" data-id="${id}">
@@ -1654,6 +1954,11 @@ socket.on('gate:approved', (d) => {
           emitAdminAction('owner:allow_entry', { playerId: pid, allow: !p.allowedAbsent });
           setLed(btn, !p.allowedAbsent);
           logAudit(p.allowedAbsent ? `إلغاء سماح دخول اللوحة عند غيابك لـ (${name}).` : `السماح لـ (${name}) بدخول اللوحة عند غيابك.`, 'info');
+          break;
+        case 'nothunder':
+          emitAdminAction('thunder:hide_for', { playerId: pid, hide: !p.thunderHidden });
+          setLed(btn, !p.thunderHidden);
+          logAudit(p.thunderHidden ? `إرجاع الرعد للاعب (${name}).` : `إخفاء الرعد عن (${name}).`, 'info');
           break;
         case 'revoke':
           emitAdminAction('revoke_admin', { playerId: pid });
@@ -1989,6 +2294,48 @@ socket.on('gate:approved', (d) => {
       allowedListEl.appendChild(row);
     });
   }
+
+  // ---------- ⚡ أزرار الرعد ----------
+  function renderThunder() {
+    setLed(admThunderScreen, thunderState.screen);
+    setLed(admThunderSound, thunderState.sound);
+    if (admThunderInterval && document.activeElement !== admThunderInterval) admThunderInterval.value = thunderState.interval;
+  }
+  renderThunder();
+
+  if (admThunderScreen) {
+    admThunderScreen.onclick = () => {
+      thunderState.screen = !thunderState.screen;
+      renderThunder();
+      emitAdminAction('thunder:update', { screen: thunderState.screen });
+      logAudit(thunderState.screen ? 'تفعيل الرعد على شاشات اللاعبين.' : 'إيقاف الرعد على شاشات اللاعبين.', 'info');
+    };
+  }
+  if (admThunderSound) {
+    admThunderSound.onclick = () => {
+      thunderState.sound = !thunderState.sound;
+      renderThunder();
+      emitAdminAction('thunder:update', { sound: thunderState.sound });
+      logAudit(thunderState.sound ? 'تشغيل صوت الرعد.' : 'إلغاء صوت الرعد.', 'info');
+    };
+  }
+  if (admThunderNow) {
+    admThunderNow.onclick = () => emitAdminAction('thunder:strike');
+  }
+  if (admThunderSave) {
+    admThunderSave.onclick = () => {
+      const iv = parseInt(admThunderInterval ? admThunderInterval.value : '');
+      if (iv >= 10) {
+        emitAdminAction('thunder:update', { interval: iv });
+        logAudit(`الرعد كل ~${iv} ثانية.`, 'info');
+      }
+    };
+  }
+  socket.on('admin:thunder_state', (d) => {
+    if (!d) return;
+    thunderState = { screen: !!d.screen, sound: !!d.sound, interval: d.interval || 30 };
+    renderThunder();
+  });
 
   if (btnClearAuditLogs) {
     btnClearAuditLogs.onclick = () => {
