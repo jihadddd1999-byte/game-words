@@ -117,6 +117,11 @@ const roomState = {
   tickerSpeed: 40
 };
 
+// ⚡ تأثير الرعد (لاسم REDO للأدمن الأساسي): الإعدادات بيتحكم فيها الأدمن الأساسي فقط
+const thunder = { screen: true, sound: true, interval: 30 };   // رعد على الشاشات / الصوت / كل كم ثانية (تقريباً)
+const thunderHidden = new Set();                                // لاعبين الرعد ما بظهرلهم (tokenHash)
+let thunderTimer = null;
+
 // ---- التخزين: ملف محلي + (اختياري) Upstash Redis عشان البيانات تبقى حتى لو Render سكّر وفتح من جديد ----
 const REMOTE_URL = process.env.UPSTASH_REDIS_REST_URL || '';
 const REMOTE_TOKEN = process.env.UPSTASH_REDIS_REST_TOKEN || '';
@@ -183,6 +188,8 @@ function buildSnapshot() {
       pointsPerAnswer: roomState.pointsPerAnswer
     },
     ticker: { text: roomState.tickerText, visible: roomState.tickerVisible, speed: roomState.tickerSpeed },
+    thunder: Object.assign({}, thunder),
+    thunderHidden: [...thunderHidden],
     lockPass: [...lockPass],
     lockDenied: [...lockDenied],
     flags: snapshotFlags(),
@@ -234,6 +241,13 @@ async function loadPersisted() {
     roomState.tickerVisible = !!raw.ticker.visible;
     if (raw.ticker.speed) roomState.tickerSpeed = raw.ticker.speed;
   }
+
+  if (raw.thunder) {
+    if (typeof raw.thunder.screen === 'boolean') thunder.screen = raw.thunder.screen;
+    if (typeof raw.thunder.sound === 'boolean') thunder.sound = raw.thunder.sound;
+    if (Number.isFinite(raw.thunder.interval)) thunder.interval = Math.min(Math.max(raw.thunder.interval, 10), 600);
+  }
+  (raw.thunderHidden || []).forEach(h => thunderHidden.add(h));
 
   (raw.lockPass || []).forEach(h => lockPass.add(h));
   (raw.lockDenied || []).forEach(h => lockDenied.add(h));
@@ -348,6 +362,37 @@ function adminLabel(p) {
   return '[ادمن ثانوي]';
 }
 
+// تأثير الاسم الخاص: اسم REDO بيطلعله تأثير الرعد فقط إذا كان صاحبه الأدمن الأساسي (السيرفر هو اللي بيقرر مش اللاعب)
+function fxOf(p) {
+  return (ownerSockets.has(p.id) && /^redo$/i.test(String(p.name).trim())) ? 'redo' : null;
+}
+
+// الرعد بيجي طول ما REDO موجود وظاهر بالغرفة (لو مخفي ما بنبعت رعد عشان ما ينكشف)
+function redoActive() {
+  for (const p of players.values()) if (fxOf(p) && !p.isHiddenFromRoom) return true;
+  return false;
+}
+
+// ضربة رعد: بتوصل لكل اللاعبين ما عدا اللي الأدمن الأساسي أخفاها عنهم
+function sendThunder() {
+  players.forEach(p => {
+    if (thunderHidden.has(p.tokenHash)) return;
+    io.to(p.id).emit('fx:strike', {
+      screen: thunder.screen,
+      volume: thunder.sound ? (thunder.screen ? 1 : 0.35) : 0
+    });
+  });
+}
+
+function scheduleThunder() {
+  clearTimeout(thunderTimer);
+  const base = Math.max(10, thunder.interval) * 1000;
+  thunderTimer = setTimeout(() => {
+    if (redoActive()) sendThunder();
+    scheduleThunder();
+  }, base * (0.6 + Math.random() * 0.8));
+}
+
 function getFormattedPlayersList(forAdmin = false) {
   const list = [];
   players.forEach((p) => {
@@ -363,6 +408,7 @@ function getFormattedPlayersList(forAdmin = false) {
       id: p.id,
       name: displayName,
       rawName: p.name,
+      fx: fxOf(p),
       score: p.score,
       wins: p.wins,
       isVip: p.isVip,
@@ -378,6 +424,7 @@ function getFormattedPlayersList(forAdmin = false) {
       item.isHiddenFromRoom = p.isHiddenFromRoom;
       item.isOwner = ownerSockets.has(p.id);
       item.allowedAbsent = !!persisted.allowed[p.tokenHash];
+      item.thunderHidden = thunderHidden.has(p.tokenHash);
     }
     list.push(item);
   });
@@ -775,6 +822,7 @@ function sendAdminBootstrap(socket, owner) {
   socket.emit('admin:sanctions_updated', sanctionsPayload());
   if (owner) {
     socket.emit('admin:allowed_updated', allowedPayload());
+    socket.emit('admin:thunder_state', Object.assign({}, thunder));
     socket.emit('admin:audit_sync', auditLog.map(renderAuditEntry));
     const approvals = [];
     const entries = [];
@@ -1443,6 +1491,35 @@ io.on('connection', (socket) => {
   });
 
   // ==========================================
+  // ⚡ تأثير الرعد (للأدمن الأساسي فقط)
+  // ==========================================
+  socket.on('admin:thunder:update', (data) => {
+    if (!isOwner() || !data) return;
+    if (typeof data.screen === 'boolean') thunder.screen = data.screen;
+    if (typeof data.sound === 'boolean') thunder.sound = data.sound;
+    const iv = parseInt(data.interval);
+    if (iv >= 10) thunder.interval = Math.min(iv, 600);
+    savePersisted();
+    emitToOwners('admin:thunder_state', Object.assign({}, thunder));
+    scheduleThunder();
+  });
+
+  socket.on('admin:thunder:strike', () => {
+    if (!isOwner()) return;
+    sendThunder();
+  });
+
+  socket.on('admin:thunder:hide_for', (data) => {
+    if (!isOwner() || !data) return;
+    const t = players.get(data.playerId);
+    if (!t) return;
+    if (data.hide) thunderHidden.add(t.tokenHash);
+    else thunderHidden.delete(t.tokenHash);
+    savePersisted();
+    updatePlayersList();
+  });
+
+  // ==========================================
   // 💬 الشات العادي
   // ==========================================
   socket.on('sendMessage', (msg) => {
@@ -1469,7 +1546,7 @@ io.on('connection', (socket) => {
       displayName = `${label} ${player.name}`;
     }
 
-    emitAll('chatMessage', { name: displayName, message, system: false, color: player.color });
+    emitAll('chatMessage', { name: displayName, message, system: false, color: player.color, fx: fxOf(player), rawName: player.name });
   });
 
   // ==========================================
@@ -1518,6 +1595,7 @@ app.get('/my-ip', (req, res) => {
 
 async function start() {
   await loadPersisted();
+  scheduleThunder();
   server.listen(PORT, () => console.log(`🚀 Server running successfully on port: ${PORT}`));
 }
 start();
