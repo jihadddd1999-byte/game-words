@@ -3591,3 +3591,243 @@ socket.on('gate:approved', (d) => {
     });
   };
 })();
+
+// ============================================================
+// 📖 كتاب القائمة: كل أزرار القائمة جوّا كتاب تقليدي (غلاف عليه زر الشات، وبيفتح صفحتين، 4 أزرار بكل صفحة)
+// بنحرّك نفس الأزرار الأصلية جوّا الكتاب (فبتضل كل وظائفها شغالة)، وما بنغيّر شي بباقي اللعبة
+// ============================================================
+(function () {
+  const controls = document.querySelector('.controls');
+  const chat = document.getElementById('btn-chat');
+  if (!controls || !chat) return;
+  const admin = document.getElementById('btn-admin-auth');
+  const PER = 4;
+  const ORDER = ['btn-daily', 'btn-pass', 'btn-profile', 'btn-store', 'btn-change-name', 'btn-instructions', 'btn-open-board', 'dark-mode-toggle', 'btn-theme-toggle'];
+  const STAY = new Set(['dark-mode-toggle', 'btn-theme-toggle']);   // هدول بيغيّروا شكل الصفحة نفسها فالكتاب بيضل مفتوح
+  const rank = (b) => { const i = ORDER.indexOf(b.id); return i < 0 ? 100 : i; };
+  const btns = [...controls.querySelectorAll('.btn-main')].filter(b => b !== chat && b !== admin).sort((a, b) => rank(a) - rank(b));
+  if (!btns.length) return;
+  const pages = [];
+  for (let i = 0; i < btns.length; i += PER) pages.push(btns.slice(i, i + PER));
+  const P = pages.length, N = 1 + Math.ceil((P - 1) / 2), MAXS = Math.ceil(P / 2);
+  const ar = (n) => Number(n).toLocaleString('ar-EG');
+  const FLIP_MS = 950;
+
+  // ---------- الستايل ----------
+  const grain = (r, g, b, a, f) => `url("data:image/svg+xml;utf8,<svg xmlns='http://www.w3.org/2000/svg' width='140' height='140'><filter id='n'><feTurbulence type='fractalNoise' baseFrequency='${f}' numOctaves='3' stitchTiles='stitch'/><feColorMatrix values='0 0 0 0 ${r}  0 0 0 0 ${g}  0 0 0 0 ${b}  0 0 0 ${a} 0'/></filter><rect width='100%' height='100%' filter='url(%23n)'/></svg>")`;
+  const st = document.createElement('style');
+  st.textContent = `
+  #bk-root { flex: 1 1 100%; width: 100%; --W: clamp(138px, calc(50vw - 34px), 234px); --H: calc(var(--W) * 1.62); direction: ltr; user-select: none; -webkit-tap-highlight-color: transparent; }
+  #bk-root .bk-stage { position: relative; overflow-x: clip; display: flex; justify-content: center; width: 100%; height: calc(var(--H) + 30px); padding-top: 24px; box-sizing: border-box; }
+  #bk-root .bk-book { position: relative; width: var(--W); height: var(--H); perspective: 1700px; perspective-origin: 100% 40%; transition: transform ${FLIP_MS}ms cubic-bezier(.5, .05, .25, 1); }
+  #bk-root .bk-book.open { transform: translateX(calc(var(--W) / -2)); }
+  /* ظلّ الكتاب على الطاولة */
+  #bk-root .bk-book::before { content: ''; position: absolute; left: -6px; right: -6px; bottom: -14px; height: 26px; background: radial-gradient(ellipse at center, rgba(0,0,0,.5), transparent 70%); filter: blur(5px); transition: transform ${FLIP_MS}ms cubic-bezier(.5,.05,.25,1); }
+  #bk-root .bk-book::before { transform-origin: 0% 50%; }
+  #bk-root .bk-book.open::before { transform: scaleX(1.98); }
+  /* الصفحة الأخيرة اللي تحت كل الورقات + لوح الغلاف الخلفي */
+  #bk-root .bk-board { position: absolute; left: -7px; top: -5px; width: calc(100% + 7px); height: calc(100% + 10px); border-radius: 8px 3px 3px 8px; background: ${grain(0, 0, 0, .35, '.8')}, linear-gradient(135deg, #5a1a20, #3a0e13); box-shadow: 0 10px 26px rgba(0,0,0,.55), inset 0 0 0 1px rgba(255,215,120,.25); opacity: 0; transition: opacity .5s .2s; }
+  #bk-root .bk-book.open .bk-board { opacity: 1; }
+  #bk-root .bk-leaf { position: absolute; left: 0; top: 0; width: 100%; height: 100%; transform-origin: 100% 50%; transform-style: preserve-3d; transition: transform ${FLIP_MS}ms cubic-bezier(.5, .05, .25, 1); }
+  #bk-root .bk-leaf.flipped { transform: rotateY(180deg); }
+  #bk-root .bk-book:not(.open) .bk-leaf.l0:hover { transform: rotateY(9deg); cursor: pointer; }
+  #bk-root .bk-face { position: absolute; inset: 0; backface-visibility: hidden; -webkit-backface-visibility: hidden; box-sizing: border-box; overflow: hidden; }
+  #bk-root .bk-face.back { transform: rotateY(180deg); }
+  #bk-root .bk-leaf:not(.flipped) .bk-face.back, #bk-root .bk-leaf.flipped .bk-face.front { pointer-events: none; }
+  /* ---- الورق ---- */
+  #bk-root .bk-page { display: flex; flex-direction: column; direction: rtl; padding: calc(var(--W) * .07) calc(var(--W) * .07) 6px; color: #4a2f12;
+    background: ${grain(.45, .3, .1, .3, '.7')}, radial-gradient(ellipse at 50% 40%, #fbf1d6, #efdcae 70%, #e2c88e); }
+  #bk-root .bk-face.front.bk-page { border-radius: 4px 0 0 4px; padding-right: calc(var(--W) * .12); box-shadow: -2px 0 0 #f4ead0, -4px 0 0 #d9c99f, -5px 0 0 #efe3c2; }
+  #bk-root .bk-face.back.bk-page { border-radius: 0 4px 4px 0; padding-left: calc(var(--W) * .12); }
+  #bk-root .bk-face.front.bk-page::before { content: ''; position: absolute; top: 0; bottom: 0; right: 0; width: 16%; background: linear-gradient(to left, rgba(90, 55, 15, .42), rgba(90, 55, 15, .12) 45%, transparent); pointer-events: none; }
+  #bk-root .bk-face.back.bk-page::before { content: ''; position: absolute; top: 0; bottom: 0; left: 0; width: 16%; background: linear-gradient(to right, rgba(90, 55, 15, .42), rgba(90, 55, 15, .12) 45%, transparent); pointer-events: none; }
+  #bk-root .bk-face.bk-cover-back { border-right: 6px solid #4a1017; border-top: 5px solid #4a1017; border-bottom: 5px solid #4a1017; box-shadow: inset 0 0 0 1px rgba(255, 215, 120, .35); }
+  /* حركة ظلّ الورقة وقت الانقلاب */
+  #bk-root .bk-face::after { content: ''; position: absolute; inset: 0; opacity: 0; pointer-events: none; background: linear-gradient(90deg, rgba(0,0,0,.5), rgba(0,0,0,.05) 70%); }
+  #bk-root .bk-leaf.turning .bk-face::after { animation: bkShade ${FLIP_MS}ms ease-in-out; }
+  @keyframes bkShade { 0%, 100% { opacity: 0; } 50% { opacity: .55; } }
+  #bk-root .bk-orn { text-align: center; color: #9a6b22; font-size: .72rem; letter-spacing: .35em; line-height: 1; padding: 1px 0 calc(var(--W) * .03); border-bottom: 1px solid rgba(139, 94, 30, .35); margin-bottom: calc(var(--W) * .035); }
+  #bk-root .bk-grid { flex: 1; min-height: 0; display: grid; grid-template-rows: repeat(${PER}, 1fr); gap: calc(var(--W) * .035); }
+  #bk-root .bk-foot { display: flex; align-items: center; justify-content: space-between; gap: 4px; height: 22px; margin-top: 5px; font-size: .7rem; color: #8a5f22; }
+  #bk-root .bk-foot .no { font-weight: 700; letter-spacing: .05em; }
+  #bk-root .bk-nav { all: unset; box-sizing: border-box; cursor: pointer; padding: 2px 9px; border-radius: 99px; font: 700 .68rem/1.5 inherit; color: #5a3a10; background: rgba(120, 80, 20, .14); border: 1px solid rgba(139, 94, 30, .45); transition: background .2s, transform .15s; }
+  #bk-root .bk-nav:hover { background: rgba(212, 160, 60, .4); transform: translateY(-1px); }
+  #bk-root .bk-nav:focus-visible { outline: 2px solid #b8860b; }
+  /* ---- أزرار القائمة جوّا الصفحة ---- */
+  #bk-root .bk-page .btn-main { all: unset; box-sizing: border-box; position: relative; display: flex; align-items: center; justify-content: center; gap: 4px; text-align: center; cursor: pointer; min-width: 0; padding: 3px 8px;
+    font: 700 .76rem/1.25 'Segoe UI', Tahoma, sans-serif; color: #ffe9a8; border-radius: 9px; text-shadow: 0 1px 1px rgba(0,0,0,.6);
+    background: ${grain(0, 0, 0, .3, '.9')}, linear-gradient(160deg, #7a2b2f, #4a1017 60%, #3a0c11);
+    border: 1px solid #d9a441; box-shadow: inset 0 0 0 2px #4a1017, inset 0 0 0 3px rgba(217, 164, 65, .55), 0 2px 5px rgba(60, 30, 5, .45);
+    transition: transform .15s ease, box-shadow .2s ease, filter .2s ease; }
+  #bk-root .bk-page .btn-main:hover, #bk-root .bk-page .btn-main:focus-visible { transform: translateY(-2px) scale(1.02); filter: brightness(1.18); box-shadow: inset 0 0 0 2px #4a1017, inset 0 0 0 3px #f2c75c, 0 5px 10px rgba(60, 30, 5, .55), 0 0 12px rgba(242, 199, 92, .55); outline: none; }
+  #bk-root .bk-page .btn-main:active { transform: translateY(1px) scale(.98); }
+  #bk-root .bk-page .btn-main .pg-dot { top: 4px; right: 5px; }
+  /* ---- الغلاف ---- */
+  #bk-root .bk-cover { background: ${grain(0, 0, 0, .42, '.85')}, radial-gradient(ellipse at 30% 20%, #8a2f35, #5c1a20 55%, #3b0d12); border-radius: 5px 3px 3px 5px; box-shadow: 0 8px 22px rgba(0,0,0,.55), inset 0 0 0 1px rgba(255, 215, 120, .4), inset 0 0 22px rgba(0,0,0,.55); cursor: pointer; }
+  #bk-root .bk-cover::before { content: ''; position: absolute; inset: 7px 20px 7px 7px; border: 1.5px solid #d9a441; border-radius: 3px; box-shadow: inset 0 0 0 3px rgba(0,0,0,.25), inset 0 0 0 4px rgba(217, 164, 65, .5); pointer-events: none; }
+  #bk-root .bk-spine { position: absolute; top: 0; bottom: 0; right: 0; width: 15px; border-radius: 0 3px 3px 0; background: repeating-linear-gradient(0deg, transparent 0 22px, rgba(217,164,65,.0) 22px 23px), linear-gradient(90deg, rgba(0,0,0,.45), rgba(255,255,255,.1) 38%, rgba(0,0,0,.5)); box-shadow: inset 1px 0 0 rgba(217,164,65,.5); }
+  #bk-root .bk-spine::before, #bk-root .bk-spine::after { content: ''; position: absolute; left: 1px; right: 1px; height: 2px; background: linear-gradient(90deg, #8a5a12, #f2c75c, #8a5a12); }
+  #bk-root .bk-spine::before { top: 16%; } #bk-root .bk-spine::after { bottom: 16%; }
+  #bk-root .bk-corner { position: absolute; width: calc(var(--W) * .17); height: calc(var(--W) * .17); pointer-events: none; }
+  #bk-root .bk-corner.tl { top: 8px; left: 8px; } #bk-root .bk-corner.tr { top: 8px; right: 23px; transform: scaleX(-1); }
+  #bk-root .bk-corner.bl { bottom: 8px; left: 8px; transform: scaleY(-1); } #bk-root .bk-corner.br { bottom: 8px; right: 23px; transform: scale(-1, -1); }
+  #bk-root .bk-emblem { position: absolute; left: 50%; top: 53%; width: 58%; transform: translate(-60%, -50%); filter: drop-shadow(0 1px 1px rgba(0,0,0,.7)); animation: bkGlow 3.6s ease-in-out infinite; pointer-events: none; }
+  @keyframes bkGlow { 0%, 100% { filter: drop-shadow(0 1px 1px rgba(0,0,0,.7)) brightness(1); } 50% { filter: drop-shadow(0 0 6px rgba(255, 214, 102, .7)) brightness(1.18); } }
+  #bk-root .bk-title { position: absolute; left: 0; right: 15px; bottom: 11%; text-align: center; font: 800 calc(var(--W) * .082)/1.2 'Segoe UI', Tahoma, sans-serif; letter-spacing: .02em; background: linear-gradient(180deg, #fff3bf, #d9a441 60%, #9a6a1a); -webkit-background-clip: text; background-clip: text; color: transparent; filter: drop-shadow(0 1px 0 rgba(0,0,0,.6)); pointer-events: none; }
+  #bk-root .bk-title small { display: block; margin-top: 2px; font-size: .62em; font-weight: 600; opacity: .85; animation: bkHint 2.4s ease-in-out infinite; }
+  @keyframes bkHint { 0%, 100% { opacity: .45; } 50% { opacity: 1; } }
+  /* ---- زر الشات: لوحة ذهبية على الغلاف، وبتصير علّامة قراءة (شريط) فوق الكتاب لما يفتح ---- */
+  #bk-root .bk-chat { all: unset; box-sizing: border-box; position: absolute; z-index: 500; left: calc(var(--W) * .5); top: calc(var(--W) * .1); width: calc(var(--W) * .66); height: 38px; margin-left: calc(var(--W) * -.33); display: flex; align-items: center; justify-content: center; gap: 6px; cursor: pointer;
+    font: 800 .92rem/1 'Segoe UI', Tahoma, sans-serif; color: #3b1d05; border-radius: 9px; text-shadow: 0 1px 0 rgba(255,240,180,.7);
+    background: linear-gradient(180deg, #fff0b0, #e0aa3e 55%, #a8751b); border: 1px solid #fff0b0; box-shadow: 0 3px 8px rgba(0,0,0,.55), inset 0 -3px 6px rgba(120, 70, 5, .5), 0 0 14px rgba(255, 207, 90, .45);
+    clip-path: polygon(0 0, 100% 0, 100% 100%, 50% 100%, 0 100%);
+    transition: left ${FLIP_MS}ms cubic-bezier(.5,.05,.25,1), top ${FLIP_MS}ms cubic-bezier(.5,.05,.25,1), width ${FLIP_MS}ms cubic-bezier(.5,.05,.25,1), margin-left ${FLIP_MS}ms cubic-bezier(.5,.05,.25,1), height ${FLIP_MS}ms ease, clip-path ${FLIP_MS}ms ease, filter .2s, transform .15s, background .6s; }
+  #bk-root .bk-chat:hover { filter: brightness(1.12); transform: translateY(-1px); }
+  #bk-root .bk-chat:focus-visible { outline: 2px solid #fff; }
+  #bk-root .bk-book.open .bk-chat { left: var(--W); top: -22px; width: 84px; height: 40px; margin-left: -42px; padding-bottom: 8px; font-size: .78rem; color: #ffe9a8; text-shadow: 0 1px 1px rgba(0,0,0,.7);
+    background: linear-gradient(180deg, #a3262c, #7a1a20 70%, #5a1016); border-color: #d9a441; clip-path: polygon(0 0, 100% 0, 100% 100%, 50% 80%, 0 100%); }
+  #bk-root .bk-chat.notify::after { content: ''; position: absolute; top: 4px; right: 5px; width: 10px; height: 10px; border-radius: 50%; background: #ff3b3b; box-shadow: 0 0 8px #ff3b3b; animation: bkPing 1.1s ease-in-out infinite; }
+  @keyframes bkPing { 50% { transform: scale(1.35); opacity: .65; } }
+  #bk-root .bk-center { position: absolute; z-index: 400; top: 0; bottom: 0; left: calc(100% - 2px); width: 4px; background: linear-gradient(90deg, rgba(0,0,0,.35), rgba(0,0,0,.05)); opacity: 0; pointer-events: none; transition: opacity .4s .3s; }
+  #bk-root .bk-book.open .bk-center { opacity: 1; }
+  #bk-root [inert] { pointer-events: none; }
+  body.dark-mode #bk-root .bk-page { filter: brightness(.82) saturate(.9); }
+  @media (prefers-reduced-motion: reduce) { #bk-root * { transition-duration: .01ms !important; animation-duration: .01ms !important; } }
+  `;
+  document.head.appendChild(st);
+
+  // ---------- عناصر زخرفية ----------
+  const corner = (cls) => `<svg class="bk-corner ${cls}" viewBox="0 0 40 40" aria-hidden="true"><path d="M3 38 V9 Q3 3 9 3 H38" fill="none" stroke="#d9a441" stroke-width="1.7"/><path d="M9 38 V15 Q9 9 15 9 H38" fill="none" stroke="#d9a441" stroke-width=".8" opacity=".8"/><circle cx="9" cy="9" r="2.6" fill="#f2c75c"/><path d="M15 15 Q22 15 22 22" fill="none" stroke="#d9a441" stroke-width="1"/></svg>`;
+  const emblem = `<svg class="bk-emblem" viewBox="0 0 100 100" aria-hidden="true"><defs><linearGradient id="bkgold" x1="0" y1="0" x2="1" y2="1"><stop offset="0" stop-color="#fff1b8"/><stop offset=".5" stop-color="#d9a441"/><stop offset="1" stop-color="#8a5a12"/></linearGradient></defs><circle cx="50" cy="50" r="46" fill="none" stroke="url(#bkgold)" stroke-width="1.8"/><circle cx="50" cy="50" r="41" fill="none" stroke="url(#bkgold)" stroke-width=".8" stroke-dasharray="1.6 2.2"/><path d="M50 10 L58 38 L86 30 L66 50 L86 70 L58 62 L50 90 L42 62 L14 70 L34 50 L14 30 L42 38 Z" fill="none" stroke="url(#bkgold)" stroke-width="1.4" stroke-linejoin="round"/><circle cx="50" cy="50" r="13" fill="url(#bkgold)"/><circle cx="50" cy="50" r="8" fill="#4a1017"/><circle cx="50" cy="50" r="3.2" fill="url(#bkgold)"/></svg>`;
+
+  // ---------- بناء الكتاب ----------
+  const root = document.createElement('div');
+  root.id = 'bk-root';
+  const stage = document.createElement('div'); stage.className = 'bk-stage';
+  const book = document.createElement('div'); book.className = 'bk-book';
+  stage.appendChild(book); root.appendChild(stage);
+  const board = document.createElement('div'); board.className = 'bk-board'; book.appendChild(board);
+
+  const blankPage = (cls) => { const f = document.createElement('div'); f.className = `bk-face ${cls} bk-page`; f.innerHTML = '<div class="bk-orn">❧ ✦ ❧</div><div style="flex:1;display:grid;place-items:center;color:rgba(139,94,30,.35);font-size:2.2rem">❦</div><div class="bk-foot"><span></span><span></span></div>'; return f; };
+  const base = blankPage('front'); base.style.cssText = 'position:absolute;inset:0;z-index:1';
+  base.classList.add('bk-base'); book.appendChild(base);
+
+  function pageFace(n, side, leafIndex) {                       // n: رقم الصفحة (يبدأ من 1)
+    const f = document.createElement('div');
+    f.className = `bk-face ${side} bk-page` + (leafIndex === 0 && side === 'back' ? ' bk-cover-back' : '');
+    const list = pages[n - 1];
+    if (!list) return blankPage(side);
+    const grid = document.createElement('div'); grid.className = 'bk-grid';
+    list.forEach(b => grid.appendChild(b));
+    const foot = document.createElement('div'); foot.className = 'bk-foot';
+    let nav = '<span></span>';
+    if (side === 'back') nav = `<button type="button" class="bk-nav" data-bk="prev">${leafIndex === 0 ? '✕ إغلاق' : '▶ السابق'}</button>`;
+    else if (leafIndex < MAXS) nav = '<button type="button" class="bk-nav" data-bk="next">التالي ◀</button>';
+    foot.innerHTML = side === 'back' ? `${nav}<span class="no">${ar(n)}</span>` : `<span class="no">${ar(n)}</span>${nav}`;
+    f.innerHTML = '<div class="bk-orn">❧ ✦ ❧</div>';
+    f.appendChild(grid); f.appendChild(foot);
+    return f;
+  }
+
+  const leaves = [];
+  for (let i = 0; i < N; i++) {
+    const leaf = document.createElement('div'); leaf.className = `bk-leaf l${i}`;
+    let front, back;
+    if (i === 0) {
+      front = document.createElement('div'); front.className = 'bk-face front bk-cover';
+      front.innerHTML = `<div class="bk-spine"></div>${['tl', 'tr', 'bl', 'br'].map(corner).join('')}${emblem}<div class="bk-title">قائمة اللعبة<small>اضغط لفتح الكتاب</small></div>`;
+      front.setAttribute('role', 'button'); front.setAttribute('tabindex', '0'); front.setAttribute('aria-label', 'افتح كتاب القائمة');
+    } else front = pageFace(2 * i, 'front', i);
+    back = pageFace(2 * i + 1, 'back', i);
+    leaf.appendChild(front); leaf.appendChild(back);
+    book.appendChild(leaf);
+    leaves.push({ el: leaf, front, back });
+  }
+  const center = document.createElement('div'); center.className = 'bk-center'; book.appendChild(center);
+  chat.classList.add('bk-chat');
+  book.appendChild(chat);
+  controls.insertBefore(root, controls.firstChild);
+
+  // ---------- الحالة ----------
+  let state = 0, queue = null;
+  const setInert = (el, on) => { if (on) { el.setAttribute('inert', ''); el.setAttribute('aria-hidden', 'true'); } else { el.removeAttribute('inert'); el.removeAttribute('aria-hidden'); } };
+  function layout(turning) {
+    leaves.forEach((l, i) => {
+      const flipped = i < state;
+      l.el.classList.toggle('flipped', flipped);
+      l.el.style.zIndex = turning === i ? 300 : flipped ? 10 + i : 10 + (N - i);
+      setInert(l.front, !(i === state));                   // الوجه الأمامي ظاهر بس لأعلى ورقة لسا ما انقلبت
+      setInert(l.back, !(i === state - 1));                // والخلفي بس لآخر ورقة انقلبت
+    });
+    setInert(base, state < N);                              // الصفحة الأخيرة تحت الكل
+    book.classList.toggle('open', state > 0);
+    root.dataset.state = String(state);
+  }
+  let sctx = null;
+  function paper(low) {                                     // صوت ورقة خفيف
+    try {
+      const A = window.AudioContext || window.webkitAudioContext; if (!A) return;
+      sctx = sctx || new A(); if (sctx.state === 'suspended') sctx.resume();
+      const len = Math.floor(sctx.sampleRate * (low ? .22 : .32)), buf = sctx.createBuffer(1, len, sctx.sampleRate), d = buf.getChannelData(0);
+      for (let i = 0; i < len; i++) { const t = i / len; d[i] = (Math.random() * 2 - 1) * Math.sin(Math.PI * t) * (1 - t * .5); }
+      const src = sctx.createBufferSource(); src.buffer = buf;
+      const bp = sctx.createBiquadFilter(); bp.type = 'bandpass'; bp.frequency.value = low ? 700 : 2400; bp.Q.value = .7;
+      const g = sctx.createGain(); g.gain.value = low ? .12 : .07;
+      src.connect(bp); bp.connect(g); g.connect(sctx.destination); src.start();
+    } catch (e) {}
+  }
+  function step(dir) {                                      // ورقة وحدة
+    const idx = dir > 0 ? state : state - 1;
+    if (idx < 0 || idx >= leaves.length || (dir > 0 && state >= MAXS)) return false;
+    const l = leaves[idx];
+    state += dir;
+    layout(idx);
+    l.el.classList.add('turning');
+    paper(idx === 0);
+    setTimeout(() => { l.el.classList.remove('turning'); layout(); }, FLIP_MS);
+    return true;
+  }
+  function goTo(target) {                                   // انقلاب متتابع لو أكتر من ورقة (مثلاً عند إغلاق الكتاب)
+    clearInterval(queue);
+    target = Math.max(0, Math.min(MAXS, target));
+    if (target === state) return;
+    const dir = target > state ? 1 : -1;
+    step(dir);
+    if (target === state) return;
+    queue = setInterval(() => { if (state === target || !step(dir)) clearInterval(queue); if (state === target) clearInterval(queue); }, 260);
+  }
+  layout();
+
+  // ---------- التفاعل ----------
+  leaves[0].front.addEventListener('click', (e) => { if (e.target.closest('.bk-chat')) return; if (state === 0) goTo(1); });
+  leaves[0].front.addEventListener('keydown', (e) => { if (e.key === 'Enter' || e.key === ' ') { e.preventDefault(); if (state === 0) goTo(1); } });
+  book.addEventListener('click', (e) => {
+    const n = e.target.closest('[data-bk]'); if (!n) return;
+    if (n.dataset.bk === 'next') goTo(state + 1);
+    else if (state === 1) goTo(0); else goTo(state - 1);
+    if (n.dataset.bk === 'prev' && n.textContent.includes('إغلاق')) goTo(0);
+  });
+  // أي زر بالصفحة (غير الثيم والوضع الليلي) بيسكّر الكتاب بعد ما يشتغل عشان تشوف النافذة اللي انفتحت
+  book.addEventListener('click', (e) => {
+    const b = e.target.closest('.bk-page .btn-main'); if (!b || STAY.has(b.id)) return;
+    setTimeout(() => goTo(0), 260);
+  });
+  // سحب بالإصبع: يمين = الصفحة التالية، يسار = السابقة (الكتاب عربي)
+  let tx = null, ty = null;
+  stage.addEventListener('touchstart', (e) => { if (e.touches.length === 1) { tx = e.touches[0].clientX; ty = e.touches[0].clientY; } }, { passive: true });
+  stage.addEventListener('touchend', (e) => {
+    if (tx === null || state === 0) { tx = null; return; }
+    const dx = e.changedTouches[0].clientX - tx, dy = Math.abs(e.changedTouches[0].clientY - ty); tx = null;
+    if (Math.abs(dx) < 60 || dy > 50) return;
+    if (dx > 0) goTo(state + 1); else goTo(state - 1);
+  }, { passive: true });
+  document.addEventListener('keydown', (e) => {
+    if (state === 0) return;
+    const tag = (e.target && e.target.tagName) || '';
+    if (/INPUT|TEXTAREA|SELECT/.test(tag) || (e.target && e.target.isContentEditable)) return;
+    if (e.key === 'Escape') goTo(0);
+    else if (e.key === 'ArrowLeft') goTo(state + 1);
+    else if (e.key === 'ArrowRight') goTo(state - 1);
+  });
+  window.__bookGoTo = goTo;
+})();
