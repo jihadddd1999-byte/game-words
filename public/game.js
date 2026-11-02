@@ -69,7 +69,15 @@ try { ownerProof = localStorage.getItem('ownerProof'); } catch (e) {}
 
 // أول ما يتصل اللاعب بيرسل اسمه الحقيقي + هوية جهازه، والسيرفر بيقرر دخوله
 socket.on('connect', () => {
-  socket.emit('identify', { token: deviceToken, name: playerName, color: playerColor, proof: ownerProof });
+  let backup = null;
+  try { backup = JSON.parse(localStorage.getItem('progBackup') || 'null'); } catch (e) {}
+  socket.emit('identify', { token: deviceToken, name: playerName, color: playerColor, proof: ownerProof, backup });
+});
+
+// نسخة احتياطية موقّعة من السيرفر لتقدّمك (مستوى، عملات، أغراض...): بترجعلك حتى لو Render سكّر ونسي كل شي
+socket.on('progress:backup', (b) => {
+  if (!b || typeof b.p !== 'string') return;
+  try { localStorage.setItem('progBackup', JSON.stringify(b)); } catch (e) {}
 });
 
 socket.on('admin:owner_proof', (d) => {
@@ -251,7 +259,7 @@ function updatePlayersList(players) {
     li.style.color = color;
     
     // بناء النص الأساسي للاعب
-    let playerHtml = `${i + 1}. ${nameHtml(p.name, p.rawName, p.color, p.fx, p.meta)} - ${p.score} نقطة`;
+    let playerHtml = `${i + 1}. ${nameHtml(p.name, p.rawName, p.color, p.fx, p.meta)} - ${p.score} نقطة <button type="button" class="pg-pbtn" data-pv="${String(p.id).replace(/[^\w-]/g, '')}" title="عرض الملف الشخصي" aria-label="عرض الملف الشخصي">👤</button>`;
 
     li.innerHTML = playerHtml;
     playersList.appendChild(li);
@@ -2872,7 +2880,8 @@ socket.on('gate:approved', (d) => {
   .pg-bchip { padding: 4px 10px; border-radius: 99px; background: rgba(255,255,255,.08); font-size: .76rem; font-weight: 700; color: #f5e9ff; }
   .pg-hint { color: #a99fcf; font-size: .78rem; padding: 4px 2px; }
   .pg-hint button { border: 0; background: transparent; color: #f0abfc; font: 800 .78rem inherit; cursor: pointer; text-decoration: underline; }
-  #players-list li { cursor: pointer; }
+  .pg-pbtn { margin-inline-start: 6px; padding: 0 6px; height: 1.35em; min-width: 1.6em; line-height: 1; font-size: .72em; border-radius: 99px; border: 1px solid rgba(255,255,255,.28); background: rgba(255,255,255,.1); color: #fff; cursor: pointer; vertical-align: middle; transition: transform .15s, background .15s; }
+  .pg-pbtn:hover { background: rgba(168,85,247,.55); transform: scale(1.12); }
   /* محرر التقدم للأدمن الأساسي */
   #apg-overlay { position: fixed; inset: 0; width: 100vw; height: 100vh; max-width: none; max-height: none; margin: 0; padding: 14px; border: 0; background: rgba(4,6,14,.78); display: none; align-items: center; justify-content: center; overflow: hidden; z-index: 10070; direction: rtl; color: #e5e7eb; font-family: inherit; }
   #apg-overlay.apg-open { display: flex; }
@@ -3280,6 +3289,7 @@ socket.on('gate:approved', (d) => {
         <div class="pg-st"><b>📅 ${days}</b><span>يوم معنا</span></div>
       </div>
       ${s.next ? `<div class="pg-next">🎁 المستوى <b>${s.next.lv}</b> بيفتحلك: ${esc(s.next.n)}</div>` : ''}
+      ${s.ow ? '<button class="pg-buy" type="button" data-editme style="width:100%;margin-top:10px">🛠️ تعديل ملفي وإحصائياتي (الأدمن الأساسي)</button>' : ''}
     </div>
     <div class="pg-sec"><h4>🏷️ اللقب <small>بيظهر جنب اسمك</small></h4><div class="pg-chips">${titles}</div></div>
     <div class="pg-sec"><h4>✨ تأثير الاسم</h4><div class="pg-chips">${glows}</div></div>
@@ -3351,9 +3361,9 @@ socket.on('gate:approved', (d) => {
     });
   }
   playersList.addEventListener('click', (e) => {
-    const li = e.target.closest('li');
-    if (!li || !li.dataset.id) return;
-    if (li.dataset.id === playerId) openPanel('profile'); else openPanel('view', li.dataset.id);
+    const b = e.target.closest('.pg-pbtn');
+    if (!b || !b.dataset.pv) return;
+    if (b.dataset.pv === playerId) openPanel('profile'); else openPanel('view', b.dataset.pv);
   });
 
   function bindEquip() {
@@ -3366,6 +3376,12 @@ socket.on('gate:approved', (d) => {
   }
   function bindProfile() {
     bindEquip();
+    const em = $('#pg-body').querySelector('[data-editme]');
+    if (em) em.addEventListener('click', () => {
+      const me = (PG.players || []).find(p => p.id === playerId) || {};
+      closePanel();
+      if (window.__openProgEditor) window.__openProgEditor(playerId, me.rawName || me.name || 'أنا');
+    });
     $('#pg-body').querySelectorAll('[data-bd]').forEach(b => b.addEventListener('click', () => {
       const cur = PG.state.shown.bd.slice(), id = b.dataset.bd, i = cur.indexOf(id);
       if (i >= 0) cur.splice(i, 1);
@@ -3500,7 +3516,7 @@ socket.on('gate:approved', (d) => {
   const esc = (v) => String(v).replace(/[&<>"']/g, c => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;', "'": '&#39;' }[c]));
   const FIELDS = [['lv', 'المستوى'], ['xp', 'الخبرة (XP)'], ['coins', 'العملات'], ['bs', 'أفضل سلسلة'],
     ['a', 'إجابات صحيحة'], ['w', 'جولات فاز بها'], ['f', 'إجابات سريعة'], ['dc', 'تحديات منجزة'],
-    ['sp', 'لفّات العجلة'], ['wr', 'إجابات خاطئة'], ['bt', 'أسرع إجابة (ms)'], ['score', 'نقاط الجولة'], ['wins', 'عدد الفوز']];
+    ['sp', 'لفّات العجلة'], ['wr', 'إجابات خاطئة'], ['bt', 'أسرع إجابة (ms)'], ['score', 'نقاط الجولة (مؤقتة)'], ['wins', 'فوز الجلسة (مؤقت)']];
   let pid = null, pname = '', D = null;
   const read = (d) => ({ lv: d.lv, xp: d.xp, coins: d.coins, bs: d.bs, a: d.s.a, w: d.s.w, f: d.s.f, dc: d.s.dc, sp: d.s.sp, wr: d.s.wr, bt: d.s.bt, score: d.score, wins: d.wins });
 
@@ -3520,7 +3536,7 @@ socket.on('gate:approved', (d) => {
     ov.innerHTML = `
     <div class="apg-card" role="dialog" aria-modal="true">
       <div class="apg-head"><h3>📊 تقدّم اللاعب: ${esc(D.name)}</h3><button type="button" data-x aria-label="إغلاق">✕</button></div>
-      <div class="apg-note">للأدمن الأساسي فقط · التغييرات بتنحفظ فوراً على حساب اللاعب</div>
+      <div class="apg-note">للأدمن الأساسي فقط · التغييرات بتنحفظ على حساب اللاعب وبتضل حتى لو السيرفر طفى (ما عدا «نقاط الجولة» و«فوز الجلسة» لأنها بتتصفّر بطبيعة اللعبة)</div>
       <div class="apg-sec"><b>🔥 السلسلة الحالية: ${D.streak} يوم</b>
         <div class="apg-row">
           <button type="button" data-sa="1">+1</button><button type="button" data-sa="3">+3</button><button type="button" data-sa="7">+7</button><button type="button" data-sa="30">+30</button><button type="button" data-sa="-1">−1</button>
