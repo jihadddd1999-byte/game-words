@@ -323,12 +323,12 @@ BADGES.push(
 function newProg() {
   return { xp: 0, lv: 1, coins: 0, streak: 0, bs: 0, ld: -1, b: {}, eq: {}, wd: -1, run: 0, pm: 0, lc: 0, d: null,
            s: { a: 0, w: 0, f: 0, dc: 0, sp: 0, wr: 0, bt: 0, bx: 0 },
-           own: {}, inv: {}, bxp: 0, bco: 0, da: 0, spent: 0, js: Date.now(), ice: 0, ls: Date.now() };
+           own: {}, inv: {}, bxp: 0, bco: 0, da: 0, spent: 0, js: Date.now(), ice: 0, ls: Date.now(), sv: 0 };
 }
 function sanitizeProg(raw) {
   const pr = newProg();
   if (!raw || typeof raw !== 'object') return pr;
-  ['xp', 'coins', 'streak', 'bs', 'ld', 'wd', 'run', 'pm', 'ls', 'bxp', 'bco', 'da', 'spent', 'js', 'ice'].forEach(k => { if (Number.isFinite(raw[k])) pr[k] = raw[k]; });
+  ['xp', 'coins', 'streak', 'bs', 'ld', 'wd', 'run', 'pm', 'ls', 'bxp', 'bco', 'da', 'spent', 'js', 'ice', 'sv'].forEach(k => { if (Number.isFinite(raw[k])) pr[k] = raw[k]; });
   if (raw.b && typeof raw.b === 'object') Object.keys(raw.b).forEach(k => { if (BADGES.some(x => x.id === k)) pr.b[k] = raw.b[k] || 1; });
   if (raw.own && typeof raw.own === 'object') Object.keys(raw.own).forEach(k => { const it = SHOP_BY.get(k); if (it && !isConsumable(it)) pr.own[k] = raw.own[k] || 1; });
   if (raw.inv && typeof raw.inv === 'object') Object.keys(raw.inv).forEach(k => { const it = SHOP_BY.get(k); const n = Math.floor(Number(raw.inv[k])); if (it && isConsumable(it) && n > 0) pr.inv[k] = Math.min(n, 99); });
@@ -359,7 +359,7 @@ function getProg(p) {
 let progSaveTimer = null;
 function progressDirty() {            // بنحفظ كل شوي مش مع كل إجابة (عشان ما نثقّل التخزين)
   if (progSaveTimer) return;
-  progSaveTimer = setTimeout(() => { progSaveTimer = null; savePersisted(); }, 20000);
+  progSaveTimer = setTimeout(() => { progSaveTimer = null; savePersisted(); }, 5000);
 }
 function emitToToken(tokenHash, ev, payload) {
   players.forEach(pl => { if (pl.tokenHash === tokenHash) io.to(pl.id).emit(ev, payload); });
@@ -575,6 +575,28 @@ function nextUnlock(pr) {
   }
   return out[0] || null;
 }
+// ---- نسخة احتياطية موقّعة بتنحفظ بمتصفح اللاعب: لو Render سكّر ونسي كل شي بترجّعله تقدّمه (ما بتنزوّر لأنها موقّعة بسر السيرفر) ----
+const backupKey = () => crypto.createHash('sha256').update('progress-backup:' + ADMIN_PASSWORD).digest();
+const signBackup = (hash, text) => crypto.createHmac('sha256', backupKey()).update(hash + '|' + text).digest('hex');
+function makeBackup(hash, pr) {
+  pr.sv = Date.now();
+  const p = JSON.stringify(pr);
+  return { p, sig: signBackup(hash, p) };
+}
+function restoreBackup(hash, b) {
+  try {
+    if (!b || typeof b.p !== 'string' || typeof b.sig !== 'string' || b.p.length > 30000 || !/^[0-9a-f]{64}$/.test(b.sig)) return;
+    if (!crypto.timingSafeEqual(Buffer.from(b.sig, 'hex'), Buffer.from(signBackup(hash, b.p), 'hex'))) return;
+    const raw = JSON.parse(b.p);
+    const cur = progress.get(hash);
+    const sv = Number(raw.sv) || 0;
+    if (cur && (cur.sv || 0) >= sv) return;            // السيرفر عنده نسخة أحدث أو مساوية: ما بنلمسها
+    const pr = sanitizeProg(raw);
+    pr.sv = sv;
+    progress.set(hash, pr);
+    savePersisted();
+  } catch (e) { /* نسخة تالفة: بنتجاهلها */ }
+}
 function stateOf(p) {
   const pr = getProg(p);
   rollDay(pr);
@@ -597,7 +619,8 @@ function stateOf(p) {
     boost: { xp: Math.max(0, pr.bxp - now), coin: Math.max(0, pr.bco - now) },
     dbl: pr.da || 0,
     deal: { id: dl.id, price: dl.price, pct: dl.pct },
-    next: nextUnlock(pr)
+    next: nextUnlock(pr),
+    ow: ownerSockets.has(p.id)
   };
 }
 const progPushTimers = new Map();
@@ -606,7 +629,10 @@ function pushProgress(tokenHash) {           // بنجمّع الدفعات ال
   progPushTimers.set(tokenHash, setTimeout(() => {
     progPushTimers.delete(tokenHash);
     const p = [...players.values()].find(x => x.tokenHash === tokenHash);
-    if (p) emitToToken(tokenHash, 'progress:state', stateOf(p));
+    if (p) {
+      emitToToken(tokenHash, 'progress:state', stateOf(p));
+      emitToToken(tokenHash, 'progress:backup', makeBackup(tokenHash, getProg(p)));
+    }
   }, 150));
 }
 function catalogPayload() {
@@ -1355,6 +1381,7 @@ function removePlayer(p, announce) {
   emitAll('typing', [...typingUsers]);
   if (announce && !p.isHiddenFromRoom) sendSystemMessage(`${p.name} خرج من اللعبة.`);
   players.delete(p.id);
+  savePersisted();
   authenticatedAdmins.delete(p.id);
   ownerSockets.delete(p.id);
   allowedMuteBypass.delete(p.id);
@@ -1396,6 +1423,7 @@ function grantAdmin(socket, owner) {
   if (owner) {
     ownerSockets.add(socket.id);
     applyStealth(p, persisted.stealthMode);
+    pushProgress(p.tokenHash);
   } else {
     applyStealth(p, 0); // الأدمن الثانوي دايماً ظاهر وما بقدر يخفي حاله
   }
@@ -1470,6 +1498,7 @@ io.on('connection', (socket) => {
     const token = (typeof data.token === 'string' && data.token.length >= 16 && data.token.length <= 200)
       ? data.token : socket.id;
     const tokenHash = hashToken(token);
+    restoreBackup(tokenHash, data.backup);
     const ident = {
       tokenHash,
       ip: clientIP,
