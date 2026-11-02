@@ -98,7 +98,29 @@ function scrollChatToBottom() {
   }
 }
 
-function colorizeName(name, color = null) {
+// ===== نظام التقدّم: بيانات مشتركة بين عرض الأسماء ونافذة اللاعب =====
+const PG = { cat: null, state: null, at: 0, players: null, rot: 0 };
+const PG_TIERS = [1, 5, 10, 20, 30, 40, 50, 65, 80, 100];
+function tierOf(lv) { let t = 0; PG_TIERS.forEach((v, i) => { if (lv >= v) t = i; }); return t; }
+function pgEsc(v) { return String(v).replace(/[&<>"']/g, c => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;', "'": '&#39;' }[c])); }
+// المستوى (أُس) + اللقب + الشارات الصغيرة جنب الاسم
+function metaHtml(m) {
+  if (!m || !m.lv) return '';
+  const cf = m.cf && /^cf_[a-z]+$/.test(m.cf) ? ' ' + m.cf : '';
+  let h = `<sup class="lvx t${tierOf(m.lv)}${cf}" title="المستوى ${m.lv}">${m.lv}</sup>`;
+  const cat = PG.cat;
+  if (cat) {
+    const t = m.ti && cat.titles.find(x => x.id === m.ti);
+    if (t) h += `<span class="ttl t${tierOf(t.lv)}">${pgEsc(t.n)}</span>`;
+    (m.bd || []).forEach(id => {
+      const b = cat.badges.find(x => x.id === id);
+      if (b) h += `<span class="bdg" title="${pgEsc(b.n)}">${b.e}</span>`;
+    });
+  }
+  return h;
+}
+
+function colorizeName(name, color = null, glow = null, nc = null) {
   // تأثير خاص لاسم كول (فقط بالشات)
   if (name === "كول") {
     return `
@@ -110,17 +132,19 @@ function colorizeName(name, color = null) {
   if (!color) {
     color = specialNameColors[name] || '#00e5ff';
   }
-  return `<span style="color: ${color}; font-weight: 700;">${name}</span>`;
+  if (nc && PG.cat && PG.cat.shop) { const it = PG.cat.shop.find(x => x.id === nc && x.cat === 'nc'); if (it && it.v) color = it.v; }
+  const gcls = glow && /^[gs]_[a-z]+$/.test(glow) ? ` class="ng-${glow}"` : '';
+  return `<span${gcls} style="color: ${color}; font-weight: 700;">${name}</span>`;
 }
 
 // اسم بتأثير خاص (مثل REDO للأدمن الأساسي): السيرفر هو اللي بيحدد مين له التأثير (fx)
-function nameHtml(displayName, rawName, color, fx) {
+function nameHtml(displayName, rawName, color, fx, meta) {
   if (fx === 'redo' && rawName && String(displayName).endsWith(String(rawName))) {
     const prefix = String(displayName).slice(0, String(displayName).length - String(rawName).length);
     const pre = prefix ? `<span style="color: ${color || '#00e5ff'}; font-weight: 700;">${prefix}</span>` : '';
-    return `${pre}<span class="redo-name">${rawName}<i class="rb rb1"></i><i class="rb rb2"></i><i class="rb rb3"></i><i class="rb rb4"></i></span>`;
+    return `${pre}<span class="redo-name">${rawName}<i class="rb rb1"></i><i class="rb rb2"></i><i class="rb rb3"></i><i class="rb rb4"></i></span>${metaHtml(meta)}`;
   }
-  return colorizeName(displayName, color);
+  return colorizeName(displayName, color, meta && meta.gl, meta && meta.nc) + metaHtml(meta);
 }
 
 // تمييز كلمات خاصة في نص الرسائل مع اهتزاز إن لزم الأمر
@@ -146,7 +170,7 @@ function highlightSpecialWords(text) {
 }
 
 // إضافة رسالة جديدة للشات
-function addChatMessage({ name, message, system = false, color = null, time = '', fx = null, rawName = '' }) {
+function addChatMessage({ name, message, system = false, color = null, time = '', fx = null, rawName = '', meta = null }) {
   const div = document.createElement('div');
   div.classList.add('chat-message');
 
@@ -169,10 +193,11 @@ function addChatMessage({ name, message, system = false, color = null, time = ''
   } else {
     const nameSpan = document.createElement('span');
     nameSpan.classList.add('chat-name');
-    nameSpan.innerHTML = nameHtml(name, rawName, color, fx);
+    nameSpan.innerHTML = nameHtml(name, rawName, color, fx, meta);
 
     const messageSpan = document.createElement('span');
     messageSpan.classList.add('chat-text');
+    if (meta && meta.cc && /^cc_[a-z]+$/.test(meta.cc)) messageSpan.classList.add(meta.cc);
     messageSpan.innerHTML = highlightSpecialWords(message);
 
     div.appendChild(nameSpan);
@@ -210,6 +235,7 @@ function playNotificationSound() {
 
 // تحديث قائمة اللاعبين بالترتيب
 function updatePlayersList(players) {
+  PG.players = players;
   playersList.innerHTML = '';
 
   players.forEach((p, i) => {
@@ -225,7 +251,7 @@ function updatePlayersList(players) {
     li.style.color = color;
     
     // بناء النص الأساسي للاعب
-    let playerHtml = `${i + 1}. ${nameHtml(p.name, p.rawName, p.color, p.fx)} - ${p.score} نقطة`;
+    let playerHtml = `${i + 1}. ${nameHtml(p.name, p.rawName, p.color, p.fx, p.meta)} - ${p.score} نقطة`;
 
     li.innerHTML = playerHtml;
     playersList.appendChild(li);
@@ -338,7 +364,8 @@ socket.on('chatMessage', data => {
     color: data.color || null,
     time: data.time || '',
     fx: data.fx || null,
-    rawName: data.rawName || ''
+    rawName: data.rawName || '',
+    meta: data.meta || null
   });
 });
 
@@ -1872,6 +1899,11 @@ socket.on('gate:approved', (d) => {
             <span>⚡ إخفاء الرعد عنه</span>
             <span class="tooltip-icon" title="لما يكون مفعّل (أخضر) ما بيظهر الرعد ولا صوته عند هذا اللاعب. اضغط مرة ثانية ليرجع يشوفه">❓</span>
           </button>`;
+        ownerExtras += `
+          <button class="btn-action" data-act="prog" data-id="${id}">
+            <span>📊 التقدم والسلسلة</span>
+            <span class="tooltip-icon" title="للأدمن الأساسي فقط: إضافة سلسلة أيام، وتعديل المستوى والعملات وإحصائيات اللاعب ومنحه شارات وأغراض">❓</span>
+          </button>`;
         if (player.isAdmin) {
           ownerExtras += `
           <button class="btn-action danger" data-act="revoke" data-id="${id}">
@@ -2034,6 +2066,9 @@ socket.on('gate:approved', (d) => {
           emitAdminAction('thunder:hide_for', { playerId: pid, hide: !p.thunderHidden });
           setLed(btn, !p.thunderHidden);
           logAudit(p.thunderHidden ? `إرجاع الرعد للاعب (${name}).` : `إخفاء الرعد عن (${name}).`, 'info');
+          break;
+        case 'prog':
+          if (window.__openProgEditor) window.__openProgEditor(pid, name);
           break;
         case 'revoke':
           emitAdminAction('revoke_admin', { playerId: pid });
@@ -2609,4 +2644,934 @@ socket.on('gate:approved', (d) => {
     }
     restartTicker();
   });
+})();
+
+/* ==========================================================================
+   🌟 نظام التقدّم (الواجهة): مستوى جنب الاسم + ألقاب وشارات وتأثيرات + التحدي اليومي + عجلة الحظ + ملفي + المتجر (قريباً)
+   كل الأرقام بيحسبها السيرفر، وهون بس عرض وطلبات
+   ========================================================================== */
+(() => {
+  const css = `
+  /* ---------- المستوى (أُس) واللقب والشارات جنب الاسم ---------- */
+  .t0 { --tc: #9aa4b2; } .t1 { --tc: #5eead4; } .t2 { --tc: #4ade80; } .t3 { --tc: #60a5fa; } .t4 { --tc: #a78bfa; }
+  .t5 { --tc: #fbbf24; } .t6 { --tc: #fb923c; } .t7 { --tc: #f472b6; } .t8 { --tc: #f0abfc; } .t9 { --tc: #bae6fd; }
+  .lvx {
+    display: inline-block; font: 800 .62em/1.35 system-ui, sans-serif; letter-spacing: 0; margin-inline-start: .22em;
+    padding: 0 .38em; border-radius: .8em; vertical-align: super; color: var(--tc);
+    background: rgba(8, 8, 16, .45); border: 1px solid color-mix(in srgb, var(--tc) 65%, transparent);
+    text-shadow: none; box-shadow: 0 0 .5em color-mix(in srgb, var(--tc) 35%, transparent); cursor: default; user-select: none;
+  }
+  .lvx.t5, .lvx.t6, .lvx.t7 { box-shadow: 0 0 .7em color-mix(in srgb, var(--tc) 55%, transparent); }
+  .lvx.t8 { animation: pgHue 5s linear infinite; }
+  .lvx.t9 { animation: pgShine 2.6s ease-in-out infinite; }
+  .ttl {
+    display: inline-block; font: 700 .6em/1.4 inherit; margin-inline-start: .45em; padding: .02em .55em; border-radius: 99px;
+    vertical-align: middle; white-space: nowrap; letter-spacing: 0; text-shadow: none; cursor: default; user-select: none;
+    color: var(--tc); background: linear-gradient(135deg, rgba(255,255,255,.12), rgba(255,255,255,.02));
+    border: 1px solid color-mix(in srgb, var(--tc) 55%, transparent);
+  }
+  .bdg { display: inline-block; font-size: .8em; margin-inline-start: .2em; vertical-align: middle; cursor: default; text-shadow: none; filter: drop-shadow(0 0 3px rgba(255,255,255,.3)); }
+  @keyframes pgHue { to { filter: hue-rotate(360deg); } }
+  @keyframes pgShine { 0%, 100% { box-shadow: 0 0 .5em #7dd3fc88; } 50% { box-shadow: 0 0 1em #e0f2fe; } }
+
+  /* تأثيرات الاسم (بتنفتح بالمستوى) */
+  .ng-g_green  { text-shadow: 0 0 5px #22c55e, 0 0 12px #16a34a99; }
+  .ng-g_blue   { text-shadow: 0 0 5px #38bdf8, 0 0 12px #2563ebaa; }
+  .ng-g_purple { text-shadow: 0 0 5px #c084fc, 0 0 13px #7e22ceaa; }
+  .ng-g_gold   { text-shadow: 0 0 4px #fde047, 0 0 12px #f59e0bcc, 0 0 20px #b4530999; }
+  .ng-g_fire   { text-shadow: 0 -1px 3px #fff, 0 -3px 7px #fde047, 0 -6px 12px #fb923c, 0 -9px 18px #ef4444; animation: pgFire 1.4s ease-in-out infinite alternate; }
+  .ng-g_ice    { text-shadow: 0 0 4px #e0f2fe, 0 0 11px #38bdf8, 0 0 20px #0ea5e9; }
+  .ng-g_rainbow, .ng-g_diamond { -webkit-text-fill-color: transparent; color: transparent !important; background-clip: text; -webkit-background-clip: text; background-size: 220% 100%; }
+  .ng-g_rainbow { background-image: linear-gradient(90deg, #f43f5e, #f59e0b, #84cc16, #06b6d4, #8b5cf6, #f43f5e); animation: pgSlide 4s linear infinite; }
+  .ng-g_diamond { background-image: linear-gradient(110deg, #bae6fd 25%, #fff 45%, #7dd3fc 55%, #bae6fd 75%); animation: pgSlide 2.8s linear infinite; filter: drop-shadow(0 0 4px #7dd3fc); }
+  @keyframes pgFire { from { text-shadow: 0 -1px 3px #fff, 0 -3px 6px #fde047, 0 -5px 11px #fb923c, 0 -8px 16px #ef4444; } to { text-shadow: 0 -2px 4px #fff, 0 -4px 8px #fde047, 0 -8px 14px #fb923c, 0 -12px 22px #ef4444; } }
+  @keyframes pgSlide { to { background-position: -220% 0; } }
+
+  /* ---------- أزرار القائمة ---------- */
+  #btn-daily, #btn-pass, #btn-profile, #btn-store { position: relative; }
+  .pg-dot { position: absolute; top: 2px; inset-inline-end: 6px; width: 12px; height: 12px; border-radius: 50%; background: #ef4444; border: 2px solid #fff; box-shadow: 0 0 8px #ef4444; display: none; animation: pgPulse 1.6s ease-in-out infinite; }
+  .pg-dot.on { display: block; }
+  .pg-lvtag { font-size: .72em; opacity: .85; margin-inline-start: .35em; }
+  @keyframes pgPulse { 50% { transform: scale(1.25); } }
+
+  /* ---------- النافذة ---------- */
+  #pg-overlay {
+    position: fixed; inset: 0; width: 100vw; height: 100vh; max-width: none; max-height: none; margin: 0; padding: 14px; border: 0;
+    background: rgba(6, 4, 14, .72); backdrop-filter: blur(4px); -webkit-backdrop-filter: blur(4px);
+    display: none; align-items: center; justify-content: center; overflow: hidden; z-index: 10040; color: #f3eefc;
+    font-family: inherit; direction: rtl;
+  }
+  #pg-overlay:popover-open, #pg-overlay.pg-open { display: flex; }
+  .pg-card {
+    width: min(460px, 100%); max-height: min(92vh, 780px); display: flex; flex-direction: column; border-radius: 22px; overflow: hidden;
+    background: linear-gradient(160deg, #1c1433 0%, #120d24 60%, #0d0a1a 100%);
+    border: 1px solid rgba(167, 139, 250, .35); box-shadow: 0 20px 60px rgba(0,0,0,.6), 0 0 40px rgba(124, 58, 237, .25);
+    animation: pgIn .28s ease-out;
+  }
+  @keyframes pgIn { from { opacity: 0; transform: translateY(14px) scale(.97); } }
+  .pg-head { display: flex; align-items: center; justify-content: space-between; padding: 12px 14px 4px; }
+  .pg-head h3 { margin: 0; font-size: 1.05rem; font-weight: 800; color: #fde68a; }
+  .pg-x { background: rgba(255,255,255,.08); border: 0; color: #e9e3ff; width: 32px; height: 32px; border-radius: 50%; font-size: 1.1rem; cursor: pointer; }
+  .pg-x:hover { background: rgba(255,255,255,.18); }
+  .pg-tabs { display: flex; gap: 6px; padding: 8px 12px 10px; }
+  .pg-tab { flex: 1; border: 1px solid rgba(255,255,255,.1); background: rgba(255,255,255,.05); color: #cfc6ee; padding: 8px 4px; border-radius: 12px; font: 700 .86rem inherit; cursor: pointer; transition: .2s; position: relative; }
+  .pg-tab.on { background: linear-gradient(135deg, #7c3aed, #c026d3); color: #fff; border-color: transparent; box-shadow: 0 4px 16px rgba(168, 85, 247, .45); }
+  .pg-body { overflow-y: auto; padding: 4px 14px 16px; scrollbar-width: thin; }
+  .pg-sec { margin-top: 14px; }
+  .pg-sec > h4 { margin: 0 0 8px; font-size: .9rem; color: #ddd6fe; display: flex; align-items: center; gap: 6px; }
+  .pg-sec > h4 small { color: #9d92c4; font-weight: 600; margin-inline-start: auto; font-size: .75rem; }
+  .pg-box { background: rgba(255,255,255,.05); border: 1px solid rgba(255,255,255,.09); border-radius: 16px; padding: 12px; }
+
+  /* التحدي */
+  .pg-ch { display: flex; gap: 12px; align-items: center; }
+  .pg-ch-ic { font-size: 2.2rem; width: 58px; height: 58px; flex: none; display: grid; place-items: center; border-radius: 16px; background: linear-gradient(135deg, #4c1d95, #86198f); box-shadow: 0 0 18px rgba(192, 38, 211, .45); }
+  .pg-ch-t { font-weight: 800; font-size: 1rem; color: #fff; }
+  .pg-ch-d { color: #c4b9e6; font-size: .85rem; margin-top: 2px; }
+  .pg-bar { height: 12px; border-radius: 99px; background: rgba(255,255,255,.1); overflow: hidden; margin-top: 12px; position: relative; }
+  .pg-bar > i { display: block; height: 100%; width: 0; border-radius: inherit; background: linear-gradient(90deg, #a855f7, #f0abfc); box-shadow: 0 0 12px #c084fc; transition: width .6s cubic-bezier(.2,.8,.2,1); }
+  .pg-bar.done > i { background: linear-gradient(90deg, #22c55e, #86efac); box-shadow: 0 0 12px #4ade80; }
+  .pg-row { display: flex; align-items: center; justify-content: space-between; gap: 8px; margin-top: 8px; font-size: .82rem; color: #bfb4e3; flex-wrap: wrap; }
+  .pg-chip { display: inline-flex; align-items: center; gap: 4px; padding: 3px 10px; border-radius: 99px; background: rgba(255,255,255,.08); font-weight: 700; color: #fde68a; font-size: .8rem; }
+  .pg-time { font-variant-numeric: tabular-nums; color: #f0abfc; font-weight: 700; }
+  .pg-ok { color: #86efac; font-weight: 800; }
+
+  /* السلسلة */
+  .pg-streak { display: flex; align-items: center; gap: 12px; }
+  .pg-flame { font-size: 2.1rem; filter: drop-shadow(0 0 8px #fb923c); }
+  .pg-flame.off { filter: grayscale(1) opacity(.5); }
+  .pg-sn { font-size: 1.5rem; font-weight: 900; color: #fff; line-height: 1; }
+  .pg-sl { font-size: .78rem; color: #bfb4e3; }
+  .pg-ms { display: flex; gap: 6px; margin-top: 10px; }
+  .pg-m { flex: 1; text-align: center; padding: 6px 2px; border-radius: 12px; background: rgba(255,255,255,.05); border: 1px solid rgba(255,255,255,.09); font-size: .72rem; color: #a99fcf; }
+  .pg-m b { display: block; font-size: .95rem; color: #ddd6fe; }
+  .pg-m.got { background: linear-gradient(160deg, rgba(251,146,60,.28), rgba(244,63,94,.18)); border-color: rgba(251,146,60,.6); color: #ffedd5; }
+  .pg-m.got b { color: #fff; }
+
+  /* العجلة */
+  .pg-wheel-wrap { position: relative; width: min(280px, 78vw); aspect-ratio: 1; margin: 6px auto 4px; }
+  .pg-wheel-wrap svg { width: 100%; height: 100%; overflow: visible; display: block; }
+  .pg-wheel-rot { transform-origin: 100px 100px; transform-box: view-box; }
+  .pg-wheel-rot.spin { transition: transform 5.2s cubic-bezier(.12, .62, .08, 1); }
+  .pg-pointer { position: absolute; top: -8px; left: 50%; transform: translateX(-50%); width: 0; height: 0; border-left: 13px solid transparent; border-right: 13px solid transparent; border-top: 26px solid #fde047; filter: drop-shadow(0 2px 4px rgba(0,0,0,.7)) drop-shadow(0 0 8px #facc15); z-index: 2; }
+  .pg-lights circle { animation: pgBlink 1.2s steps(1) infinite; }
+  .pg-lights circle:nth-child(even) { animation-delay: .6s; }
+  @keyframes pgBlink { 0% { opacity: 1; } 50% { opacity: .25; } }
+  /* ---------- المتجر والمسار: ألوان وتأثيرات وإطارات ---------- */
+  .ng-s_shadow  { text-shadow: 0 2px 0 #000, 0 0 8px #000, 0 0 14px rgba(255,255,255,.4); }
+  .ng-s_neon    { text-shadow: 0 0 3px #fff, 0 0 9px #22d3ee, 0 0 20px #22d3ee, 0 0 32px #e879f9; animation: pgNeon 2.2s ease-in-out infinite alternate; }
+  .ng-s_glitch  { animation: pgGlitch 1.1s steps(1) infinite; }
+  .ng-s_electric { text-shadow: 0 0 5px #fef08a, 0 0 12px #60a5fa, 0 0 22px #3b82f6; animation: pgZap 1.7s steps(1) infinite; }
+  .ng-s_sakura, .ng-s_ocean, .ng-s_lava, .ng-s_aurora, .ng-s_gold, .ng-s_galaxy, .ng-s_eternal {
+    -webkit-text-fill-color: transparent; color: transparent !important; background-clip: text; -webkit-background-clip: text; background-size: 240% 100%;
+  }
+  .ng-s_sakura { background-image: linear-gradient(90deg, #fbcfe8, #f472b6, #fda4af, #f472b6, #fbcfe8); animation: pgSlide 5s linear infinite; filter: drop-shadow(0 0 4px #f9a8d4); }
+  .ng-s_ocean  { background-image: linear-gradient(90deg, #22d3ee, #3b82f6, #67e8f9, #3b82f6, #22d3ee); animation: pgSlide 4s linear infinite; filter: drop-shadow(0 0 4px #38bdf8); }
+  .ng-s_lava   { background-image: linear-gradient(90deg, #fde047, #f97316, #dc2626, #f97316, #fde047); animation: pgSlide 2.6s linear infinite; filter: drop-shadow(0 0 5px #f97316); }
+  .ng-s_aurora { background-image: linear-gradient(90deg, #34d399, #22d3ee, #a78bfa, #f0abfc, #34d399); animation: pgSlide 6s linear infinite; filter: drop-shadow(0 0 5px #67e8f9); }
+  .ng-s_gold   { background-image: linear-gradient(110deg, #b45309 20%, #fde047 40%, #fff 50%, #fde047 60%, #b45309 80%); animation: pgSlide 3s linear infinite; filter: drop-shadow(0 0 4px #f59e0b); }
+  .ng-s_galaxy { background-image: linear-gradient(90deg, #4338ca, #7c3aed, #ec4899, #38bdf8, #4338ca); animation: pgSlide 5s linear infinite; filter: drop-shadow(0 0 6px #a78bfa); }
+  .ng-s_eternal { background-image: linear-gradient(90deg, #fde047, #f472b6, #a78bfa, #22d3ee, #34d399, #fde047); animation: pgSlide 3.2s linear infinite, pgHue 7s linear infinite; filter: drop-shadow(0 0 7px #fff); }
+  @keyframes pgNeon { from { text-shadow: 0 0 2px #fff, 0 0 7px #22d3ee, 0 0 14px #22d3ee, 0 0 24px #e879f9; } to { text-shadow: 0 0 4px #fff, 0 0 12px #22d3ee, 0 0 26px #22d3ee, 0 0 42px #e879f9; } }
+  @keyframes pgGlitch { 0%, 100% { text-shadow: 2px 0 #f0f, -2px 0 #0ff; } 20% { text-shadow: -2px 0 #f0f, 2px 0 #0ff; } 40% { text-shadow: 1px 1px #f0f, -1px -1px #0ff; } 60% { text-shadow: none; } 80% { text-shadow: 3px 0 #f0f, -3px 0 #0ff; } }
+  @keyframes pgZap { 0%, 100% { text-shadow: 0 0 5px #fef08a, 0 0 12px #60a5fa, 0 0 22px #3b82f6; } 50% { text-shadow: 0 0 2px #fef08a, 0 0 5px #60a5fa; } 55% { text-shadow: 0 0 9px #fff, 0 0 20px #93c5fd, 0 0 34px #3b82f6; } 60% { text-shadow: 0 0 5px #fef08a, 0 0 12px #60a5fa; } }
+
+  /* إطارات المستوى */
+  .lvx.cf_bronze  { color: #ffe0c2; background: linear-gradient(135deg, #7c3f12, #b8672b); border-color: #e09a5a; box-shadow: 0 0 .4em #b8672b99; }
+  .lvx.cf_silver  { color: #fff; background: linear-gradient(135deg, #64748b, #cbd5e1); border-color: #f1f5f9; box-shadow: 0 0 .5em #cbd5e1aa; text-shadow: 0 1px 1px #0008; }
+  .lvx.cf_gold    { color: #3b2300; background: linear-gradient(135deg, #f59e0b, #fde047); border-color: #fff7c2; box-shadow: 0 0 .7em #fbbf24cc; }
+  .lvx.cf_diamond { color: #083344; background: linear-gradient(135deg, #67e8f9, #e0f2fe, #a5f3fc); border-color: #fff; box-shadow: 0 0 .8em #67e8f9; animation: pgShine 2.2s ease-in-out infinite; }
+  .lvx.cf_legend  { color: #fff; background: linear-gradient(135deg, #7c3aed, #db2777, #f59e0b); border-color: #fde68a; box-shadow: 0 0 1em #db2777, 0 0 .5em #f59e0b; animation: pgHue 4s linear infinite; }
+  .lvx.cf_flame   { color: #fff7ed; background: linear-gradient(0deg, #b91c1c, #f97316); border-color: #fde047; box-shadow: 0 -.1em .6em #f97316, 0 0 .3em #fde047; animation: pgFlame 1.1s ease-in-out infinite alternate; }
+  .lvx.cf_ice     { color: #0c4a6e; background: linear-gradient(135deg, #e0f2fe, #7dd3fc); border-color: #fff; box-shadow: 0 0 .7em #7dd3fc; }
+  .lvx.cf_neon    { color: #fff; background: #0b0720; border-color: #f0abfc; box-shadow: 0 0 .5em #e879f9, inset 0 0 .4em #e879f9aa; text-shadow: 0 0 4px #f0abfc; animation: pgNeonBox 1.8s ease-in-out infinite alternate; }
+  .lvx.cf_royal   { color: #fde68a; background: linear-gradient(135deg, #3b0764, #6d28d9); border-color: #fbbf24; box-shadow: 0 0 .6em #7c3aedaa, 0 0 0 1px #fbbf2455; }
+  .lvx.cf_rainbow { color: #fff; border: 1.5px solid transparent; background: linear-gradient(#150f2b, #150f2b) padding-box, linear-gradient(90deg, #f43f5e, #f59e0b, #84cc16, #06b6d4, #8b5cf6, #f43f5e) border-box; animation: pgHue 5s linear infinite; }
+  @keyframes pgFlame { to { box-shadow: 0 -.2em .9em #f97316, 0 0 .4em #fde047; } }
+  @keyframes pgNeonBox { to { box-shadow: 0 0 .9em #e879f9, inset 0 0 .6em #e879f9; } }
+
+  /* ألوان رسائل الشات */
+  .chat-text.cc_gold { color: #fde68a !important; text-shadow: 0 0 6px #f59e0b66; }
+  .chat-text.cc_cyan { color: #67e8f9 !important; text-shadow: 0 0 6px #06b6d466; }
+  .chat-text.cc_pink { color: #f9a8d4 !important; text-shadow: 0 0 6px #ec489966; }
+  .chat-text.cc_green { color: #86efac !important; text-shadow: 0 0 6px #22c55e66; }
+  .chat-text.cc_ember { color: #fdba74 !important; text-shadow: 0 0 7px #ea580c88; }
+  .chat-text.cc_royal { color: #c4b5fd !important; text-shadow: 0 0 8px #7c3aedaa; }
+  .chat-text.cc_rainbow { color: transparent !important; -webkit-text-fill-color: transparent; background: linear-gradient(90deg, #f43f5e, #f59e0b, #84cc16, #06b6d4, #8b5cf6, #f43f5e) 0 0 / 240% 100%; -webkit-background-clip: text; background-clip: text; animation: pgSlide 5s linear infinite; }
+
+  /* خلفيات الملف الشخصي */
+  .pf_sunset { background: linear-gradient(135deg, rgba(249,115,22,.45), rgba(190,24,93,.4) 55%, rgba(76,29,149,.5)) !important; border-color: rgba(251,146,60,.5) !important; }
+  .pf_ocean  { background: linear-gradient(135deg, rgba(6,182,212,.4), rgba(37,99,235,.42) 60%, rgba(30,27,75,.55)) !important; border-color: rgba(103,232,249,.5) !important; }
+  .pf_forest { background: linear-gradient(135deg, rgba(34,197,94,.38), rgba(21,128,61,.4) 55%, rgba(6,78,59,.55)) !important; border-color: rgba(134,239,172,.5) !important; }
+  .pf_night  { background: radial-gradient(circle at 80% 15%, rgba(147,197,253,.3), transparent 35%), linear-gradient(160deg, rgba(30,27,75,.85), rgba(2,6,23,.9)) !important; border-color: rgba(129,140,248,.5) !important; }
+  .pf_gold   { background: linear-gradient(135deg, rgba(251,191,36,.5), rgba(180,83,9,.45) 55%, rgba(69,26,3,.6)) !important; border-color: rgba(253,224,71,.65) !important; }
+  .pf_aurora { background: linear-gradient(135deg, rgba(52,211,153,.4), rgba(34,211,238,.35) 35%, rgba(167,139,250,.42) 70%, rgba(240,171,252,.35)) !important; border-color: rgba(167,243,208,.55) !important; }
+  .pf_dawn   { background: linear-gradient(160deg, rgba(254,215,170,.4), rgba(251,113,133,.4) 50%, rgba(99,102,241,.45)) !important; border-color: rgba(253,186,116,.55) !important; }
+  .pf_royal  { background: linear-gradient(135deg, rgba(109,40,217,.6), rgba(76,29,149,.6) 60%, rgba(251,191,36,.3)) !important; border-color: rgba(251,191,36,.6) !important; box-shadow: 0 0 22px rgba(124,58,237,.4); }
+  .pf_cosmos { background: radial-gradient(circle at 20% 20%, rgba(236,72,153,.4), transparent 38%), radial-gradient(circle at 80% 70%, rgba(56,189,248,.35), transparent 40%), linear-gradient(160deg, rgba(30,10,60,.9), rgba(3,7,18,.95)) !important; border-color: rgba(192,132,252,.6) !important; box-shadow: 0 0 26px rgba(168,85,247,.45); }
+
+  /* ---------- نوافذ المتجر والمسار ---------- */
+  .pg-card { position: relative; }
+  .pg-body { position: relative; }
+  .pg-tab { font-size: .78rem; padding: 8px 2px; }
+  .pg-coinbar { display: flex; align-items: center; justify-content: space-between; gap: 8px; padding: 10px 14px; border-radius: 16px; background: linear-gradient(135deg, rgba(251,191,36,.18), rgba(245,158,11,.08)); border: 1px solid rgba(251,191,36,.4); }
+  .pg-coinbar b { font-size: 1.25rem; color: #fde68a; }
+  .pg-coinbar span { font-size: .78rem; color: #cfc6ee; }
+  .pg-deal { position: relative; margin-top: 12px; padding: 12px; border-radius: 18px; border: 1px solid rgba(251,113,133,.6); background: linear-gradient(135deg, rgba(190,24,93,.35), rgba(124,58,237,.3)); overflow: hidden; }
+  .pg-deal::after { content: ''; position: absolute; inset: 0; background: linear-gradient(110deg, transparent 35%, rgba(255,255,255,.14) 50%, transparent 65%); transform: translateX(-120%); animation: pgSweep 3.6s ease-in-out infinite; pointer-events: none; }
+  .pg-deal h5 { margin: 0 0 8px; font-size: .86rem; color: #fecdd3; display: flex; justify-content: space-between; align-items: center; }
+  .pg-deal h5 em { font-style: normal; background: #e11d48; color: #fff; border-radius: 99px; padding: 1px 9px; font-weight: 900; font-size: .78rem; }
+  .pg-cats { display: flex; gap: 6px; overflow-x: auto; padding: 12px 0 4px; scrollbar-width: none; }
+  .pg-cats::-webkit-scrollbar { display: none; }
+  .pg-cat { flex: none; border: 1px solid rgba(255,255,255,.12); background: rgba(255,255,255,.05); color: #cfc6ee; padding: 6px 12px; border-radius: 99px; font: 700 .78rem inherit; cursor: pointer; }
+  .pg-cat.on { background: linear-gradient(135deg, #7c3aed, #c026d3); color: #fff; border-color: transparent; }
+  .pg-grid { display: grid; grid-template-columns: repeat(2, 1fr); gap: 10px; }
+  .pg-item { display: flex; flex-direction: column; gap: 6px; padding: 10px; border-radius: 16px; background: rgba(255,255,255,.05); border: 1px solid rgba(255,255,255,.1); text-align: center; min-width: 0; }
+  .pg-item.owned { border-color: rgba(74,222,128,.5); background: rgba(34,197,94,.08); }
+  .pg-prev { min-height: 62px; display: grid; place-items: center; border-radius: 12px; background: rgba(0,0,0,.28); padding: 8px 4px; font-size: 1.1rem; overflow: hidden; border: 1px solid transparent; }
+  .pg-prev .big { font-size: 2.2rem; }
+  .pg-prev .lvx { font-size: 1.15rem; margin: 0; vertical-align: baseline; position: static; }
+  .pg-in { font-weight: 800; font-size: .86rem; color: #fff; }
+  .pg-id { font-size: .7rem; color: #a99fcf; line-height: 1.35; min-height: 1.35em; }
+  .pg-buy, .pg-eqb, .pg-usebtn { border: 0; border-radius: 12px; padding: 7px 8px; font: 800 .82rem inherit; cursor: pointer; color: #3b2300; background: linear-gradient(135deg, #fde047, #f59e0b); }
+  .pg-buy:hover:not(:disabled), .pg-eqb:hover, .pg-usebtn:hover:not(:disabled) { filter: brightness(1.1); }
+  .pg-buy.poor { background: rgba(255,255,255,.1); color: #fca5a5; }
+  .pg-buy:disabled { opacity: .5; cursor: default; }
+  .pg-buy s { opacity: .6; font-weight: 600; margin-inline-end: 4px; font-size: .72rem; }
+  .pg-eqb { background: rgba(255,255,255,.12); color: #e9e3ff; }
+  .pg-eqb.on { background: linear-gradient(135deg, #16a34a, #4ade80); color: #052e16; cursor: default; }
+  .pg-own { font-weight: 800; font-size: .8rem; color: #86efac; padding: 7px 0; }
+  .pg-trk { font-weight: 700; font-size: .74rem; color: #fcd34d; padding: 7px 0; }
+  .pg-invrow { display: flex; align-items: center; gap: 10px; padding: 8px 10px; border-radius: 14px; background: rgba(255,255,255,.05); border: 1px solid rgba(255,255,255,.09); margin-top: 8px; }
+  .pg-invrow .e { font-size: 1.6rem; flex: none; }
+  .pg-invrow .t { flex: 1; min-width: 0; font-size: .82rem; } .pg-invrow .t b { color: #fff; } .pg-invrow .t span { display: block; color: #a99fcf; font-size: .7rem; }
+  .pg-usebtn { flex: none; }
+  .pg-active { display: flex; flex-wrap: wrap; gap: 6px; margin-top: 8px; }
+  .pg-pill { padding: 4px 11px; border-radius: 99px; font-size: .76rem; font-weight: 800; background: rgba(168,85,247,.25); border: 1px solid rgba(216,180,254,.5); color: #f5e9ff; }
+  .pg-pill time { font-variant-numeric: tabular-nums; color: #fde68a; }
+  .pg-picker { position: absolute; inset: 0; z-index: 5; display: flex; flex-direction: column; background: rgba(10,6,22,.94); backdrop-filter: blur(3px); border-radius: inherit; padding: 14px; overflow-y: auto; }
+  .pg-picker h4 { margin: 0 0 10px; color: #bae6fd; } .pg-picker .list { display: grid; gap: 8px; }
+  .pg-picker button.p { text-align: start; padding: 10px 12px; border-radius: 12px; border: 1px solid rgba(255,255,255,.14); background: rgba(255,255,255,.06); color: #fff; font: 700 .9rem inherit; cursor: pointer; }
+  .pg-picker button.p:hover { background: rgba(125,211,252,.2); border-color: #7dd3fc; }
+  .pg-picker .x { margin-top: 12px; align-self: center; padding: 8px 22px; border-radius: 12px; border: 0; background: rgba(255,255,255,.12); color: #fff; font: 700 .9rem inherit; cursor: pointer; }
+  /* المسار */
+  .pg-lr { display: flex; align-items: center; gap: 10px; padding: 8px 10px; margin-top: 6px; border-radius: 14px; border: 1px solid rgba(255,255,255,.08); background: rgba(255,255,255,.04); }
+  .pg-lr.done { opacity: .62; }
+  .pg-lr.cur { border-color: #fde047; background: linear-gradient(135deg, rgba(251,191,36,.22), rgba(192,38,211,.18)); box-shadow: 0 0 18px rgba(251,191,36,.35); }
+  .pg-lr.big { border-color: rgba(216,180,254,.5); background: linear-gradient(135deg, rgba(124,58,237,.22), rgba(192,38,211,.12)); }
+  .pg-lr.big.todo .pg-ln { background: linear-gradient(135deg, #7c3aed, #db2777); }
+  .pg-ln { flex: none; width: 38px; height: 38px; display: grid; place-items: center; border-radius: 12px; font-weight: 900; color: #fff; background: rgba(255,255,255,.1); font-variant-numeric: tabular-nums; }
+  .pg-lr.cur .pg-ln { background: linear-gradient(135deg, #f59e0b, #fde047); color: #3b2300; }
+  .pg-lr.done .pg-ln { background: rgba(34,197,94,.35); }
+  .pg-lrw { flex: 1; display: flex; flex-wrap: wrap; gap: 5px; min-width: 0; }
+  .pg-rc { font-size: .72rem; font-weight: 700; padding: 2px 8px; border-radius: 99px; background: rgba(255,255,255,.08); color: #e9e3ff; white-space: nowrap; }
+  .pg-rc.u { background: rgba(56,189,248,.16); color: #bae6fd; } .pg-rc.x { background: rgba(251,191,36,.16); color: #fde68a; }
+  .pg-lst { flex: none; font-size: 1rem; }
+  /* ملفي المطوّر */
+  .pg-hero-box.pf { border: 1px solid rgba(255,255,255,.12); }
+  .pg-badgelist { display: flex; flex-wrap: wrap; gap: 6px; }
+  .pg-bchip { padding: 4px 10px; border-radius: 99px; background: rgba(255,255,255,.08); font-size: .76rem; font-weight: 700; color: #f5e9ff; }
+  .pg-hint { color: #a99fcf; font-size: .78rem; padding: 4px 2px; }
+  .pg-hint button { border: 0; background: transparent; color: #f0abfc; font: 800 .78rem inherit; cursor: pointer; text-decoration: underline; }
+  #players-list li { cursor: pointer; }
+  /* محرر التقدم للأدمن الأساسي */
+  #apg-overlay { position: fixed; inset: 0; width: 100vw; height: 100vh; max-width: none; max-height: none; margin: 0; padding: 14px; border: 0; background: rgba(4,6,14,.78); display: none; align-items: center; justify-content: center; overflow: hidden; z-index: 10070; direction: rtl; color: #e5e7eb; font-family: inherit; }
+  #apg-overlay.apg-open { display: flex; }
+  .apg-card { width: min(520px, 100%); max-height: min(94vh, 820px); overflow-y: auto; border-radius: 18px; background: #0f1320; border: 1px solid rgba(96,165,250,.4); box-shadow: 0 20px 60px rgba(0,0,0,.7); padding: 14px 14px 18px; }
+  .apg-head { display: flex; align-items: center; justify-content: space-between; margin-bottom: 8px; }
+  .apg-head h3 { margin: 0; font-size: 1rem; color: #93c5fd; } .apg-head button { background: rgba(255,255,255,.08); border: 0; color: #fff; width: 30px; height: 30px; border-radius: 50%; cursor: pointer; }
+  .apg-sec { margin-top: 12px; padding: 10px; border-radius: 14px; background: rgba(255,255,255,.04); border: 1px solid rgba(255,255,255,.08); }
+  .apg-sec > b { display: block; font-size: .85rem; color: #fde68a; margin-bottom: 8px; }
+  .apg-row { display: flex; flex-wrap: wrap; gap: 6px; align-items: center; }
+  .apg-row button, .apg-btn { border: 1px solid rgba(255,255,255,.15); background: rgba(255,255,255,.07); color: #fff; padding: 6px 11px; border-radius: 10px; font: 700 .8rem inherit; cursor: pointer; }
+  .apg-row button:hover, .apg-btn:hover { background: rgba(96,165,250,.25); }
+  .apg-btn.ok { background: linear-gradient(135deg, #16a34a, #22c55e); border-color: transparent; color: #052e16; }
+  .apg-btn.bad { background: rgba(220,38,38,.2); border-color: rgba(248,113,113,.5); color: #fecaca; }
+  .apg-grid { display: grid; grid-template-columns: repeat(2, 1fr); gap: 8px; }
+  .apg-grid label { display: flex; flex-direction: column; gap: 3px; font-size: .72rem; color: #9ca3af; }
+  .apg-grid input, .apg-in, .apg-sel { width: 100%; box-sizing: border-box; background: #0b0f1a; border: 1px solid rgba(255,255,255,.18); color: #fff; border-radius: 9px; padding: 7px 8px; font: 600 .86rem inherit; direction: ltr; text-align: center; }
+  .apg-sel { direction: rtl; text-align: start; }
+  .apg-chips { display: flex; flex-wrap: wrap; gap: 5px; margin-top: 8px; }
+  .apg-chip { padding: 3px 9px; border-radius: 99px; background: rgba(59,130,246,.18); border: 1px solid rgba(96,165,250,.4); font-size: .74rem; cursor: pointer; }
+  .apg-chip:hover { background: rgba(220,38,38,.3); }
+  .apg-note { font-size: .72rem; color: #9ca3af; margin-top: 6px; }
+  .pg-spin { display: block; width: 100%; margin-top: 10px; padding: 12px; border: 0; border-radius: 14px; font: 800 1rem inherit; cursor: pointer; color: #3b2300; background: linear-gradient(135deg, #fde047, #f59e0b); box-shadow: 0 6px 20px rgba(245, 158, 11, .45); transition: transform .15s, filter .2s; }
+  .pg-spin:hover:not(:disabled) { transform: translateY(-1px) scale(1.01); }
+  .pg-spin:disabled { cursor: default; filter: grayscale(.75) brightness(.7); box-shadow: none; }
+  .pg-result { min-height: 24px; text-align: center; margin-top: 8px; font-weight: 800; color: #fde68a; font-size: 1rem; }
+  .pg-result.pop { animation: pgPop .5s ease-out; }
+  @keyframes pgPop { 0% { transform: scale(.6); opacity: 0; } 70% { transform: scale(1.12); } 100% { transform: scale(1); opacity: 1; } }
+
+  /* ملفي */
+  .pg-hero { display: flex; align-items: center; gap: 14px; }
+  .pg-ring { position: relative; width: 96px; height: 96px; flex: none; }
+  .pg-ring svg { width: 100%; height: 100%; transform: rotate(-90deg); }
+  .pg-ring .bgc { stroke: rgba(255,255,255,.1); } .pg-ring .fgc { stroke: var(--tc); transition: stroke-dashoffset .8s; filter: drop-shadow(0 0 6px var(--tc)); }
+  .pg-ring .lvn { position: absolute; inset: 0; display: grid; place-items: center; text-align: center; line-height: 1; }
+  .pg-ring .lvn b { font-size: 1.9rem; font-weight: 900; color: #fff; display: block; } .pg-ring .lvn span { font-size: .62rem; color: #bfb4e3; letter-spacing: .05em; }
+  .pg-name { font-size: 1.25rem; font-weight: 800; word-break: break-word; }
+  .pg-xp { font-size: .8rem; color: #bfb4e3; margin-top: 6px; }
+  .pg-stats { display: grid; grid-template-columns: repeat(3, 1fr); gap: 8px; margin-top: 12px; }
+  .pg-st { text-align: center; padding: 8px 4px; border-radius: 14px; background: rgba(255,255,255,.05); border: 1px solid rgba(255,255,255,.08); }
+  .pg-st b { display: block; font-size: 1.05rem; color: #fff; } .pg-st span { font-size: .7rem; color: #a99fcf; }
+  .pg-next { margin-top: 12px; padding: 10px 12px; border-radius: 14px; font-size: .86rem; background: linear-gradient(135deg, rgba(124,58,237,.3), rgba(192,38,211,.2)); border: 1px dashed rgba(216, 180, 254, .55); color: #f5e9ff; }
+  .pg-chips { display: flex; flex-wrap: wrap; gap: 8px; }
+  .pg-opt { border: 1px solid rgba(255,255,255,.14); background: rgba(255,255,255,.06); color: #e9e3ff; padding: 7px 11px; border-radius: 12px; font: 700 .82rem inherit; cursor: pointer; display: inline-flex; align-items: center; gap: 6px; transition: .15s; }
+  .pg-opt:hover:not(.lock) { background: rgba(255,255,255,.14); }
+  .pg-opt.sel { border-color: #f0abfc; background: rgba(192, 38, 211, .25); box-shadow: 0 0 12px rgba(217, 70, 239, .4); }
+  .pg-opt[data-ti]:not(.lock) { color: var(--tc, #e9e3ff); }
+  .pg-opt.lock { opacity: .45; cursor: default; }
+  .pg-opt small { font-weight: 600; color: #a99fcf; font-size: .72rem; }
+  .pg-badges { display: grid; grid-template-columns: repeat(2, 1fr); gap: 8px; }
+  .pg-bd { display: flex; gap: 8px; align-items: center; padding: 8px; border-radius: 14px; border: 1px solid rgba(255,255,255,.1); background: rgba(255,255,255,.05); cursor: pointer; text-align: start; color: inherit; font: inherit; transition: .15s; }
+  .pg-bd .e { font-size: 1.5rem; flex: none; } .pg-bd b { display: block; font-size: .82rem; color: #fff; } .pg-bd span { font-size: .7rem; color: #a99fcf; line-height: 1.3; display: block; }
+  .pg-bd.sel { border-color: #fbbf24; background: rgba(251, 191, 36, .14); box-shadow: 0 0 12px rgba(251, 191, 36, .3); }
+  .pg-bd.lock { opacity: .4; filter: grayscale(.8); cursor: default; }
+
+  /* المتجر (شكل فقط) */
+  .pg-store { text-align: center; padding: 18px 6px 8px; }
+  .pg-store .big { font-size: 4rem; filter: drop-shadow(0 0 18px #c084fc); animation: pgFloat 3s ease-in-out infinite; }
+  .pg-soon { display: inline-block; margin: 8px 0 6px; padding: 8px 24px; border-radius: 99px; font-weight: 900; font-size: 1.15rem; color: #fff; background: linear-gradient(135deg, #7c3aed, #db2777); box-shadow: 0 6px 24px rgba(219, 39, 119, .45); position: relative; overflow: hidden; }
+  .pg-soon::after { content: ''; position: absolute; inset: 0; background: linear-gradient(110deg, transparent 35%, rgba(255,255,255,.45) 50%, transparent 65%); transform: translateX(-120%); animation: pgSweep 2.8s ease-in-out infinite; }
+  .pg-store p { color: #bfb4e3; font-size: .88rem; margin: 6px 12px 0; line-height: 1.7; }
+  .pg-ghosts { display: flex; gap: 10px; justify-content: center; margin-top: 16px; }
+  .pg-ghost { width: 82px; height: 98px; border-radius: 16px; background: rgba(255,255,255,.05); border: 1px dashed rgba(255,255,255,.18); display: grid; place-items: center; font-size: 1.8rem; color: rgba(255,255,255,.3); position: relative; overflow: hidden; }
+  .pg-ghost::after { content: ''; position: absolute; inset: 0; background: linear-gradient(110deg, transparent 35%, rgba(255,255,255,.12) 50%, transparent 65%); transform: translateX(-120%); animation: pgSweep 3.4s ease-in-out infinite; }
+  .pg-ghost:nth-child(2)::after { animation-delay: .5s; } .pg-ghost:nth-child(3)::after { animation-delay: 1s; }
+  @keyframes pgFloat { 50% { transform: translateY(-8px); } } @keyframes pgSweep { to { transform: translateX(120%); } }
+
+  /* إشعارات */
+  #pg-toasts { position: fixed; inset: 0 0 auto 0; width: 100%; max-width: none; height: auto; margin: 0; padding: 10px 12px; border: 0; background: transparent; overflow: visible; pointer-events: none; display: none; flex-direction: column; align-items: center; gap: 8px; z-index: 10060; direction: rtl; }
+  #pg-toasts.on { display: flex; }
+  .pg-toast { max-width: min(92vw, 420px); padding: 10px 16px; border-radius: 16px; font-weight: 800; font-size: .92rem; color: #fff; text-align: center; background: linear-gradient(135deg, rgba(76, 29, 149, .96), rgba(134, 25, 143, .96)); border: 1px solid rgba(240, 171, 252, .6); box-shadow: 0 8px 28px rgba(0,0,0,.5), 0 0 22px rgba(192, 38, 211, .45); animation: pgToast 3.6s ease forwards; }
+  .pg-toast.big { font-size: 1rem; padding: 12px 20px; }
+  @keyframes pgToast { 0% { opacity: 0; transform: translateY(-16px) scale(.9); } 8% { opacity: 1; transform: none; } 88% { opacity: 1; } 100% { opacity: 0; transform: translateY(-10px); } }
+  .pg-lvup { position: relative; padding: 16px 26px 14px; border-radius: 22px; text-align: center; color: #fff; background: radial-gradient(circle at 50% 0%, rgba(251, 191, 36, .35), transparent 60%), linear-gradient(160deg, #3b1670, #1a0d36); border: 1px solid rgba(253, 224, 71, .7); box-shadow: 0 12px 40px rgba(0,0,0,.6), 0 0 36px rgba(251, 191, 36, .45); animation: pgToast 4.6s ease forwards; overflow: visible; }
+  .pg-lvup .u { font-size: .8rem; color: #fde68a; letter-spacing: .08em; } .pg-lvup .n { font-size: 2.6rem; font-weight: 900; line-height: 1.1; text-shadow: 0 0 16px #fbbf24; }
+  .pg-lvup .r { font-size: .84rem; color: #f5e9ff; margin-top: 4px; }
+  .pg-conf { position: absolute; left: 50%; top: 50%; width: 7px; height: 11px; border-radius: 2px; opacity: 0; animation: pgConf 1.5s ease-out forwards; }
+  @keyframes pgConf { 0% { opacity: 1; transform: translate(0, 0) rotate(0); } 100% { opacity: 0; transform: translate(var(--dx), var(--dy)) rotate(var(--rt)); } }
+  .pg-xpfloat { position: fixed; margin: 0; right: auto; bottom: auto; background: transparent; border: 0; padding: 0; width: auto; height: auto; overflow: visible; z-index: 10060; pointer-events: none; font-weight: 900; color: #e9d5ff; text-shadow: 0 0 10px #a855f7, 0 2px 4px #000; font-size: 1rem; animation: pgFloatUp 1.3s ease-out forwards; direction: rtl; }
+  @keyframes pgFloatUp { from { opacity: 1; transform: translateY(0); } to { opacity: 0; transform: translateY(-46px); } }
+
+  @media (prefers-reduced-motion: reduce) {
+    .lvx, .ng-g_fire, .ng-g_rainbow, .ng-g_diamond, .pg-lights circle, .pg-store .big, .pg-soon::after, .pg-ghost::after, .pg-dot, .pg-card { animation: none !important; }
+    .pg-wheel-rot.spin { transition-duration: 1.2s; }
+  }
+  `;
+  const st = document.createElement('style');
+  st.id = 'pg-styles';
+  st.textContent = css;
+  document.head.appendChild(st);
+
+  // ---------- أدوات ----------
+  const $ = (s, r = document) => r.querySelector(s);
+  const esc = (v) => String(v).replace(/[&<>"']/g, c => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;', "'": '&#39;' }[c]));
+  const fmtT = (ms) => {
+    const s = Math.max(0, Math.floor(ms / 1000));
+    return [Math.floor(s / 3600), Math.floor(s / 60) % 60, s % 60].map(n => String(n).padStart(2, '0')).join(':');
+  };
+  const nf = (n) => Number(n || 0).toLocaleString('en-US');
+  const catTitle = (id) => PG.cat && PG.cat.titles.find(t => t.id === id);
+  const catGlow = (id) => PG.cat && PG.cat.glows.find(g => g.id === id);
+  const catBadge = (id) => PG.cat && PG.cat.badges.find(b => b.id === id);
+
+  let tab = 'daily';
+  let spinning = false;
+  let held = { state: null, toasts: [] };
+  let tickTimer = null;
+  let ac = null;
+
+  // ---------- أصوات صغيرة ----------
+  function audio() {
+    try {
+      if (!ac) { const A = window.AudioContext || window.webkitAudioContext; if (A) ac = new A(); }
+      if (ac && ac.state === 'suspended') ac.resume();
+    } catch (e) {}
+    return ac;
+  }
+  function beep(freq, dur, type = 'sine', vol = 0.08, when = 0) {
+    const c = audio(); if (!c) return;
+    try {
+      const o = c.createOscillator(), g = c.createGain(), t = c.currentTime + when;
+      o.type = type; o.frequency.setValueAtTime(freq, t);
+      g.gain.setValueAtTime(0.0001, t); g.gain.exponentialRampToValueAtTime(vol, t + 0.01); g.gain.exponentialRampToValueAtTime(0.0001, t + dur);
+      o.connect(g); g.connect(c.destination); o.start(t); o.stop(t + dur + 0.02);
+    } catch (e) {}
+  }
+  const tick = () => beep(1500, 0.035, 'square', 0.035);
+  const fanfare = () => [523, 659, 784, 1047].forEach((f, i) => beep(f, 0.22, 'triangle', 0.09, i * 0.09));
+  const chime = () => [880, 1175, 1568].forEach((f, i) => beep(f, 0.3, 'sine', 0.08, i * 0.1));
+
+  // ---------- أزرار القائمة ----------
+  const controls = $('.controls') || document.body;
+  const adminBtn = $('#btn-admin-auth');
+  const mk = (id, html) => { const b = document.createElement('button'); b.id = id; b.className = 'btn-main'; b.type = 'button'; b.innerHTML = html; return b; };
+  const bDaily = mk('btn-daily', '🎯 التحدي اليومي<i class="pg-dot"></i>');
+  const bProfile = mk('btn-profile', '👤 ملفي<span class="pg-lvtag"></span>');
+  const bPass = mk('btn-pass', '🏅 المسار');
+  const bStore = mk('btn-store', '🛍️ المتجر');
+  [bDaily, bPass, bProfile, bStore].forEach(b => controls.insertBefore(b, adminBtn && adminBtn.parentNode === controls ? adminBtn : null));
+
+  // ---------- النافذة ----------
+  const ov = document.createElement('div');
+  ov.id = 'pg-overlay';
+  ov.setAttribute('popover', 'manual');
+  ov.innerHTML = `
+    <div class="pg-card" role="dialog" aria-modal="true" aria-label="مركز اللاعب">
+      <div class="pg-head"><h3 id="pg-title"></h3><button class="pg-x" type="button" aria-label="إغلاق">✕</button></div>
+      <div class="pg-tabs">
+        <button class="pg-tab" data-tab="daily" type="button">🎯 التحدي اليومي</button>
+        <button class="pg-tab" data-tab="pass" type="button">🏅 المسار</button>
+        <button class="pg-tab" data-tab="profile" type="button">👤 ملفي</button>
+        <button class="pg-tab" data-tab="store" type="button">🛍️ المتجر</button>
+      </div>
+      <div class="pg-body" id="pg-body"></div>
+    </div>`;
+  document.body.appendChild(ov);
+  const toastBox = document.createElement('div');
+  toastBox.id = 'pg-toasts';
+  toastBox.setAttribute('popover', 'manual');
+  document.body.appendChild(toastBox);
+
+  const isOpen = () => ov.classList.contains('pg-open');
+  function openPanel(t, arg) {
+    tab = t || tab;
+    if (tab === 'view') { viewId = arg; viewData = null; fetchView(); }
+    ov.classList.add('pg-open');
+    topLayerShow(ov);
+    socket.emit('progress:get');
+    render();
+    startTick();
+  }
+  function closePanel() {
+    ov.classList.remove('pg-open');
+    topLayerHide(ov);
+    stopTick();
+  }
+  bDaily.addEventListener('click', () => openPanel('daily'));
+  bPass.addEventListener('click', () => openPanel('pass'));
+  bProfile.addEventListener('click', () => openPanel('profile'));
+  bStore.addEventListener('click', () => openPanel('store'));
+  $('.pg-x', ov).addEventListener('click', closePanel);
+  ov.addEventListener('click', (e) => { if (e.target === ov) closePanel(); });
+  document.addEventListener('keydown', (e) => { if (e.key === 'Escape' && isOpen()) closePanel(); });
+  ov.querySelectorAll('.pg-tab').forEach(b => b.addEventListener('click', () => { tab = b.dataset.tab; render(); }));
+
+  // ---------- العدّاد الحي ----------
+  function startTick() { stopTick(); tickTimer = setInterval(updateTimers, 1000); }
+  function stopTick() { clearInterval(tickTimer); tickTimer = null; }
+  function updateTimers() {
+    const s = PG.state; if (!s) return;
+    const el = Date.now() - PG.at;
+    const left = Math.max(0, s.daily.reset - el);
+    document.querySelectorAll('[data-reset]').forEach(n => { n.textContent = fmtT(left); });
+    document.querySelectorAll('[data-bx]').forEach(n => { const t = Math.max(0, (s.boost[n.dataset.bx] || 0) - el); n.textContent = t > 0 ? fmtT(t) : 'انتهى'; });
+    const sp = $('#pg-spin');
+    if (sp && !spinning && !s.wheel.can) sp.querySelector('.t') && (sp.querySelector('.t').textContent = fmtT(left));
+    if (left <= 0 && isOpen()) socket.emit('progress:get');
+  }
+
+  // ---------- الرسم ----------
+  function render() {
+    const s = PG.state;
+    ov.querySelectorAll('.pg-tab').forEach(b => b.classList.toggle('on', b.dataset.tab === tab));
+    $('#pg-title').textContent = TAB_TITLE[tab] || '';
+    const body = $('#pg-body');
+    if (!PG.cat || (!s && tab !== 'view')) { body.innerHTML = '<div class="pg-box" style="text-align:center;margin-top:14px">جاري التحميل…</div>'; return; }
+    if (spinning) return;                                   // ما نخرّب العجلة وهي بتلف
+    const prevTab = body.dataset.tab, keepTop = body.scrollTop;
+    body.innerHTML = tab === 'daily' ? dailyHtml(s) : tab === 'pass' ? passHtml(s) : tab === 'profile' ? profileHtml(s) : tab === 'store' ? storeHtml(s) : viewHtml();
+    body.dataset.tab = tab;
+    body.scrollTop = prevTab === tab ? keepTop : 0;
+    if (tab === 'pass' && prevTab !== 'pass') { const cur = body.querySelector('.pg-lr.cur'); if (cur) body.scrollTop = Math.max(0, cur.offsetTop - 150); }
+    if (tab === 'daily') bindDaily();
+    if (tab === 'profile') bindProfile();
+    if (tab === 'store') bindStore();
+    updateTimers();
+  }
+
+  function dailyHtml(s) {
+    const d = s.daily, pct = Math.min(100, Math.round((d.p / d.tg) * 100));
+    const ms = (PG.cat.streak || []).map(m => `<div class="pg-m ${s.streak >= m.d ? 'got' : ''}"><b>${m.d} أيام</b>🪙 <bdi dir="ltr">${m.coins}</bdi>${m.xp ? '<br>✨ <bdi dir="ltr">' + m.xp + '</bdi>' : ''}</div>`).join('');
+    return `
+    <div class="pg-sec pg-box">
+      <div class="pg-streak">
+        <div class="pg-flame ${s.streak > 0 ? '' : 'off'}">🔥</div>
+        <div><div class="pg-sn">${s.streak} ${s.streak === 1 ? 'يوم' : 'أيام'}</div><div class="pg-sl">${s.streak > 0 ? 'سلسلة أيام متتالية — لا تقطعها!' : 'جاوب كلمة اليوم وابدأ سلسلتك'}${s.best > 0 ? ' · أفضل: ' + s.best : ''}</div></div>
+      </div>
+      <div class="pg-ms">${ms}</div>
+    </div>
+    <div class="pg-sec">
+      <h4>🎯 تحدي اليوم <small>فكرة جديدة كل يوم</small></h4>
+      <div class="pg-box">
+        <div class="pg-ch"><div class="pg-ch-ic">${esc(d.icon)}</div><div><div class="pg-ch-t">${esc(d.title)}</div><div class="pg-ch-d">${esc(d.desc)}</div></div></div>
+        <div class="pg-bar ${d.done ? 'done' : ''}"><i style="width:${pct}%"></i></div>
+        <div class="pg-row"><span><bdi dir="ltr">${d.p} / ${d.tg}</bdi></span><span><span class="pg-chip">✨ خبرة <bdi dir="ltr">+${d.xp}</bdi></span> <span class="pg-chip">🪙 <bdi dir="ltr">+${d.coins}</bdi></span></span></div>
+        <div class="pg-row">${d.done ? '<span class="pg-ok">✅ أنجزت تحدي اليوم!</span>' : '<span>⏳ ينتهي بعد</span>'}<span class="pg-time" data-reset></span></div>
+      </div>
+    </div>
+    <div class="pg-sec">
+      <h4>🎡 عجلة الحظ <small>لفّة مجانية كل يوم</small></h4>
+      <div class="pg-box">
+        <div class="pg-wheel-wrap"><div class="pg-pointer"></div>${wheelSvg()}</div>
+        <div class="pg-result" id="pg-result"></div>
+        <button id="pg-spin" class="pg-spin" type="button" ${s.wheel.can ? '' : 'disabled'}>${s.wheel.can ? (s.wheel.free ? '🎡 لفّ العجلة' : `🎟️ لفّ بتذكرة (×${s.wheel.tickets})`) : '⏳ لفّتك الجاية بعد <span class="t pg-time" style="color:#3b2300"></span>'}</button>
+      </div>
+    </div>`;
+  }
+
+  function wheelSvg() {
+    const items = PG.cat.wheel, n = items.length, step = 360 / n;
+    const cols = ['#7c3aed', '#db2777', '#2563eb', '#f59e0b', '#059669', '#9333ea', '#e11d48', '#0891b2'];
+    const pt = (a, r) => [100 + r * Math.sin(a * Math.PI / 180), 100 - r * Math.cos(a * Math.PI / 180)];
+    let sec = '', lab = '', lights = '';
+    items.forEach((it, i) => {
+      const a0 = i * step - step / 2, a1 = i * step + step / 2, [x0, y0] = pt(a0, 94), [x1, y1] = pt(a1, 94);
+      const last = i === n - 1 && n % 2 === 1;
+      sec += `<path d="M100 100 L${x0.toFixed(2)} ${y0.toFixed(2)} A94 94 0 0 1 ${x1.toFixed(2)} ${y1.toFixed(2)} Z" fill="${last ? '#be185d' : cols[i % cols.length]}" stroke="rgba(255,255,255,.55)" stroke-width="1"/>`;
+      lab += `<g transform="rotate(${i * step} 100 100)"><text x="100" y="27" text-anchor="middle" font-size="15">${esc(it.i)}</text><text transform="translate(100 66) rotate(-90)" text-anchor="middle" dominant-baseline="central" font-size="11.5" font-weight="900" fill="#fff" direction="ltr" style="paint-order:stroke;stroke:rgba(0,0,0,.5);stroke-width:2.4px;font-family:system-ui,sans-serif">${esc(it.t)}</text></g>`;
+    });
+    for (let i = 0; i < 20; i++) { const [x, y] = pt(i * 18, 99); lights += `<circle cx="${x.toFixed(1)}" cy="${y.toFixed(1)}" r="2.4" fill="#fde047"/>`; }
+    const rot = PG.rot || 0;
+    return `<svg viewBox="0 0 200 200" aria-hidden="true">
+      <circle cx="100" cy="100" r="99" fill="#2a1450" stroke="#fbbf24" stroke-width="2.5"/>
+      <g class="pg-wheel-rot" id="pg-wheel" style="transform:rotate(${rot}deg)">${sec}${lab}</g>
+      <g class="pg-lights">${lights}</g>
+      <circle cx="100" cy="100" r="15" fill="#fbbf24" stroke="#fff" stroke-width="2"/><text x="100" y="105.5" text-anchor="middle" font-size="15">⭐</text>
+    </svg>`;
+  }
+
+  function myMeta(s) { return { lv: s.lv, ti: s.shown.ti, gl: s.eq.gl, bd: s.shown.bd, nc: s.eq.nc, cf: s.eq.cf, cc: s.eq.cc }; }
+  const shopItem = (id) => PG.cat && PG.cat.shop.find(x => x.id === id);
+  const CAT_LBL = { nc: '🎨 لون اسم', gl: '✨ تأثير اسم', cf: '🔰 إطار مستوى', ti: '🏷️ لقب', bd: '🎖️ شارة', pf: '🖼️ خلفية ملف', cc: '💬 لون شات', use: '🧰 أداة' };
+  const STORE_CATS = [['all', '🛍️ الكل'], ['nc', '🎨 ألوان'], ['gl', '✨ تأثيرات'], ['cf', '🔰 إطارات'], ['ti', '🏷️ ألقاب'], ['bd', '🎖️ شارات'], ['pf', '🖼️ خلفيات'], ['cc', '💬 شات'], ['use', '🧰 أدوات']];
+  const TAB_TITLE = { daily: '🎯 التحدي اليومي', pass: '🏅 مسار المستويات', profile: '👤 ملفي', store: '🛍️ المتجر', view: '👤 ملف لاعب' };
+  let storeCat = 'all', viewId = null, viewData = null;
+  const eqOf = (s, it) => (it.cat === 'ti' ? s.shown.ti : it.cat === 'bd' ? null : s.eq[it.cat]);
+  const ratio = (s) => { const t = (s.a || 0) + (s.wr || 0); return t ? Math.round((s.a || 0) * 100 / t) : 0; };
+
+  function previewHtml(it) {
+    switch (it.cat) {
+      case 'nc': return `<span style="color:${it.v};font-weight:800">اسمك</span>`;
+      case 'gl': return `<span class="ng-${it.id}" style="color:#fff;font-weight:800">اسمك</span>`;
+      case 'cf': return `<sup class="lvx t3 ${it.id}">12</sup>`;
+      case 'ti': return `<span class="ttl t5">${esc(it.n)}</span>`;
+      case 'cc': return `<span class="chat-text ${it.id}" style="font-weight:700">رسالتك هنا</span>`;
+      case 'pf': return `<span class="${it.id}" style="font-size:.8rem;font-weight:800;padding:8px 18px;border-radius:10px;display:inline-block;color:#fff">ملفك</span>`;
+      default: return `<span class="big">${it.e || '🎁'}</span>`;
+    }
+  }
+
+  function itemCard(it, s, owned) {
+    const isUse = it.cat === 'use';
+    const own = !isUse && owned.has(it.id);
+    const cnt = isUse ? (s.inv[it.id] || 0) : 0;
+    const deal = s.deal.id === it.id;
+    const price = deal ? s.deal.price : it.p;
+    let act;
+    if (own) {
+      const cur = eqOf(s, it);
+      act = it.cat === 'bd' ? '<div class="pg-own">✓ مملوك</div>'
+        : `<button class="pg-eqb${cur === it.id ? ' on' : ''}" type="button" data-eq="${it.cat}|${it.id}">${cur === it.id ? 'ملبوس ✓' : 'البس'}</button>`;
+    } else if (it.tr) act = `<div class="pg-trk">🏅 هدية المستوى ${it.tr}</div>`;
+    else if (it.lv && s.lv < it.lv) act = `<div class="pg-trk">🔒 يفتح بالمستوى ${it.lv}</div>`;
+    else if (isUse && cnt >= it.max) act = '<div class="pg-own">الحد الأقصى</div>';
+    else act = `<button class="pg-buy${s.coins < price ? ' poor' : ''}" type="button" data-buy="${it.id}">${deal ? `<s>${nf(it.p)}</s>` : ''}🪙 ${nf(price)}</button>`;
+    const desc = it.d || CAT_LBL[it.cat].replace(/^\S+\s/, '');
+    return `<div class="pg-item${own ? ' owned' : ''}"><div class="pg-prev">${previewHtml(it)}</div><div class="pg-in">${esc(it.n)}${isUse && cnt ? ` <small style="color:#86efac">×${cnt}</small>` : ''}</div><div class="pg-id">${esc(desc)}</div>${act}</div>`;
+  }
+
+  function storeHtml(s) {
+    const shop = PG.cat.shop, owned = new Set(s.own);
+    const dealIt = shopItem(s.deal.id);
+    const buffs = [];
+    if (s.boost.xp > 0) buffs.push(`<span class="pg-pill">✨ خبرة ×2 · <time data-bx="xp">${fmtT(s.boost.xp)}</time></span>`);
+    if (s.boost.coin > 0) buffs.push(`<span class="pg-pill">🪙 عملات ×2 · <time data-bx="coin">${fmtT(s.boost.coin)}</time></span>`);
+    if (s.dbl > 0) buffs.push(`<span class="pg-pill">⚡ نقاط مضاعفة ×${s.dbl}</span>`);
+    const invRows = Object.keys(s.inv).filter(id => s.inv[id] > 0 && shopItem(id)).map(id => {
+      const it = shopItem(id), auto = id === 'shield' || id === 'ticket';
+      return `<div class="pg-invrow"><span class="e">${it.e}</span><div class="t"><b>${esc(it.n)} ×${s.inv[id]}</b><span>${esc(it.d)}</span></div>${auto ? `<span class="pg-trk">${id === 'ticket' ? 'بتنفع بالعجلة' : 'تلقائي'}</span>` : `<button class="pg-usebtn" type="button" data-use="${id}">استخدم</button>`}</div>`;
+    }).join('');
+    let grid = '';
+    const cats = storeCat === 'all' ? STORE_CATS.filter(c => c[0] !== 'all') : STORE_CATS.filter(c => c[0] === storeCat);
+    cats.forEach(c => {
+      const items = shop.filter(it => it.cat === c[0]);
+      if (!items.length) return;
+      grid += `<div class="pg-sec"><h4>${c[1]} <small>${items.filter(i => i.cat !== 'use' && owned.has(i.id)).length ? items.filter(i => owned.has(i.id)).length + ' مملوك' : ''}</small></h4><div class="pg-grid">${items.map(it => itemCard(it, s, owned)).join('')}</div></div>`;
+    });
+    return `
+    <div class="pg-coinbar"><div><span>رصيدك</span><br><b>🪙 ${nf(s.coins)}</b></div><div style="text-align:end"><span>مستواك</span><br><b style="color:#fff">${s.lv}</b></div></div>
+    ${buffs.length ? `<div class="pg-active">${buffs.join('')}</div>` : ''}
+    ${invRows ? `<div class="pg-sec"><h4>🎒 حقيبتي</h4>${invRows}</div>` : ''}
+    ${dealIt ? `<div class="pg-deal"><h5><span>🔥 عرض اليوم</span><em>-${s.deal.pct}%</em></h5><div class="pg-grid" style="grid-template-columns:1fr">${itemCard(dealIt, s, owned)}</div><div class="pg-row" style="justify-content:center">⏳ ينتهي بعد <span class="pg-time" data-reset></span></div></div>` : ''}
+    <div class="pg-cats">${STORE_CATS.map(c => `<button class="pg-cat${storeCat === c[0] ? ' on' : ''}" type="button" data-cat="${c[0]}">${c[1]}</button>`).join('')}</div>
+    ${grid}
+    <div class="pg-hint" style="text-align:center;margin-top:14px">💡 العملات بتجيبها من الإجابات الصح، التحدي اليومي، السلسلة، عجلة الحظ ومسار المستويات</div>`;
+  }
+
+  function passHtml(s) {
+    const T = PG.cat.track;
+    const frac = s.need ? Math.round(s.cur * 100 / s.need) : 100;
+    const rows = T.map(t => {
+      const st = t.lv < s.lv ? 'done' : t.lv === s.lv ? 'cur' : 'todo';
+      const chips = [];
+      if (t.c) chips.push(`<span class="pg-rc">🪙 +${nf(t.c)}</span>`);
+      if (t.x) Object.keys(t.x).forEach(id => { const it = shopItem(id); if (it) chips.push(`<span class="pg-rc u">${it.e} ${esc(it.n)}${t.x[id] > 1 ? ' ×' + t.x[id] : ''}</span>`); });
+      t.it.forEach(id => { const it = shopItem(id); if (it) chips.push(`<span class="pg-rc x">${CAT_LBL[it.cat]} «${esc(it.n)}»</span>`); });
+      t.ti.forEach(id => { const x = catTitle(id); if (x) chips.push(`<span class="pg-rc x">🏷️ لقب «${esc(x.n)}»</span>`); });
+      t.gl.forEach(id => { const x = catGlow(id); if (x) chips.push(`<span class="pg-rc x">✨ تأثير «${esc(x.n)}»</span>`); });
+      const big = t.it.length || t.ti.length || t.gl.length;
+      return `<div class="pg-lr ${st}${big ? ' big' : ''}"><div class="pg-ln">${t.lv}</div><div class="pg-lrw">${chips.join('') || '<span class="pg-rc">أهلاً بك 👋</span>'}</div><div class="pg-lst">${st === 'todo' ? '🔒' : st === 'cur' ? '⭐' : '✅'}</div></div>`;
+    }).join('');
+    return `
+    <div class="pg-sec pg-box">
+      <div class="pg-ch"><div class="pg-ch-ic" style="font-size:1.6rem;font-weight:900">${s.lv}</div><div style="flex:1;min-width:0"><div class="pg-ch-t">المستوى ${s.lv} من ${PG.cat.maxLevel}</div><div class="pg-ch-d">${s.need ? `${nf(s.cur)} / ${nf(s.need)} خبرة للمستوى ${s.lv + 1}` : 'وصلت لأعلى مستوى 👑'}</div></div></div>
+      <div class="pg-bar"><i style="width:${frac}%"></i></div>
+      ${s.next ? `<div class="pg-next">🎁 الجائزة الكبيرة القادمة بالمستوى <b>${s.next.lv}</b>: ${esc(s.next.n)}</div>` : ''}
+    </div>
+    <div class="pg-sec"><h4>🏅 المسار <small>كل مستوى = مكافأة</small></h4>${rows}</div>`;
+  }
+
+  function profileHtml(s) {
+    const me = (PG.players || []).find(p => p.id === playerId) || {};
+    const tier = tierOf(s.lv), C = 2 * Math.PI * 44, frac = s.need ? s.cur / s.need : 1;
+    const nameP = nameHtml(me.name || 'أنت', me.rawName || me.name || 'أنت', me.color || '#00e5ff', me.fx, myMeta(s));
+    const own = new Set(s.own), shop = PG.cat.shop, eq = s.eq, sel = (c) => (c ? ' sel' : '');
+    const days = Math.max(1, Math.ceil((Date.now() - (s.js || Date.now())) / 86400e3));
+    const titles = `<button class="pg-opt${sel(!s.shown.ti)}" type="button" data-eq="ti|">بدون</button>` + PG.cat.titles.filter(t => !t.shop || own.has(t.id)).map(t => {
+      const ok = t.shop ? true : s.lv >= t.lv;
+      return `<button class="pg-opt t${tierOf(t.lv || 20)}${sel(s.shown.ti === t.id)}${ok ? '' : ' lock'}" type="button" data-eq="ti|${t.id}" ${ok ? '' : 'disabled'}>${ok ? '' : '🔒 '}${esc(t.n)}${ok ? '' : ` <small>مستوى ${t.lv}</small>`}</button>`;
+    }).join('');
+    const glows = `<button class="pg-opt${sel(!eq.gl)}" type="button" data-eq="gl|">بدون</button>` + PG.cat.glows.filter(g => !g.shop || own.has(g.id)).map(g => {
+      const ok = g.shop ? true : s.lv >= g.lv;
+      return `<button class="pg-opt${sel(eq.gl === g.id)}${ok ? '' : ' lock'}" type="button" data-eq="gl|${g.id}" ${ok ? '' : 'disabled'}>${ok ? `<span class="ng-${g.id}" style="color:#fff;font-weight:800">اسمك</span>` : '🔒'} <small>${esc(g.n)}${ok ? '' : ' · مستوى ' + g.lv}</small></button>`;
+    }).join('');
+    const pickRow = (cat) => {
+      const items = shop.filter(x => x.cat === cat && own.has(x.id));
+      if (!items.length) return `<div class="pg-hint">ما عندك ولا واحد · <button type="button" data-goto="${cat}">افتح المتجر</button></div>`;
+      return `<div class="pg-chips"><button class="pg-opt${sel(!eq[cat])}" type="button" data-eq="${cat}|">بدون</button>${items.map(it => `<button class="pg-opt${sel(eq[cat] === it.id)}" type="button" data-eq="${cat}|${it.id}"><span>${previewHtml(it)}</span><small>${esc(it.n)}</small></button>`).join('')}</div>`;
+    };
+    const chosen = s.shown.bd;
+    const badges = PG.cat.badges.filter(b => !b.shop || s.badges.includes(b.id)).map(b => {
+      const got = s.badges.includes(b.id), on = chosen.includes(b.id);
+      return `<button class="pg-bd${on ? ' sel' : ''}${got ? '' : ' lock'}" type="button" data-bd="${b.id}" ${got ? '' : 'disabled'}><span class="e">${got ? b.e : '🔒'}</span><div><b>${esc(b.n)}</b><span>${esc(b.d)}</span></div></button>`;
+    }).join('');
+    const buffs = [];
+    if (s.boost.xp > 0) buffs.push(`<span class="pg-pill">✨ خبرة ×2 · <time data-bx="xp">${fmtT(s.boost.xp)}</time></span>`);
+    if (s.boost.coin > 0) buffs.push(`<span class="pg-pill">🪙 عملات ×2 · <time data-bx="coin">${fmtT(s.boost.coin)}</time></span>`);
+    if (s.dbl > 0) buffs.push(`<span class="pg-pill">⚡ نقاط مضاعفة ×${s.dbl}</span>`);
+    if (s.inv.shield) buffs.push(`<span class="pg-pill">🛡️ درع ×${s.inv.shield}</span>`);
+    return `
+    <div class="pg-sec pg-box pg-hero-box pf ${eq.pf || ''}">
+      <div class="pg-hero">
+        <div class="pg-ring t${tier}"><svg viewBox="0 0 100 100"><circle class="bgc" cx="50" cy="50" r="44" fill="none" stroke-width="8"/><circle class="fgc" cx="50" cy="50" r="44" fill="none" stroke-width="8" stroke-linecap="round" stroke-dasharray="${C.toFixed(1)}" stroke-dashoffset="${(C * (1 - frac)).toFixed(1)}"/></svg><div class="lvn"><div><b>${s.lv}</b><span>المستوى</span></div></div></div>
+        <div style="min-width:0"><div class="pg-name">${nameP}</div><div class="pg-xp">${s.need ? `${nf(s.cur)} / ${nf(s.need)} خبرة للمستوى ${s.lv + 1}` : 'وصلت لأعلى مستوى 👑'}</div></div>
+      </div>
+      ${buffs.length ? `<div class="pg-active">${buffs.join('')}</div>` : ''}
+      <div class="pg-stats">
+        <div class="pg-st"><b>🪙 ${nf(s.coins)}</b><span>عملاتك</span></div>
+        <div class="pg-st"><b>🔥 ${s.streak}</b><span>السلسلة${s.best > s.streak ? ' (أفضل ' + s.best + ')' : ''}</span></div>
+        <div class="pg-st"><b>✅ ${nf(s.s.a)}</b><span>إجابات صحيحة</span></div>
+        <div class="pg-st"><b>🏆 ${nf(s.s.w)}</b><span>جولات فزتها</span></div>
+        <div class="pg-st"><b>⚡ ${nf(s.s.f)}</b><span>إجابات سريعة</span></div>
+        <div class="pg-st"><b>🧩 ${nf(s.s.dc)}</b><span>تحديات منجزة</span></div>
+        <div class="pg-st"><b>🎯 ${ratio(s.s)}%</b><span>الدقة</span></div>
+        <div class="pg-st"><b>⏱️ ${s.s.bt ? (s.s.bt / 1000).toFixed(2) + ' ث' : '—'}</b><span>أسرع إجابة</span></div>
+        <div class="pg-st"><b>📅 ${days}</b><span>يوم معنا</span></div>
+      </div>
+      ${s.next ? `<div class="pg-next">🎁 المستوى <b>${s.next.lv}</b> بيفتحلك: ${esc(s.next.n)}</div>` : ''}
+    </div>
+    <div class="pg-sec"><h4>🏷️ اللقب <small>بيظهر جنب اسمك</small></h4><div class="pg-chips">${titles}</div></div>
+    <div class="pg-sec"><h4>✨ تأثير الاسم</h4><div class="pg-chips">${glows}</div></div>
+    <div class="pg-sec"><h4>🎨 لون الاسم</h4>${pickRow('nc')}</div>
+    <div class="pg-sec"><h4>🔰 إطار المستوى</h4>${pickRow('cf')}</div>
+    <div class="pg-sec"><h4>💬 لون رسائلك بالشات</h4>${pickRow('cc')}</div>
+    <div class="pg-sec"><h4>🖼️ خلفية ملفك</h4>${pickRow('pf')}</div>
+    <div class="pg-sec"><h4>🎖️ الشارات <small>${chosen.length}/3 ظاهرة</small></h4><div class="pg-badges">${badges}</div></div>`;
+  }
+
+  function viewHtml() {
+    if (!viewData) return '<div class="pg-box" style="text-align:center;margin-top:14px">جاري التحميل…</div>';
+    if (viewData.gone) return '<div class="pg-box" style="text-align:center;margin-top:14px">اللاعب مو موجود حالياً</div>';
+    const d = viewData, tier = tierOf(d.lv), C = 2 * Math.PI * 44, frac = d.need ? d.cur / d.need : 1;
+    const nameP = nameHtml(d.name, d.name, d.color, d.fx, d.meta);
+    const days = Math.max(1, Math.ceil((Date.now() - (d.js || Date.now())) / 86400e3));
+    const bd = (d.badges || []).map(id => catBadge(id)).filter(Boolean).map(b => `<span class="pg-bchip">${b.e} ${esc(b.n)}</span>`).join('');
+    return `
+    <div class="pg-sec pg-box pg-hero-box pf ${d.pf || ''}">
+      <div class="pg-hero">
+        <div class="pg-ring t${tier}"><svg viewBox="0 0 100 100"><circle class="bgc" cx="50" cy="50" r="44" fill="none" stroke-width="8"/><circle class="fgc" cx="50" cy="50" r="44" fill="none" stroke-width="8" stroke-linecap="round" stroke-dasharray="${C.toFixed(1)}" stroke-dashoffset="${(C * (1 - frac)).toFixed(1)}"/></svg><div class="lvn"><div><b>${d.lv}</b><span>المستوى</span></div></div></div>
+        <div style="min-width:0"><div class="pg-name">${nameP}</div><div class="pg-xp">نقاطه بالجولة: ${nf(d.score)} · فوز: ${nf(d.wins)}</div></div>
+      </div>
+      <div class="pg-stats">
+        <div class="pg-st"><b>🔥 ${d.streak}</b><span>السلسلة${d.best > d.streak ? ' (أفضل ' + d.best + ')' : ''}</span></div>
+        <div class="pg-st"><b>✅ ${nf(d.s.a)}</b><span>إجابات صحيحة</span></div>
+        <div class="pg-st"><b>🏆 ${nf(d.s.w)}</b><span>جولات فاز بها</span></div>
+        <div class="pg-st"><b>⚡ ${nf(d.s.f)}</b><span>إجابات سريعة</span></div>
+        <div class="pg-st"><b>🎯 ${ratio(d.s)}%</b><span>الدقة</span></div>
+        <div class="pg-st"><b>📅 ${days}</b><span>يوم باللعبة</span></div>
+      </div>
+    </div>
+    <div class="pg-sec"><h4>🎖️ الشارات <small>${(d.badges || []).length}</small></h4>${bd ? `<div class="pg-badgelist">${bd}</div>` : '<div class="pg-hint">ما كسب شارات بعد</div>'}</div>`;
+  }
+
+  // ---------- التفاعل ----------
+  const BUY_ERR = { coins: 'عملاتك ما بتكفي 🪙', level: 'لازم توصل لمستوى أعلى 🔒', owned: 'عندك هالغرض أصلاً', max: 'وصلت للحد الأقصى', nobuy: 'هالغرض هدية من المسار', none: 'غرض غير موجود' };
+  const USE_ERR = { empty: 'ما عندك منها', max: 'مفعّلة بالحد الأقصى', target: 'اختر لاعب صح', immune: 'ما بتقدر تجمّد الأدمن', already: 'هو مجمّد أصلاً', cooldown: 'استنى كم ثانية قبل التجميد الجاي', auto: 'بتشتغل لحالها' };
+  function buy(id) {
+    const it = shopItem(id);
+    socket.emit('store:buy', { id }, (r) => {
+      if (!r || !r.ok) { showToast('⚠️ ' + (BUY_ERR[r && r.reason] || 'تعذّر الشراء') + (r && r.lv ? ` (مستوى ${r.lv})` : '')); return; }
+      chime();
+      showToast(`✅ اشتريت «${it ? it.n : ''}»`, true);
+    });
+  }
+  function handleUse(r) {
+    if (!r || !r.ok) { showToast('⚠️ ' + (USE_ERR[r && r.reason] || 'ما قدرت أستخدمها')); return; }
+    if (r.prize) fanfare(); else chime();
+    showToast(r.t || 'تم', true);
+  }
+  function pickTarget() {
+    const others = (PG.players || []).filter(p => p.id !== playerId && !p.isAdmin);
+    const box = document.createElement('div');
+    box.className = 'pg-picker';
+    box.innerHTML = `<h4>❄️ مين بدك تجمّد؟</h4><div class="list">${others.map(p => `<button class="p" type="button" data-t="${esc(p.id)}">${esc(p.rawName || p.name)}</button>`).join('') || '<div class="pg-hint">ما في لاعبين غيرك حالياً</div>'}</div><button class="x" type="button">إلغاء</button>`;
+    $('.pg-card', ov).appendChild(box);
+    box.querySelector('.x').onclick = () => box.remove();
+    box.querySelectorAll('[data-t]').forEach(b => { b.onclick = () => { box.remove(); socket.emit('store:use', { id: 'ice', target: b.dataset.t }, handleUse); }; });
+  }
+  function useItem(id) {
+    if (id === 'ice') return pickTarget();
+    socket.emit('store:use', { id }, handleUse);
+  }
+  function fetchView() {
+    socket.emit('profile:view', { playerId: viewId }, (res) => {
+      viewData = res && res.ok ? res.p : { gone: true };
+      if (isOpen() && tab === 'view') render();
+    });
+  }
+  playersList.addEventListener('click', (e) => {
+    const li = e.target.closest('li');
+    if (!li || !li.dataset.id) return;
+    if (li.dataset.id === playerId) openPanel('profile'); else openPanel('view', li.dataset.id);
+  });
+
+  function bindEquip() {
+    const body = $('#pg-body');
+    body.querySelectorAll('[data-eq]').forEach(b => b.addEventListener('click', () => {
+      const i = b.dataset.eq.indexOf('|');
+      socket.emit('profile:equip', { [b.dataset.eq.slice(0, i)]: b.dataset.eq.slice(i + 1) });
+    }));
+    body.querySelectorAll('[data-goto]').forEach(b => b.addEventListener('click', () => { storeCat = b.dataset.goto; tab = 'store'; render(); }));
+  }
+  function bindProfile() {
+    bindEquip();
+    $('#pg-body').querySelectorAll('[data-bd]').forEach(b => b.addEventListener('click', () => {
+      const cur = PG.state.shown.bd.slice(), id = b.dataset.bd, i = cur.indexOf(id);
+      if (i >= 0) cur.splice(i, 1);
+      else { if (cur.length >= 3) cur.shift(); cur.push(id); }
+      socket.emit('profile:equip', { bd: cur });
+    }));
+  }
+  function bindStore() {
+    bindEquip();
+    const body = $('#pg-body');
+    body.querySelectorAll('[data-cat]').forEach(x => x.addEventListener('click', () => { storeCat = x.dataset.cat; render(); }));
+    body.querySelectorAll('[data-buy]').forEach(x => x.addEventListener('click', () => buy(x.dataset.buy)));
+    body.querySelectorAll('[data-use]').forEach(x => x.addEventListener('click', () => useItem(x.dataset.use)));
+  }
+
+  function bindDaily() {
+    const btn = $('#pg-spin');
+    if (btn) btn.addEventListener('click', doSpin);
+  }
+
+  function doSpin() {
+    if (spinning || !PG.state || !PG.state.wheel.can) return;
+    audio();
+    spinning = true;
+    const btn = $('#pg-spin'); btn.disabled = true; btn.textContent = '🎡 ...';
+    socket.emit('wheel:spin', {}, (res) => {
+      if (!res || !res.ok) { spinning = false; socket.emit('progress:get'); return; }
+      const wheel = $('#pg-wheel'), n = PG.cat.wheel.length, step = 360 / n;
+      const jitter = (Math.random() - 0.5) * step * 0.6;
+      PG.rot = (PG.rot || 0) - ((PG.rot || 0) % 360) + 360 * 6 - res.index * step + jitter;
+      wheel.classList.add('spin');
+      wheel.style.transform = `rotate(${PG.rot}deg)`;
+      let lastSec = -1;
+      const loop = () => {
+        if (!spinning) return;
+        const m = new DOMMatrix(getComputedStyle(wheel).transform);
+        const ang = (Math.atan2(m.b, m.a) * 180 / Math.PI + 360) % 360;
+        const secIdx = Math.floor((((360 - ang) + step / 2) % 360) / step);
+        if (lastSec !== -1 && secIdx !== lastSec) tick();
+        lastSec = secIdx;
+        requestAnimationFrame(loop);
+      };
+      requestAnimationFrame(loop);
+      setTimeout(() => finishSpin(res), reduceMotionPg() ? 1300 : 5400);
+    });
+  }
+  const reduceMotionPg = () => !!(window.matchMedia && window.matchMedia('(prefers-reduced-motion: reduce)').matches);
+  function finishSpin(res) {
+    spinning = false;
+    chime();
+    const r = $('#pg-result');
+    if (r) { r.innerHTML = `🎉 ربحت ${esc(res.prize.i)} ${esc(res.prize.n || res.prize.t)}!`; r.classList.add('pop'); }
+    if (held.state) { PG.state = held.state; PG.at = Date.now(); held.state = null; }
+    const q = held.toasts.splice(0); q.forEach(t => (t.lvl ? showLevelUp(t.lvl) : showToast(t.t, t.big)));
+    refreshButtons();
+    if (isOpen()) { const keep = r && r.innerHTML; render(); const rr = $('#pg-result'); if (rr && keep) { rr.innerHTML = keep; rr.classList.add('pop'); } }
+  }
+
+  // ---------- إشعارات ----------
+  function showToast(t, big) {
+    if (spinning) { held.toasts.push({ t, big }); return; }
+    toastBox.classList.add('on'); topLayerShow(toastBox);
+    const d = document.createElement('div');
+    d.className = 'pg-toast' + (big ? ' big' : '');
+    d.textContent = t;
+    toastBox.appendChild(d);
+    setTimeout(() => { d.remove(); if (!toastBox.children.length) { toastBox.classList.remove('on'); topLayerHide(toastBox); } }, 3700);
+  }
+  function showLevelUp(d) {
+    if (spinning) { held.toasts.push({ lvl: d }); return; }
+    toastBox.classList.add('on'); topLayerShow(toastBox);
+    const el = document.createElement('div');
+    el.className = 'pg-lvup';
+    const ups = (d.ups || []).map(u => `🎁 ${esc(u)}`).join('<br>');
+    el.innerHTML = `<div class="u">⬆️ مستوى جديد</div><div class="n">${d.lv}</div>${ups ? `<div class="r">${ups}<br><small>فعّله من «ملفي»</small></div>` : ''}${d.coins ? `<div class="r">+${d.coins} 🪙</div>` : ''}`;
+    const colors = ['#fbbf24', '#f472b6', '#a78bfa', '#34d399', '#60a5fa', '#fb923c'];
+    for (let i = 0; i < 26; i++) {
+      const c = document.createElement('i'); c.className = 'pg-conf';
+      const a = Math.random() * Math.PI * 2, r = 70 + Math.random() * 90;
+      c.style.cssText = `background:${colors[i % colors.length]};--dx:${Math.cos(a) * r}px;--dy:${Math.sin(a) * r - 20}px;--rt:${Math.random() * 720 - 360}deg;animation-delay:${Math.random() * .15}s`;
+      el.appendChild(c);
+    }
+    toastBox.appendChild(el);
+    fanfare();
+    setTimeout(() => { el.remove(); if (!toastBox.children.length) { toastBox.classList.remove('on'); topLayerHide(toastBox); } }, 4700);
+  }
+  function floatXp(n) {
+    const ref = $('#points-display'); if (!ref) return;
+    const r = ref.getBoundingClientRect();
+    const f = document.createElement('div');
+    f.className = 'pg-xpfloat'; f.textContent = `+${n} ✨`;
+    f.style.left = `${r.left + r.width / 2 - 24}px`; f.style.top = `${r.top - 6}px`;
+    document.body.appendChild(f); topLayerShow(f);
+    setTimeout(() => f.remove(), 1400);
+  }
+
+  function refreshButtons() {
+    const s = PG.state; if (!s) return;
+    bDaily.querySelector('.pg-dot').classList.toggle('on', !!s.wheel.can);
+    bProfile.querySelector('.pg-lvtag').textContent = `Lv.${s.lv}`;
+  }
+
+  // ---------- أحداث السيرفر ----------
+  socket.on('progress:catalog', (c) => {
+    PG.cat = c;
+    if (PG.players) updatePlayersList(PG.players);
+    if (isOpen()) render();
+  });
+  socket.on('progress:state', (s) => {
+    if (spinning) { held.state = s; return; }
+    const old = PG.state;
+    PG.state = s; PG.at = Date.now();
+    if (old && s.xp > old.xp && !isOpen()) floatXp(s.xp - old.xp);
+    refreshButtons();
+    if (isOpen()) render();
+  });
+  socket.on('progress:toast', (d) => showToast(d.t, d.big));
+  socket.on('progress:levelup', (d) => showLevelUp(d));
+  socket.on('updatePlayers', () => { if (isOpen() && tab === 'profile' && !spinning) render(); });
+  window.PG_CATALOG = () => PG.cat;
+})();
+
+// ============================================================
+// 📊 محرر التقدم والإحصائيات والسلسلة — للأدمن الأساسي فقط
+// (السيرفر بيرفض أي طلب من غير الأدمن الأساسي)
+// ============================================================
+(function () {
+  const ov = document.createElement('div');
+  ov.id = 'apg-overlay';
+  ov.setAttribute('popover', 'manual');
+  document.body.appendChild(ov);
+  const esc = (v) => String(v).replace(/[&<>"']/g, c => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;', "'": '&#39;' }[c]));
+  const FIELDS = [['lv', 'المستوى'], ['xp', 'الخبرة (XP)'], ['coins', 'العملات'], ['bs', 'أفضل سلسلة'],
+    ['a', 'إجابات صحيحة'], ['w', 'جولات فاز بها'], ['f', 'إجابات سريعة'], ['dc', 'تحديات منجزة'],
+    ['sp', 'لفّات العجلة'], ['wr', 'إجابات خاطئة'], ['bt', 'أسرع إجابة (ms)'], ['score', 'نقاط الجولة'], ['wins', 'عدد الفوز']];
+  let pid = null, pname = '', D = null;
+  const read = (d) => ({ lv: d.lv, xp: d.xp, coins: d.coins, bs: d.bs, a: d.s.a, w: d.s.w, f: d.s.f, dc: d.s.dc, sp: d.s.sp, wr: d.s.wr, bt: d.s.bt, score: d.score, wins: d.wins });
+
+  function close() { ov.classList.remove('apg-open'); topLayerHide(ov); }
+  function note(t) { const n = ov.querySelector('.apg-note.live'); if (n) n.textContent = t; }
+  function call(ev, data, okMsg) {
+    socket.emit(ev, Object.assign({ playerId: pid }, data), (r) => {
+      if (!r || !r.ok) { note('⚠️ ما انحفظ (لازم تكون الأدمن الأساسي واللاعب موجود)'); return; }
+      D = r.d; draw(); note(okMsg || '✅ تم');
+    });
+  }
+  function draw() {
+    if (!D) { ov.innerHTML = '<div class="apg-card"><div class="apg-head"><h3>📊 جاري التحميل…</h3><button type="button" data-x>✕</button></div></div>'; ov.querySelector('[data-x]').onclick = close; return; }
+    const cat = (window.PG_CATALOG && window.PG_CATALOG()) || null;
+    const badges = cat ? cat.badges : [], shop = cat ? cat.shop : [];
+    const v = read(D);
+    ov.innerHTML = `
+    <div class="apg-card" role="dialog" aria-modal="true">
+      <div class="apg-head"><h3>📊 تقدّم اللاعب: ${esc(D.name)}</h3><button type="button" data-x aria-label="إغلاق">✕</button></div>
+      <div class="apg-note">للأدمن الأساسي فقط · التغييرات بتنحفظ فوراً على حساب اللاعب</div>
+      <div class="apg-sec"><b>🔥 السلسلة الحالية: ${D.streak} يوم</b>
+        <div class="apg-row">
+          <button type="button" data-sa="1">+1</button><button type="button" data-sa="3">+3</button><button type="button" data-sa="7">+7</button><button type="button" data-sa="30">+30</button><button type="button" data-sa="-1">−1</button>
+          <input class="apg-in" id="apg-sset" type="number" min="0" max="3650" placeholder="رقم" style="width:80px">
+          <button type="button" class="apg-btn ok" data-sset>تعيين</button>
+          <button type="button" class="apg-btn bad" data-sa0>تصفير</button>
+        </div></div>
+      <div class="apg-sec"><b>📈 الإحصائيات</b>
+        <div class="apg-grid">${FIELDS.map(f => `<label>${f[1]}<input type="number" min="0" data-f="${f[0]}" value="${v[f[0]] == null ? 0 : v[f[0]]}"></label>`).join('')}</div>
+        <div class="apg-row" style="margin-top:8px"><button type="button" class="apg-btn ok" data-save>💾 حفظ الإحصائيات</button></div>
+        <div class="apg-note">صرف اللاعب الكلي: 🪙 ${D.spent || 0} · الشارات: ${D.badges.length} · الأغراض: ${D.own.length}</div></div>
+      <div class="apg-sec"><b>🎖️ الشارات</b>
+        <div class="apg-row"><select class="apg-sel" id="apg-bd">${badges.map(b => `<option value="${esc(b.id)}">${b.e} ${esc(b.n)}</option>`).join('')}</select>
+          <button type="button" class="apg-btn ok" data-gb="1">منح</button><button type="button" class="apg-btn bad" data-gb="0">سحب</button></div>
+        <div class="apg-chips">${D.badges.map(id => { const b = badges.find(x => x.id === id); return b ? `<span class="apg-chip" data-rb="${esc(id)}" title="اضغط للسحب">${b.e} ${esc(b.n)}</span>` : ''; }).join('') || '<span class="apg-note">ما عنده شارات</span>'}</div></div>
+      <div class="apg-sec"><b>🎁 الأغراض</b>
+        <div class="apg-row"><select class="apg-sel" id="apg-it">${shop.map(i => `<option value="${esc(i.id)}">${i.e ? i.e + ' ' : ''}${esc(i.n)}</option>`).join('')}</select>
+          <input class="apg-in" id="apg-qty" type="number" min="1" max="99" value="1" style="width:64px">
+          <button type="button" class="apg-btn ok" data-gi="1">منح</button><button type="button" class="apg-btn bad" data-gi="0">سحب</button></div>
+        <div class="apg-chips">${D.own.map(id => { const i = shop.find(x => x.id === id); return i ? `<span class="apg-chip" data-ri="${esc(id)}" title="اضغط للسحب">${esc(i.n)}</span>` : ''; }).join('')}${Object.keys(D.inv).map(id => { const i = shop.find(x => x.id === id); return i ? `<span class="apg-chip" data-ri="${esc(id)}" title="اضغط لسحب واحد">${i.e} ${esc(i.n)} ×${D.inv[id]}</span>` : ''; }).join('') || ''}</div></div>
+      <div class="apg-sec"><b>⚠️ تصفير كامل</b>
+        <div class="apg-row"><button type="button" class="apg-btn bad" data-reset>🗑️ تصفير كل تقدّم اللاعب</button></div></div>
+      <div class="apg-note live"></div>
+    </div>`;
+    const q = (s) => ov.querySelectorAll(s);
+    ov.querySelector('[data-x]').onclick = close;
+    q('[data-sa]').forEach(b => b.onclick = () => call('admin:prog:streak', { add: Number(b.dataset.sa) }, '✅ تم تعديل السلسلة'));
+    ov.querySelector('[data-sset]').onclick = () => { const n = ov.querySelector('#apg-sset').value; if (n !== '') call('admin:prog:streak', { set: Number(n) }, '✅ تم تعيين السلسلة'); };
+    ov.querySelector('[data-sa0]').onclick = () => call('admin:prog:streak', { set: 0 }, '✅ تم تصفير السلسلة');
+    ov.querySelector('[data-save]').onclick = () => {
+      const set = {};
+      ov.querySelectorAll('[data-f]').forEach(i => { if (i.value !== '' && Number(i.value) !== v[i.dataset.f]) set[i.dataset.f] = Number(i.value); });
+      if (set.lv !== undefined) delete set.xp;                          // المستوى أقوى من الخبرة لو تغيّروا سوا
+      if (!Object.keys(set).length) { note('ما في تغييرات'); return; }
+      call('admin:prog:set', { set }, '✅ انحفظت الإحصائيات');
+    };
+    q('[data-gb]').forEach(b => b.onclick = () => call('admin:prog:grant', { kind: 'badge', id: ov.querySelector('#apg-bd').value, give: b.dataset.gb === '1' }, '✅ تم'));
+    q('[data-rb]').forEach(b => b.onclick = () => call('admin:prog:grant', { kind: 'badge', id: b.dataset.rb, give: false }, '✅ انسحبت الشارة'));
+    q('[data-gi]').forEach(b => b.onclick = () => call('admin:prog:grant', { kind: 'item', id: ov.querySelector('#apg-it').value, qty: Number(ov.querySelector('#apg-qty').value) || 1, give: b.dataset.gi === '1' }, '✅ تم'));
+    q('[data-ri]').forEach(b => b.onclick = () => call('admin:prog:grant', { kind: 'item', id: b.dataset.ri, qty: 1, give: false }, '✅ انسحب الغرض'));
+    ov.querySelector('[data-reset]').onclick = () => { if (confirm(`تصفير كل تقدّم «${pname}» (مستوى، عملات، أغراض، شارات، سلسلة)؟`)) call('admin:prog:reset', {}, '✅ انصفّر التقدّم'); };
+  }
+  ov.addEventListener('click', (e) => { if (e.target === ov) close(); });
+  document.addEventListener('keydown', (e) => { if (e.key === 'Escape' && ov.classList.contains('apg-open')) close(); });
+
+  window.__openProgEditor = function (id, name) {
+    pid = id; pname = name || ''; D = null;
+    ov.classList.add('apg-open'); topLayerShow(ov); draw();
+    socket.emit('admin:prog:get', { playerId: id }, (r) => {
+      if (!r || !r.ok) { ov.innerHTML = '<div class="apg-card"><div class="apg-head"><h3>⚠️ غير متاح</h3><button type="button" data-x>✕</button></div><div class="apg-note">هالأداة للأدمن الأساسي فقط واللاعب لازم يكون موجود.</div></div>'; ov.querySelector('[data-x]').onclick = close; return; }
+      D = r.d; draw();
+    });
+  };
 })();
