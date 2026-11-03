@@ -582,7 +582,7 @@ window.deleteGalleryItem = (idx) => {
 const initStudio = () => {
     const canvas = document.getElementById('main-canvas');
     if (!canvas) return;
-    const ctx = canvas.getContext('2d', { willReadFrequently: true });
+    const ctx = canvas.getContext('2d');
     
     const boardDialog = document.getElementById('board-dialog');
     const btnOpen = document.getElementById('btn-open-board');
@@ -598,6 +598,10 @@ const initStudio = () => {
     const btnSolo = document.getElementById('art-btn-solo-mode');
 
     let drawing = false;
+    let rectCache = null;                                    // قياس الكانفس مرة وحدة بدل مع كل حركة (كان بيبطّئ الرسم)
+    const getRect = () => rectCache || (rectCache = canvas.getBoundingClientRect());
+    window.addEventListener('resize', () => { rectCache = null; });
+    window.addEventListener('scroll', () => { rectCache = null; }, true);
 
     updateGalleryUI();
 
@@ -617,7 +621,12 @@ const initStudio = () => {
 
     function saveState() {
         if (undoStack.length >= 25) undoStack.shift();
-        undoStack.push(canvas.toDataURL());
+        try {                                              // نسخة سريعة على كرت الشاشة بدل ترميز PNG كامل مع كل ضغطة
+            const snap = document.createElement('canvas');
+            snap.width = canvas.width; snap.height = canvas.height;
+            snap.getContext('2d').drawImage(canvas, 0, 0);
+            undoStack.push(snap);
+        } catch (e) { undoStack.push(canvas.toDataURL()); }
     }
 
     if(btnOpen) {
@@ -646,8 +655,9 @@ const initStudio = () => {
 
     const startDrawing = (e) => {
         drawing = true;
+        rectCache = null;
         saveState();
-        const rect = canvas.getBoundingClientRect();
+        const rect = getRect();
         lastX = (e.touches ? e.touches[0].clientX : e.clientX) - rect.left;
         lastY = (e.touches ? e.touches[0].clientY : e.clientY) - rect.top;
         ctx.beginPath();
@@ -656,7 +666,7 @@ const initStudio = () => {
 
     const draw = (e) => {
         if (!drawing) return;
-        const rect = canvas.getBoundingClientRect();
+        const rect = getRect();
         const x = (e.touches ? e.touches[0].clientX : e.clientX) - rect.left;
         const y = (e.touches ? e.touches[0].clientY : e.clientY) - rect.top;
 
@@ -685,6 +695,8 @@ const initStudio = () => {
         if (brushType.value !== 'spray') {
             ctx.lineTo(x, y);
             ctx.stroke();
+            // بالشفافية الكاملة بنبدأ مسار جديد لكل مقطع (نفس الشكل بالضبط بس أسرع بكثير لأنه ما بنعيد رسم الخط كله كل مرة)
+            if (ctx.globalAlpha >= 0.99) { ctx.beginPath(); ctx.moveTo(x, y); }
         }
         ctx.restore();
 
@@ -769,9 +781,7 @@ const initStudio = () => {
     btnUndo.onclick = () => {
         if (undoStack.length > 0) {
             const lastImg = undoStack.pop();
-            const img = new Image();
-            img.src = lastImg;
-            img.onload = () => {
+            const paintBack = (img) => {
                 ctx.save();
                 ctx.globalAlpha = 1.0;
                 ctx.globalCompositeOperation = 'source-over';
@@ -780,6 +790,11 @@ const initStudio = () => {
                 ctx.restore();
                 if(!isSoloMode) socket.emit('load-gallery-all', canvas.toDataURL());
             };
+            if (typeof lastImg === 'string') {
+                const img = new Image();
+                img.src = lastImg;
+                img.onload = () => paintBack(img);
+            } else paintBack(lastImg);
         }
     };
 
@@ -803,47 +818,212 @@ const initStudio = () => {
 initStudio();
 
 // ==========================================
-//     نظام تبديل الثيمات المعزول (زر 🖌️)
+//     نظام الثيمات التقليدية (زر 🖌️) — بيغيّر شكل اللعبة كلها + لون وتصميم الكتاب
 // ==========================================
 (() => {
-  const customThemes = [
-    { className: '', name: 'الذهبي الأساسي' },
-    { className: 'theme-violet', name: 'البنفسجي النيون' },
-    { className: 'theme-glass', name: 'الزجاجي الأزرق' },
-    { className: 'theme-emerald', name: 'الزمردي المظلم' },
-    { className: 'theme-stealth', name: 'السايبر المظلم' }
+  const enc = (c) => String(c).replace('#', '%23');
+  const grain = (a, f, rgb = '0 0 0') => { const [r, g, b] = rgb.split(' '); return `url("data:image/svg+xml;utf8,<svg xmlns='http://www.w3.org/2000/svg' width='140' height='140'><filter id='n'><feTurbulence type='fractalNoise' baseFrequency='${f}' numOctaves='3' stitchTiles='stitch'/><feColorMatrix values='0 0 0 0 ${r}  0 0 0 0 ${g}  0 0 0 0 ${b}  0 0 0 ${a} 0'/></filter><rect width='100%' height='100%' filter='url(%23n)'/></svg>")`; };
+
+  // ---------- تعريف الثيمات ----------
+  // bg: خلفية الصفحة | panel: لوح الواجهة | foil: تذهيب/تفضيض | paper: ورق الكتاب | cov: غلاف الكتاب | btn: أزرار الكتاب
+  const TH = [
+    { id: 'gold', n: 'الذهبي الأساسي', bg: ['#3e2f1c', '#7a5a22'], panel: ['rgba(74,48,18,.95)', 'rgba(44,27,9,.97)'], line: '#d9a441', foil: ['#fff1b8', '#e0aa3e', '#9a6a1a'], title: '#ffd978', text: '#fff2c2', muted: '#8b6a3a',
+      paper: ['#fbf1d6', '#efdcae', '#e0c88c'], ink: '#4a2f12', cov: ['#8a2f35', '#5c1a20', '#3b0d12'], btn: ['#7a2b2f', '#4a1017', '#3a0c11'], btntext: '#ffe9a8', glow: 'rgba(255,200,80,.30)', tex: 'leather', emblem: 'star', frame: 'double' },
+    { id: 'violet', n: 'البنفسجي الملكي', bg: ['#1a0b33', '#43207a'], panel: ['rgba(44,20,84,.95)', 'rgba(24,10,50,.97)'], line: '#cdb0ff', foil: ['#f6eeff', '#c9a7ff', '#7d52d6'], title: '#e6d4ff', text: '#f3e8ff', muted: '#7a5cae',
+      paper: ['#f8f2ff', '#e9dcfb', '#d8c6f2'], ink: '#3a1d6e', cov: ['#7c3aed', '#5424b0', '#2e1065'], btn: ['#5b2ea8', '#3a1a78', '#26104f'], btntext: '#efe0ff', glow: 'rgba(190,140,255,.35)', tex: 'velvet', emblem: 'rosette', frame: 'solid' },
+    { id: 'blue', n: 'الأزرق اللازوردي', bg: ['#07182e', '#154673'], panel: ['rgba(10,40,76,.95)', 'rgba(5,22,45,.97)'], line: '#a9cbe8', foil: ['#f2f9ff', '#a9cbe8', '#5d86ad'], title: '#d6ebff', text: '#e8f3ff', muted: '#5a7fa3',
+      paper: ['#f5f8fc', '#e3ebf4', '#cfdae8'], ink: '#12324f', cov: ['#2a62a8', '#164580', '#0a2850'], btn: ['#1f5189', '#12396a', '#0a2548'], btntext: '#e4f2ff', glow: 'rgba(120,190,255,.32)', tex: 'cloth', emblem: 'crescent', frame: 'dotted' },
+    { id: 'emerald', n: 'الزمردي الأندلسي', bg: ['#04231a', '#0e5a40'], panel: ['rgba(8,52,38,.95)', 'rgba(4,30,22,.97)'], line: '#d9b455', foil: ['#fff3bd', '#dcb24a', '#8f6a18'], title: '#f1dc8e', text: '#eafbe3', muted: '#6d7f4a',
+      paper: ['#f7f3df', '#e9e2bd', '#d9d09c'], ink: '#16402e', cov: ['#1f7a54', '#14543a', '#0a3023'], btn: ['#176143', '#0d422d', '#082a1d'], btntext: '#f6e7a6', glow: 'rgba(90,220,150,.28)', tex: 'leather', emblem: 'knot', frame: 'double' },
+    { id: 'charcoal', n: 'الفحمي النحاسي', bg: ['#0b0c10', '#23262f'], panel: ['rgba(30,32,40,.96)', 'rgba(14,15,20,.98)'], line: '#d49a52', foil: ['#ffe8c9', '#d49a52', '#7d4a1c'], title: '#f3cf9a', text: '#ece6dc', muted: '#7b6a55',
+      paper: ['#f1ece2', '#ded7c7', '#cac1ac'], ink: '#2a2620', cov: ['#43454f', '#2a2c34', '#121319'], btn: ['#3a3d47', '#23252d', '#14151b'], btntext: '#ffe2b8', glow: 'rgba(230,160,90,.25)', tex: 'leather', emblem: 'star', frame: 'solid' },
+    { id: 'turquoise', n: 'الفيروزي العثماني', bg: ['#062b30', '#117078'], panel: ['rgba(8,56,64,.95)', 'rgba(4,32,38,.97)'], line: '#e8c46a', foil: ['#fff8d8', '#e6bb55', '#9a6d1e'], title: '#fbe9a8', text: '#effcfb', muted: '#5f8f8f',
+      paper: ['#fdf8e8', '#f2e7c8', '#e4d4a8'], ink: '#0e4a4e', cov: ['#1ab0b4', '#0e7d82', '#07484c'], btn: ['#0f7b80', '#0a5559', '#06383b'], btntext: '#fff3c4', glow: 'rgba(80,230,230,.28)', tex: 'tile', emblem: 'tile', frame: 'double' },
+    { id: 'terracotta', n: 'الطيني الأندلسي', bg: ['#3a1a10', '#85421f'], panel: ['rgba(72,32,16,.95)', 'rgba(44,18,8,.97)'], line: '#e2a65a', foil: ['#ffe9be', '#e0a24f', '#94601a'], title: '#ffd9a0', text: '#fff0dc', muted: '#8f6240',
+      paper: ['#fbeed3', '#f0dbb0', '#e2c68c'], ink: '#5a2a12', cov: ['#c8683e', '#9d4524', '#6b2812'], btn: ['#a4482a', '#74301a', '#4d1f10'], btntext: '#ffe6bd', glow: 'rgba(255,160,90,.30)', tex: 'leather', emblem: 'rosette', frame: 'double' },
+    { id: 'rose', n: 'الوردي الدمشقي', bg: ['#35101f', '#7a2848'], panel: ['rgba(72,22,44,.95)', 'rgba(42,10,26,.97)'], line: '#eab0a2', foil: ['#fff0ea', '#eaaa9c', '#a85a4c'], title: '#ffd9d0', text: '#ffeef0', muted: '#9a5f70',
+      paper: ['#fff4ef', '#f7ddd5', '#eac6bb'], ink: '#5a1a30', cov: ['#bd3f66', '#8a2749', '#561430'], btn: ['#93294e', '#661836', '#430e24'], btntext: '#ffe3dc', glow: 'rgba(255,140,170,.30)', tex: 'velvet', emblem: 'crescent', frame: 'solid' },
+    { id: 'sand', n: 'الرملي الصحراوي', bg: ['#4a3820', '#9a7842'], panel: ['rgba(86,62,32,.95)', 'rgba(54,38,18,.97)'], line: '#e6c27a', foil: ['#fff4cf', '#dfbd68', '#946e22'], title: '#fbe6ae', text: '#fff6e2', muted: '#8a7248',
+      paper: ['#fffaf0', '#f4e8cd', '#e6d3a8'], ink: '#4a3418', cov: ['#bb915a', '#8f6a38', '#5e4020'], btn: ['#8d6535', '#654523', '#432d14'], btntext: '#fff0c8', glow: 'rgba(255,220,140,.28)', tex: 'leather', emblem: 'knot', frame: 'dotted' },
+    { id: 'noir', n: 'الأسود الفاخر', bg: ['#060606', '#1d1708'], panel: ['rgba(20,17,10,.97)', 'rgba(8,7,4,.98)'], line: '#f0c44c', foil: ['#fff6c2', '#f0c44c', '#a8780e'], title: '#ffe48a', text: '#f5ecd2', muted: '#7d6a35',
+      paper: ['#f7f0dc', '#e7dcb8', '#d6c894'], ink: '#2a210e', cov: ['#2c2c2c', '#171717', '#050505'], btn: ['#2a2415', '#171208', '#0a0803'], btntext: '#ffe48a', glow: 'rgba(255,205,80,.28)', tex: 'lacquer', emblem: 'rosette', frame: 'double' }
   ];
+  const BY = new Map(TH.map(t => [t.id, t]));
+  const LEGACY = ['gold', 'violet', 'blue', 'emerald', 'charcoal'];     // ترتيب الثيمات القديمة (للي كان مختار ثيم قبل)
+  const OLD_CLS = ['theme-violet', 'theme-glass', 'theme-emerald', 'theme-stealth'];
 
-  let currentCustomIndex = parseInt(localStorage.getItem('customThemeIndex')) || 0;
-
-  function applyCustomTheme(index) {
-    const activeTheme = customThemes[index];
-
-    // إزالة كلاسات الثيمات الأربعة فقط حتى لا نلغي كلاس dark-mode إن وجد
-    customThemes.forEach(t => {
-      if (t.className) document.body.classList.remove(t.className);
-    });
-
-    // إضافة الكلاس الجديد
-    if (activeTheme.className) {
-      document.body.classList.add(activeTheme.className);
+  // ---------- أشكال الزخرفة ----------
+  const cornerSvg = (tf) => `url("data:image/svg+xml;utf8,<svg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 40 40'><g transform='${tf}' fill='none' stroke='black' stroke-width='2' stroke-linecap='round'><path d='M3 38 V9 Q3 3 9 3 H38'/><path d='M9 38 V15 Q9 9 15 9 H38' stroke-width='1'/><path d='M15 15 Q23 15 23 23' stroke-width='1.2'/></g><g transform='${tf}' fill='black'><circle cx='9' cy='9' r='2.8'/><circle cx='30' cy='3' r='1.4'/><circle cx='3' cy='30' r='1.4'/></g></svg>")`;
+  const CORNERS = [cornerSvg(''), cornerSvg('translate(40 0) scale(-1 1)'), cornerSvg('translate(0 40) scale(1 -1)'), cornerSvg('translate(40 40) scale(-1 -1)')];
+  const LINE = `url("data:image/svg+xml;utf8,<svg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 120 12' preserveAspectRatio='none'><path d='M0 6 H94' stroke='black' stroke-width='1.3'/><path d='M0 9 H70' stroke='black' stroke-width='.6'/><path d='M99 6 L107 1 L115 6 L107 11 Z' fill='black'/><circle cx='95' cy='6' r='1.5' fill='black'/></svg>")`;
+  const patternFor = (t) => `url("data:image/svg+xml;utf8,<svg xmlns='http://www.w3.org/2000/svg' width='60' height='60'><g fill='none' stroke='${enc(t.foil[1])}' stroke-width='1' opacity='.16'><path d='M30 4 L36 24 L56 30 L36 36 L30 56 L24 36 L4 30 L24 24 Z'/><circle cx='30' cy='30' r='3.5'/><path d='M0 0 L9 0 M0 0 L0 9 M60 0 H51 M60 0 V9 M0 60 H9 M0 60 V51 M60 60 H51 M60 60 V51'/></g></svg>")`;
+  const covTex = (t) => {
+    const f = enc(t.foil[1]);
+    switch (t.tex) {
+      case 'velvet': return `${grain(.16, '1.4', '1 1 1')}, radial-gradient(ellipse at 50% 0%, rgba(255,255,255,.14), transparent 60%)`;
+      case 'cloth': return 'repeating-linear-gradient(45deg, rgba(255,255,255,.07) 0 1.5px, transparent 1.5px 4px), repeating-linear-gradient(-45deg, rgba(0,0,0,.14) 0 1.5px, transparent 1.5px 4px)';
+      case 'lacquer': return 'linear-gradient(115deg, rgba(255,255,255,.16) 0 16%, transparent 34%), linear-gradient(180deg, rgba(255,255,255,.05), transparent 40%)';
+      case 'tile': return `url("data:image/svg+xml;utf8,<svg xmlns='http://www.w3.org/2000/svg' width='44' height='44'><g fill='none' stroke='${f}' stroke-width='1' opacity='.38'><path d='M22 2 L27 17 L42 22 L27 27 L22 42 L17 27 L2 22 L17 17 Z'/><circle cx='22' cy='22' r='3'/></g></svg>")`;
+      default: return grain(.42, '.85');
     }
+  };
+  const FRAME = { double: '1.5px solid var(--foil2)', solid: '2px solid var(--foil2)', dotted: '2px dotted var(--foil2)' };
 
-    // حفظ الاختيار
-    localStorage.setItem('customThemeIndex', index);
+  // ---------- شعارات الغلاف (كل ثيم له شكل) ----------
+  function polyStar(n, R, r, rot = 0) {
+    let p = '';
+    for (let i = 0; i < n * 2; i++) { const a = (Math.PI * i) / n - Math.PI / 2 + rot, rad = i % 2 ? r : R; p += (i ? 'L' : 'M') + (50 + rad * Math.cos(a)).toFixed(1) + ' ' + (50 + rad * Math.sin(a)).toFixed(1) + ' '; }
+    return p + 'Z';
+  }
+  function emblem(kind) {
+    const G = 'url(#bkgold)';
+    const defs = '<defs><linearGradient id="bkgold" x1="0" y1="0" x2="1" y2="1"><stop offset="0" style="stop-color:var(--foil1)"/><stop offset=".5" style="stop-color:var(--foil2)"/><stop offset="1" style="stop-color:var(--foil3)"/></linearGradient></defs>';
+    const ring = `<circle cx="50" cy="50" r="46" fill="none" stroke="${G}" stroke-width="1.8"/><circle cx="50" cy="50" r="41" fill="none" stroke="${G}" stroke-width=".8" stroke-dasharray="1.6 2.2"/>`;
+    const core = (a, b) => `<circle cx="50" cy="50" r="${a}" fill="${G}"/><circle cx="50" cy="50" r="${b}" style="fill:var(--cov3)"/><circle cx="50" cy="50" r="${(b * .4).toFixed(1)}" fill="${G}"/>`;
+    let body = '';
+    if (kind === 'crescent') {
+      body = `<mask id="bkcm"><rect width="100" height="100" fill="white"/><circle cx="58" cy="46" r="24" fill="black"/></mask><circle cx="46" cy="50" r="31" fill="${G}" mask="url(#bkcm)"/><path d="${polyStar(5, 10, 4.2)}" transform="translate(21 -6) scale(.9)" fill="${G}"/><circle cx="50" cy="50" r="36" fill="none" stroke="${G}" stroke-width=".7" opacity=".6"/>`;
+    } else if (kind === 'rosette') {
+      let petals = ''; for (let i = 0; i < 12; i++) petals += `<ellipse cx="50" cy="26" rx="5.4" ry="15" transform="rotate(${i * 30} 50 50)" fill="none" stroke="${G}" stroke-width="1.3"/>`;
+      body = petals + `<circle cx="50" cy="50" r="17" fill="none" stroke="${G}" stroke-width="1.2"/>` + core(10, 6);
+    } else if (kind === 'knot') {
+      body = `<rect x="22" y="22" width="56" height="56" fill="none" stroke="${G}" stroke-width="1.8" stroke-linejoin="round"/><rect x="22" y="22" width="56" height="56" fill="none" stroke="${G}" stroke-width="1.8" stroke-linejoin="round" transform="rotate(45 50 50)"/><circle cx="50" cy="50" r="19" fill="none" stroke="${G}" stroke-width="1"/>` + core(11, 6.5);
+    } else if (kind === 'tile') {
+      body = `<path d="${polyStar(12, 38, 26)}" fill="none" stroke="${G}" stroke-width="1.5" stroke-linejoin="round"/><path d="${polyStar(6, 22, 13, .26)}" fill="none" stroke="${G}" stroke-width="1.1" stroke-linejoin="round"/>` + core(9, 5.5);
+    } else {
+      body = `<path d="M50 10 L58 38 L86 30 L66 50 L86 70 L58 62 L50 90 L42 62 L14 70 L34 50 L14 30 L42 38 Z" fill="none" stroke="${G}" stroke-width="1.4" stroke-linejoin="round"/>` + core(13, 8);
+    }
+    return `<svg class="bk-emblem" viewBox="0 0 100 100" aria-hidden="true">${defs}${ring}${body}</svg>`;
   }
 
-  // تطبيق الثيم عند تحميل الصفحة
-  applyCustomTheme(currentCustomIndex);
-
-  // ربط الحدث بالزر الجديد
-  const themeBtn = document.getElementById('btn-theme-toggle');
-  if (themeBtn) {
-    themeBtn.addEventListener('click', () => {
-      currentCustomIndex = (currentCustomIndex + 1) % customThemes.length;
-      applyCustomTheme(currentCustomIndex);
-    });
+  // ---------- الستايل ----------
+  function vars(t) {
+    const L = [['bg1', t.bg[0]], ['bg2', t.bg[1]], ['panel1', t.panel[0]], ['panel2', t.panel[1]], ['line', t.line], ['foil1', t.foil[0]], ['foil2', t.foil[1]], ['foil3', t.foil[2]], ['title', t.title], ['text', t.text], ['muted', t.muted],
+      ['paper1', t.paper[0]], ['paper2', t.paper[1]], ['paper3', t.paper[2]], ['ink', t.ink], ['cov1', t.cov[0]], ['cov2', t.cov[1]], ['cov3', t.cov[2]], ['btn1', t.btn[0]], ['btn2', t.btn[1]], ['btn3', t.btn[2]], ['btntext', t.btntext], ['glow', t.glow], ['frame', FRAME[t.frame] || FRAME.double]];
+    return L.map(([k, v]) => `--${k}: ${v};`).join(' ') + ` --pat: ${patternFor(t)}; --cov-tex: ${covTex(t)};`;
   }
+  const paperGrain = grain(.3, '.7', '.45 .3 .1');
+  const css = `
+  ${TH.map(t => `body.bt-${t.id} { ${vars(t)} }`).join('\n')}
+  body.bt.dark-mode { --bg1: #07080c; --bg2: #12141c; --panel1: rgba(20,21,30,.96); --panel2: rgba(10,11,16,.98); --paper1: #4a4436; --paper2: #3d392d; --paper3: #302d24; --ink: #eadfc2; --text: #d4d4d4; --muted: #b9ab85; }
+  body.bt { background-color: var(--bg1); background-image: var(--pat), radial-gradient(ellipse at 50% -8%, var(--bg2), var(--bg1) 74%); color: var(--text); }
+  body.bt #app-container { position: relative; background: linear-gradient(180deg, var(--panel1), var(--panel2)); border: 2px solid var(--line); border-radius: 18px; padding: 20px 18px 18px;
+    box-shadow: 0 0 0 5px var(--panel2), 0 0 0 6px color-mix(in srgb, var(--line) 55%, transparent), 0 18px 50px rgba(0,0,0,.6), 0 0 44px var(--glow); }
+  body.bt #app-container::before { content: ''; position: absolute; inset: 7px; border: 1px solid color-mix(in srgb, var(--line) 45%, transparent); border-radius: 13px; pointer-events: none; }
+  body.bt #app-container::after { content: ''; position: absolute; inset: 9px; pointer-events: none; background: var(--foil2);
+    -webkit-mask: ${CORNERS[0]} left top / 34px 34px no-repeat, ${CORNERS[1]} right top / 34px 34px no-repeat, ${CORNERS[2]} left bottom / 34px 34px no-repeat, ${CORNERS[3]} right bottom / 34px 34px no-repeat;
+    mask: ${CORNERS[0]} left top / 34px 34px no-repeat, ${CORNERS[1]} right top / 34px 34px no-repeat, ${CORNERS[2]} left bottom / 34px 34px no-repeat, ${CORNERS[3]} right bottom / 34px 34px no-repeat; opacity: .9; }
+  /* العنوان بزخارف على الجنبين */
+  body.bt #app-container > header { display: flex; align-items: center; gap: 12px; margin: 2px 6px 12px; }
+  body.bt #app-container > header::before, body.bt #app-container > header::after, body.bt .players-list-container h2::before, body.bt .players-list-container h2::after { content: ''; flex: 1; height: 12px; min-width: 24px; background: linear-gradient(90deg, var(--foil3), var(--foil1)); -webkit-mask: ${LINE} center / 100% 100% no-repeat; mask: ${LINE} center / 100% 100% no-repeat; }
+  body.bt #app-container > header::before, body.bt .players-list-container h2::before { transform: scaleX(-1); }
+  body.bt #app-container > header h1 { margin: 0; font-size: 1.9rem; line-height: 1.2; color: var(--title); text-shadow: 0 2px 0 rgba(0,0,0,.55), 0 0 16px var(--glow); }
+  body.bt .game-section { gap: 11px; }
+  /* الكلمة: لفافة ورق بعصاتين على الجنبين */
+  body.bt .word-box { position: relative; background: ${paperGrain}, linear-gradient(180deg, var(--paper1), var(--paper2) 62%, var(--paper3)); color: var(--ink); text-shadow: 0 1px 0 rgba(255,255,255,.55); border-radius: 6px; padding: 14px 30px; font-size: 2.3rem;
+    box-shadow: inset 0 0 0 3px var(--paper1), inset 0 0 0 4px color-mix(in srgb, var(--foil3) 70%, transparent), inset 0 0 26px rgba(120,80,20,.35), 0 6px 16px rgba(0,0,0,.5); }
+  body.bt .word-box::before, body.bt .word-box::after { content: ''; position: absolute; top: -7px; bottom: -7px; width: 15px; border-radius: 8px; background: linear-gradient(90deg, var(--foil3), var(--foil1) 45%, var(--foil2) 60%, var(--foil3)); box-shadow: 0 3px 8px rgba(0,0,0,.55), inset 0 0 0 1px rgba(0,0,0,.25); }
+  body.bt .word-box::before { right: -8px; } body.bt .word-box::after { left: -8px; }
+  body.bt #input-answer { background: ${paperGrain}, linear-gradient(180deg, var(--paper1), var(--paper2)); color: var(--ink); border: 2px solid var(--foil2); border-radius: 10px; font-size: 1.25rem;
+    box-shadow: inset 0 2px 7px rgba(90,55,10,.4), 0 2px 0 rgba(0,0,0,.45); }
+  body.bt #input-answer::placeholder { color: var(--muted); opacity: .9; }
+  body.bt #input-answer:focus { border-color: var(--foil1); box-shadow: inset 0 2px 7px rgba(90,55,10,.4), 0 0 0 3px var(--glow), 0 0 16px var(--glow); }
+  body.bt .answer-time { color: var(--foil1); min-height: 1.05em; margin: -4px 0 0; }
+  body.bt #points-display { display: inline-flex; align-items: center; gap: 10px; padding: 4px 26px; border-radius: 99px; font-weight: 800; color: var(--btntext);
+    background: linear-gradient(180deg, var(--btn1), var(--btn3)); border: 1px solid var(--foil2); box-shadow: inset 0 0 0 2px var(--btn3), inset 0 0 0 3px rgba(255,255,255,.12), 0 3px 9px rgba(0,0,0,.5); }
+  body.bt #points-display::before, body.bt #points-display::after { content: '✦'; color: var(--foil2); font-size: .8em; }
+  body.bt #answers-display { background: linear-gradient(180deg, var(--panel1), var(--panel2)); border: 1px solid color-mix(in srgb, var(--line) 50%, transparent); color: var(--foil1); box-shadow: inset 0 0 14px rgba(0,0,0,.4); }
+  body.bt .controls { margin: 14px 0 10px; gap: 8px; }
+  /* قائمة المتصدرين */
+  body.bt .players-list-container { background: linear-gradient(180deg, var(--panel1), var(--panel2)); border: 1px solid var(--line); border-radius: 12px; padding: 12px 16px 10px; scrollbar-width: thin; scrollbar-color: var(--foil3) transparent;
+    box-shadow: inset 0 0 0 3px var(--panel2), inset 0 0 0 4px color-mix(in srgb, var(--line) 45%, transparent), 0 6px 18px rgba(0,0,0,.45); }
+  body.bt .players-list-container h2 { display: flex; align-items: center; gap: 10px; margin: 0 0 8px; font-size: 1.25rem; color: var(--title); text-shadow: 0 1px 0 rgba(0,0,0,.5); }
+  body.bt #players-list li { border-bottom: 1px dotted color-mix(in srgb, var(--line) 45%, transparent); border-radius: 4px; transition: background .2s; }
+  body.bt #players-list li:hover { background: rgba(255,255,255,.05); }
+  body.bt .pg-pbtn { border-color: color-mix(in srgb, var(--foil2) 70%, transparent); }
+  /* الشات */
+  body.bt .chat-container { background: linear-gradient(180deg, var(--panel1), var(--panel2)); border: 2px solid var(--line); border-radius: 14px; box-shadow: 0 0 0 4px var(--panel2), 0 0 0 5px color-mix(in srgb, var(--line) 50%, transparent), 0 16px 44px rgba(0,0,0,.65); }
+  body.bt .chat-header { background: ${covTexLayers()}; color: var(--title); border-bottom: 1px solid var(--foil3); text-shadow: 0 1px 0 rgba(0,0,0,.5); }
+  body.bt .chat-header button { color: var(--title); }
+  body.bt .chat-messages { color: var(--text); scrollbar-width: thin; scrollbar-color: var(--foil3) transparent; }
+  body.bt .chat-system-message { color: var(--foil1); }
+  body.bt .chat-text { color: var(--text); }
+  body.bt #chat-input { background: ${paperGrain}, linear-gradient(180deg, var(--paper1), var(--paper2)); color: var(--ink); border: 1.5px solid var(--foil2); border-radius: 10px; }
+  body.bt #chat-input::placeholder { color: var(--muted); }
+  body.bt #btn-send-chat { background: linear-gradient(180deg, var(--btn1), var(--btn3)); color: var(--btntext); border: 1px solid var(--foil2); border-radius: 10px; box-shadow: inset 0 0 0 2px var(--btn3), 0 2px 6px rgba(0,0,0,.45); }
+  body.bt #btn-send-chat:hover { box-shadow: inset 0 0 0 2px var(--btn3), 0 0 14px var(--glow); }
+  /* النوافذ */
+  body.bt dialog#change-name-dialog, body.bt dialog#instructions-dialog { background: ${covTexLayers()}; color: var(--title); border: 2px solid var(--foil2); border-radius: 12px;
+    box-shadow: 0 0 0 4px var(--cov3), 0 0 0 5px color-mix(in srgb, var(--foil2) 60%, transparent), 0 20px 50px rgba(0,0,0,.7), inset 0 0 40px rgba(0,0,0,.35); }
+  body.bt dialog#change-name-dialog input { background: ${paperGrain}, linear-gradient(180deg, var(--paper1), var(--paper2)); color: var(--ink); border: 2px solid var(--foil2); box-shadow: inset 0 2px 6px rgba(90,55,10,.4); text-align: center; }
+  body.bt dialog#instructions-dialog button, body.bt dialog#change-name-dialog button, body.bt #close-instructions { background: linear-gradient(180deg, var(--btn1), var(--btn3)); color: var(--btntext); border: 1px solid var(--foil2); box-shadow: inset 0 0 0 2px var(--btn3), 0 2px 7px rgba(0,0,0,.5); text-shadow: 0 1px 1px rgba(0,0,0,.6); }
+  body.bt #instructions-title { color: var(--title); text-shadow: 0 2px 0 rgba(0,0,0,.5), 0 0 14px var(--glow); }
+  body.bt .instructions-content, body.bt .instructions-content ol { color: var(--text); }
+  body.bt .studio-popup { border-color: var(--line) !important; }
+  /* مركز اللاعب والمتجر */
+  body.bt .pg-card { background: linear-gradient(160deg, var(--panel1), var(--panel2)); border: 2px solid var(--line); box-shadow: 0 20px 60px rgba(0,0,0,.65), 0 0 40px var(--glow); }
+  body.bt .pg-head h3 { color: var(--title); }
+  body.bt .pg-tab.on { background: linear-gradient(180deg, var(--btn1), var(--btn3)); color: var(--btntext); box-shadow: inset 0 0 0 1px var(--foil2), 0 4px 14px var(--glow); }
+  /* لما لوحة الرسم تنفتح بنوقّف كل الحركات اللي وراها عشان الرسم يكون أسلس */
+  html.art-open *:not(#board-dialog):not(#board-dialog *) { animation-play-state: paused !important; }
+  .studio-popup::backdrop { backdrop-filter: none !important; -webkit-backdrop-filter: none !important; background: rgba(0, 0, 0, .94) !important; }
+  `;
+  function covTexLayers() { return 'var(--cov-tex), linear-gradient(135deg, var(--cov1), var(--cov2) 60%, var(--cov3))'; }
+  const style = document.createElement('style');
+  style.id = 'themes-css';
+  style.textContent = css;
+  document.head.appendChild(style);
+
+  // ---------- التطبيق ----------
+  const listeners = [];
+  let cur = null;
+  const themeBtn = () => document.getElementById('btn-theme-toggle');
+  function label() { const b = themeBtn(); if (b && cur) { const txt = `🖌️ الثيم: ${cur.n}`; if (b.textContent !== txt) b.textContent = txt; } }
+  function stripOld() { const cl = document.body.classList; OLD_CLS.forEach(c => { if (cl.contains(c)) cl.remove(c); }); }
+  function set(id, save = true) {
+    const t = BY.get(id) || TH[0];
+    cur = t;
+    const b = document.body;
+    [...b.classList].forEach(c => { if (c.startsWith('bt-')) b.classList.remove(c); });
+    b.classList.add('bt', 'bt-' + t.id);
+    stripOld();
+    if (save) { try { localStorage.setItem('themeId', t.id); } catch (e) {} }
+    label();
+    listeners.forEach(fn => { try { fn(t); } catch (e) {} });
+  }
+  function initial() {
+    let id = null;
+    try { id = localStorage.getItem('themeId'); } catch (e) {}
+    if (!BY.has(id)) {
+      let idx = 0; try { idx = parseInt(localStorage.getItem('customThemeIndex')) || 0; } catch (e) {}
+      id = LEGACY[idx] || 'gold';
+    }
+    return id;
+  }
+  const api = {
+    list: TH, emblem,
+    get current() { return cur; },
+    set: (id) => set(id),
+    next() { const i = TH.indexOf(cur); set(TH[(i + 1) % TH.length].id); },
+    onChange(fn) { listeners.push(fn); if (cur) fn(cur); }
+  };
+  window.__themes = api;
+  set(initial(), false);
+
+  // نص الزر: السكربت القديم اللي بـ index.html بيكتب عليه، فبنرجّع النص الصحيح
+  const attach = () => {
+    const b = themeBtn(); if (!b || b.dataset.thBound) return; b.dataset.thBound = '1';
+    new MutationObserver(label).observe(b, { childList: true, characterData: true, subtree: true });
+    b.addEventListener('click', () => api.next());
+    label();
+  };
+  attach();
+  document.addEventListener('DOMContentLoaded', () => { attach(); stripOld(); label(); });
+  // الكلاسات القديمة (theme-violet...) اللي بيضيفها سكربت index.html بنشيلها فوراً عشان ما تخرّب الشكل الجديد
+  new MutationObserver(stripOld).observe(document.body, { attributes: true, attributeFilter: ['class'] });
+  // لوحة الرسم: لما تنفتح بنوقّف حركات الصفحة اللي وراها (أسلس رسم)
+  const bd = document.getElementById('board-dialog');
+  if (bd) { const sync = () => document.documentElement.classList.toggle('art-open', bd.hasAttribute('open')); new MutationObserver(sync).observe(bd, { attributes: true, attributeFilter: ['open'] }); sync(); }
 })();
 
 /* ==========================================================================
@@ -3603,7 +3783,6 @@ socket.on('gate:approved', (d) => {
   const admin = document.getElementById('btn-admin-auth');
   const PER = 4;
   const ORDER = ['btn-daily', 'btn-pass', 'btn-profile', 'btn-store', 'btn-change-name', 'btn-instructions', 'btn-open-board', 'dark-mode-toggle', 'btn-theme-toggle'];
-  const STAY = new Set(['dark-mode-toggle', 'btn-theme-toggle']);   // هدول بيغيّروا شكل الصفحة نفسها فالكتاب بيضل مفتوح
   const rank = (b) => { const i = ORDER.indexOf(b.id); return i < 0 ? 100 : i; };
   const btns = [...controls.querySelectorAll('.btn-main')].filter(b => b !== chat && b !== admin).sort((a, b) => rank(a) - rank(b));
   if (!btns.length) return;
@@ -3626,7 +3805,7 @@ socket.on('gate:approved', (d) => {
   #bk-root .bk-book::before { transform-origin: 0% 50%; }
   #bk-root .bk-book.open::before { transform: scaleX(1.98); }
   /* الصفحة الأخيرة اللي تحت كل الورقات + لوح الغلاف الخلفي */
-  #bk-root .bk-board { position: absolute; left: -7px; top: -5px; width: calc(100% + 7px); height: calc(100% + 10px); border-radius: 8px 3px 3px 8px; background: ${grain(0, 0, 0, .35, '.8')}, linear-gradient(135deg, #5a1a20, #3a0e13); box-shadow: 0 10px 26px rgba(0,0,0,.55), inset 0 0 0 1px rgba(255,215,120,.25); opacity: 0; transition: opacity .5s .2s; }
+  #bk-root .bk-board { position: absolute; left: -7px; top: -5px; width: calc(100% + 7px); height: calc(100% + 10px); border-radius: 8px 3px 3px 8px; background: ${grain(0, 0, 0, .35, '.8')}, var(--cov-tex), linear-gradient(135deg, var(--cov2), var(--cov3)); box-shadow: 0 10px 26px rgba(0,0,0,.55), inset 0 0 0 1px var(--foil2); opacity: 0; transition: opacity .5s .2s; }
   #bk-root .bk-book.open .bk-board { opacity: 1; }
   #bk-root .bk-leaf { position: absolute; left: 0; top: 0; width: 100%; height: 100%; transform-origin: 100% 50%; transform-style: preserve-3d; transition: transform ${FLIP_MS}ms cubic-bezier(.5, .05, .25, 1); }
   #bk-root .bk-leaf.flipped { transform: rotateY(180deg); }
@@ -3635,70 +3814,92 @@ socket.on('gate:approved', (d) => {
   #bk-root .bk-face.back { transform: rotateY(180deg); }
   #bk-root .bk-leaf:not(.flipped) .bk-face.back, #bk-root .bk-leaf.flipped .bk-face.front { pointer-events: none; }
   /* ---- الورق ---- */
-  #bk-root .bk-page { display: flex; flex-direction: column; direction: rtl; padding: calc(var(--W) * .07) calc(var(--W) * .07) 6px; color: #4a2f12;
-    background: ${grain(.45, .3, .1, .3, '.7')}, radial-gradient(ellipse at 50% 40%, #fbf1d6, #efdcae 70%, #e2c88e); }
+  #bk-root .bk-page { display: flex; flex-direction: column; direction: rtl; padding: calc(var(--W) * .07) calc(var(--W) * .07) 6px; color: var(--ink);
+    background: ${grain(.45, .3, .1, .3, '.7')}, radial-gradient(ellipse at 50% 40%, var(--paper1), var(--paper2) 70%, var(--paper3)); }
   #bk-root .bk-face.front.bk-page { border-radius: 4px 0 0 4px; padding-right: calc(var(--W) * .12); box-shadow: -2px 0 0 #f4ead0, -4px 0 0 #d9c99f, -5px 0 0 #efe3c2; }
   #bk-root .bk-face.back.bk-page { border-radius: 0 4px 4px 0; padding-left: calc(var(--W) * .12); }
   #bk-root .bk-face.front.bk-page::before { content: ''; position: absolute; top: 0; bottom: 0; right: 0; width: 16%; background: linear-gradient(to left, rgba(90, 55, 15, .42), rgba(90, 55, 15, .12) 45%, transparent); pointer-events: none; }
   #bk-root .bk-face.back.bk-page::before { content: ''; position: absolute; top: 0; bottom: 0; left: 0; width: 16%; background: linear-gradient(to right, rgba(90, 55, 15, .42), rgba(90, 55, 15, .12) 45%, transparent); pointer-events: none; }
-  #bk-root .bk-face.bk-cover-back { border-right: 6px solid #4a1017; border-top: 5px solid #4a1017; border-bottom: 5px solid #4a1017; box-shadow: inset 0 0 0 1px rgba(255, 215, 120, .35); }
+  #bk-root .bk-face.bk-cover-back { border-right: 6px solid var(--cov3); border-top: 5px solid var(--cov3); border-bottom: 5px solid var(--cov3); box-shadow: inset 0 0 0 1px var(--foil3); }
   /* حركة ظلّ الورقة وقت الانقلاب */
   #bk-root .bk-face::after { content: ''; position: absolute; inset: 0; opacity: 0; pointer-events: none; background: linear-gradient(90deg, rgba(0,0,0,.5), rgba(0,0,0,.05) 70%); }
   #bk-root .bk-leaf.turning .bk-face::after { animation: bkShade ${FLIP_MS}ms ease-in-out; }
   @keyframes bkShade { 0%, 100% { opacity: 0; } 50% { opacity: .55; } }
-  #bk-root .bk-orn { text-align: center; color: #9a6b22; font-size: .72rem; letter-spacing: .35em; line-height: 1; padding: 1px 0 calc(var(--W) * .03); border-bottom: 1px solid rgba(139, 94, 30, .35); margin-bottom: calc(var(--W) * .035); }
+  #bk-root .bk-orn { text-align: center; color: var(--foil3); font-size: .72rem; letter-spacing: .35em; line-height: 1; padding: 1px 0 calc(var(--W) * .03); border-bottom: 1px solid color-mix(in srgb, var(--foil3) 45%, transparent); margin-bottom: calc(var(--W) * .035); }
   #bk-root .bk-grid { flex: 1; min-height: 0; display: grid; grid-template-rows: repeat(${PER}, 1fr); gap: calc(var(--W) * .035); }
-  #bk-root .bk-foot { display: flex; align-items: center; justify-content: space-between; gap: 4px; height: 22px; margin-top: 5px; font-size: .7rem; color: #8a5f22; }
+  #bk-root .bk-foot { display: flex; align-items: center; justify-content: space-between; gap: 4px; height: 22px; margin-top: 5px; font-size: .7rem; color: var(--ink); }
   #bk-root .bk-foot .no { font-weight: 700; letter-spacing: .05em; }
-  #bk-root .bk-nav { all: unset; box-sizing: border-box; cursor: pointer; padding: 2px 9px; border-radius: 99px; font: 700 .68rem/1.5 inherit; color: #5a3a10; background: rgba(120, 80, 20, .14); border: 1px solid rgba(139, 94, 30, .45); transition: background .2s, transform .15s; }
-  #bk-root .bk-nav:hover { background: rgba(212, 160, 60, .4); transform: translateY(-1px); }
-  #bk-root .bk-nav:focus-visible { outline: 2px solid #b8860b; }
+  #bk-root .bk-nav { all: unset; box-sizing: border-box; cursor: pointer; padding: 2px 9px; border-radius: 99px; font: 700 .68rem/1.5 inherit; color: var(--ink); background: color-mix(in srgb, var(--foil2) 18%, transparent); border: 1px solid color-mix(in srgb, var(--foil3) 60%, transparent); transition: background .2s, transform .15s; }
+  #bk-root .bk-nav:hover { background: color-mix(in srgb, var(--foil2) 45%, transparent); transform: translateY(-1px); }
+  #bk-root .bk-nav:focus-visible { outline: 2px solid var(--foil2); }
   /* ---- أزرار القائمة جوّا الصفحة ---- */
   #bk-root .bk-page .btn-main { all: unset; box-sizing: border-box; position: relative; display: flex; align-items: center; justify-content: center; gap: 4px; text-align: center; cursor: pointer; min-width: 0; padding: 3px 8px;
-    font: 700 .76rem/1.25 'Segoe UI', Tahoma, sans-serif; color: #ffe9a8; border-radius: 9px; text-shadow: 0 1px 1px rgba(0,0,0,.6);
-    background: ${grain(0, 0, 0, .3, '.9')}, linear-gradient(160deg, #7a2b2f, #4a1017 60%, #3a0c11);
-    border: 1px solid #d9a441; box-shadow: inset 0 0 0 2px #4a1017, inset 0 0 0 3px rgba(217, 164, 65, .55), 0 2px 5px rgba(60, 30, 5, .45);
+    font: 700 .76rem/1.25 'Segoe UI', Tahoma, sans-serif; color: var(--btntext); border-radius: 9px; text-shadow: 0 1px 1px rgba(0,0,0,.6);
+    background: ${grain(0, 0, 0, .3, '.9')}, linear-gradient(160deg, var(--btn1), var(--btn2) 60%, var(--btn3));
+    border: 1px solid var(--foil2); box-shadow: inset 0 0 0 2px var(--btn3), inset 0 0 0 3px color-mix(in srgb, var(--foil2) 55%, transparent), 0 2px 5px rgba(60, 30, 5, .45);
     transition: transform .15s ease, box-shadow .2s ease, filter .2s ease; }
-  #bk-root .bk-page .btn-main:hover, #bk-root .bk-page .btn-main:focus-visible { transform: translateY(-2px) scale(1.02); filter: brightness(1.18); box-shadow: inset 0 0 0 2px #4a1017, inset 0 0 0 3px #f2c75c, 0 5px 10px rgba(60, 30, 5, .55), 0 0 12px rgba(242, 199, 92, .55); outline: none; }
+  #bk-root .bk-page .btn-main:hover, #bk-root .bk-page .btn-main:focus-visible { transform: translateY(-2px) scale(1.02); filter: brightness(1.18); box-shadow: inset 0 0 0 2px var(--btn3), inset 0 0 0 3px var(--foil1), 0 5px 10px rgba(60, 30, 5, .55), 0 0 12px var(--glow); outline: none; }
   #bk-root .bk-page .btn-main:active { transform: translateY(1px) scale(.98); }
   #bk-root .bk-page .btn-main .pg-dot { top: 4px; right: 5px; }
   /* ---- الغلاف ---- */
-  #bk-root .bk-cover { background: ${grain(0, 0, 0, .42, '.85')}, radial-gradient(ellipse at 30% 20%, #8a2f35, #5c1a20 55%, #3b0d12); border-radius: 5px 3px 3px 5px; box-shadow: 0 8px 22px rgba(0,0,0,.55), inset 0 0 0 1px rgba(255, 215, 120, .4), inset 0 0 22px rgba(0,0,0,.55); cursor: pointer; }
-  #bk-root .bk-cover::before { content: ''; position: absolute; inset: 7px 20px 7px 7px; border: 1.5px solid #d9a441; border-radius: 3px; box-shadow: inset 0 0 0 3px rgba(0,0,0,.25), inset 0 0 0 4px rgba(217, 164, 65, .5); pointer-events: none; }
-  #bk-root .bk-spine { position: absolute; top: 0; bottom: 0; right: 0; width: 15px; border-radius: 0 3px 3px 0; background: repeating-linear-gradient(0deg, transparent 0 22px, rgba(217,164,65,.0) 22px 23px), linear-gradient(90deg, rgba(0,0,0,.45), rgba(255,255,255,.1) 38%, rgba(0,0,0,.5)); box-shadow: inset 1px 0 0 rgba(217,164,65,.5); }
-  #bk-root .bk-spine::before, #bk-root .bk-spine::after { content: ''; position: absolute; left: 1px; right: 1px; height: 2px; background: linear-gradient(90deg, #8a5a12, #f2c75c, #8a5a12); }
+  #bk-root .bk-cover { background: var(--cov-tex), radial-gradient(ellipse at 30% 20%, var(--cov1), var(--cov2) 55%, var(--cov3)); border-radius: 5px 3px 3px 5px; box-shadow: 0 8px 22px rgba(0,0,0,.55), inset 0 0 0 1px var(--foil3), inset 0 0 22px rgba(0,0,0,.55); cursor: pointer; }
+  #bk-root .bk-cover::before { content: ''; position: absolute; inset: 7px 20px 7px 7px; border: 1.5px solid var(--foil2); border-radius: 3px; box-shadow: inset 0 0 0 3px rgba(0,0,0,.25), inset 0 0 0 4px color-mix(in srgb, var(--foil2) 50%, transparent); pointer-events: none; }
+  #bk-root .bk-spine { position: absolute; top: 0; bottom: 0; right: 0; width: 15px; border-radius: 0 3px 3px 0; background: repeating-linear-gradient(0deg, transparent 0 22px, rgba(217,164,65,.0) 22px 23px), linear-gradient(90deg, rgba(0,0,0,.45), rgba(255,255,255,.1) 38%, rgba(0,0,0,.5)); box-shadow: inset 1px 0 0 var(--foil3); }
+  #bk-root .bk-spine::before, #bk-root .bk-spine::after { content: ''; position: absolute; left: 1px; right: 1px; height: 2px; background: linear-gradient(90deg, var(--foil3), var(--foil1), var(--foil3)); }
   #bk-root .bk-spine::before { top: 16%; } #bk-root .bk-spine::after { bottom: 16%; }
-  #bk-root .bk-corner { position: absolute; width: calc(var(--W) * .17); height: calc(var(--W) * .17); pointer-events: none; }
+  #bk-root .bk-corner { color: var(--foil2); position: absolute; width: calc(var(--W) * .17); height: calc(var(--W) * .17); pointer-events: none; }
   #bk-root .bk-corner.tl { top: 8px; left: 8px; } #bk-root .bk-corner.tr { top: 8px; right: 23px; transform: scaleX(-1); }
   #bk-root .bk-corner.bl { bottom: 8px; left: 8px; transform: scaleY(-1); } #bk-root .bk-corner.br { bottom: 8px; right: 23px; transform: scale(-1, -1); }
-  #bk-root .bk-emblem { position: absolute; left: 50%; top: 53%; width: 58%; transform: translate(-60%, -50%); filter: drop-shadow(0 1px 1px rgba(0,0,0,.7)); animation: bkGlow 3.6s ease-in-out infinite; pointer-events: none; }
-  @keyframes bkGlow { 0%, 100% { filter: drop-shadow(0 1px 1px rgba(0,0,0,.7)) brightness(1); } 50% { filter: drop-shadow(0 0 6px rgba(255, 214, 102, .7)) brightness(1.18); } }
-  #bk-root .bk-title { position: absolute; left: 0; right: 15px; bottom: 11%; text-align: center; font: 800 calc(var(--W) * .082)/1.2 'Segoe UI', Tahoma, sans-serif; letter-spacing: .02em; background: linear-gradient(180deg, #fff3bf, #d9a441 60%, #9a6a1a); -webkit-background-clip: text; background-clip: text; color: transparent; filter: drop-shadow(0 1px 0 rgba(0,0,0,.6)); pointer-events: none; }
+  #bk-root .bk-emblem { position: absolute; left: 50%; top: 53%; width: 58%; transform: translate(-60%, -50%); filter: drop-shadow(0 1px 1px rgba(0,0,0,.7)); pointer-events: none; }
+  #bk-root .bk-halo { position: absolute; left: 50%; top: 53%; width: 78%; aspect-ratio: 1; transform: translate(-60%, -50%); border-radius: 50%; background: radial-gradient(circle, var(--glow), transparent 68%); animation: bkHalo 3.6s ease-in-out infinite; pointer-events: none; }
+  @keyframes bkHalo { 0%, 100% { opacity: .35; } 50% { opacity: 1; } }
+  #bk-root .bk-title { position: absolute; left: 0; right: 15px; bottom: 11%; text-align: center; font: 800 calc(var(--W) * .082)/1.2 'Segoe UI', Tahoma, sans-serif; letter-spacing: .02em; background: linear-gradient(180deg, var(--foil1), var(--foil2) 60%, var(--foil3)); -webkit-background-clip: text; background-clip: text; color: transparent; filter: drop-shadow(0 1px 0 rgba(0,0,0,.6)); pointer-events: none; }
   #bk-root .bk-title small { display: block; margin-top: 2px; font-size: .62em; font-weight: 600; opacity: .85; animation: bkHint 2.4s ease-in-out infinite; }
   @keyframes bkHint { 0%, 100% { opacity: .45; } 50% { opacity: 1; } }
   /* ---- زر الشات: لوحة ذهبية على الغلاف، وبتصير علّامة قراءة (شريط) فوق الكتاب لما يفتح ---- */
   #bk-root .bk-chat { all: unset; box-sizing: border-box; position: absolute; z-index: 500; left: calc(var(--W) * .5); top: calc(var(--W) * .1); width: calc(var(--W) * .66); height: 38px; margin-left: calc(var(--W) * -.33); display: flex; align-items: center; justify-content: center; gap: 6px; cursor: pointer;
-    font: 800 .92rem/1 'Segoe UI', Tahoma, sans-serif; color: #3b1d05; border-radius: 9px; text-shadow: 0 1px 0 rgba(255,240,180,.7);
-    background: linear-gradient(180deg, #fff0b0, #e0aa3e 55%, #a8751b); border: 1px solid #fff0b0; box-shadow: 0 3px 8px rgba(0,0,0,.55), inset 0 -3px 6px rgba(120, 70, 5, .5), 0 0 14px rgba(255, 207, 90, .45);
+    font: 800 .92rem/1 'Segoe UI', Tahoma, sans-serif; color: var(--cov3); border-radius: 9px; text-shadow: 0 1px 0 rgba(255,255,255,.45);
+    background: linear-gradient(180deg, var(--foil1), var(--foil2) 55%, var(--foil3)); border: 1px solid var(--foil1); box-shadow: 0 3px 8px rgba(0,0,0,.55), inset 0 -3px 6px rgba(0,0,0,.3), 0 0 14px var(--glow);
     clip-path: polygon(0 0, 100% 0, 100% 100%, 50% 100%, 0 100%);
     transition: left ${FLIP_MS}ms cubic-bezier(.5,.05,.25,1), top ${FLIP_MS}ms cubic-bezier(.5,.05,.25,1), width ${FLIP_MS}ms cubic-bezier(.5,.05,.25,1), margin-left ${FLIP_MS}ms cubic-bezier(.5,.05,.25,1), height ${FLIP_MS}ms ease, clip-path ${FLIP_MS}ms ease, filter .2s, transform .15s, background .6s; }
   #bk-root .bk-chat:hover { filter: brightness(1.12); transform: translateY(-1px); }
   #bk-root .bk-chat:focus-visible { outline: 2px solid #fff; }
-  #bk-root .bk-book.open .bk-chat { left: var(--W); top: -22px; width: 84px; height: 40px; margin-left: -42px; padding-bottom: 8px; font-size: .78rem; color: #ffe9a8; text-shadow: 0 1px 1px rgba(0,0,0,.7);
-    background: linear-gradient(180deg, #a3262c, #7a1a20 70%, #5a1016); border-color: #d9a441; clip-path: polygon(0 0, 100% 0, 100% 100%, 50% 80%, 0 100%); }
+  #bk-root .bk-book.open .bk-chat { left: var(--W); top: -22px; width: 84px; height: 40px; margin-left: -42px; padding-bottom: 8px; font-size: .78rem; color: var(--btntext); text-shadow: 0 1px 1px rgba(0,0,0,.7);
+    background: linear-gradient(180deg, var(--cov1), var(--cov2) 70%, var(--cov3)); border-color: var(--foil2); clip-path: polygon(0 0, 100% 0, 100% 100%, 50% 80%, 0 100%); }
   #bk-root .bk-chat.notify::after { content: ''; position: absolute; top: 4px; right: 5px; width: 10px; height: 10px; border-radius: 50%; background: #ff3b3b; box-shadow: 0 0 8px #ff3b3b; animation: bkPing 1.1s ease-in-out infinite; }
   @keyframes bkPing { 50% { transform: scale(1.35); opacity: .65; } }
   #bk-root .bk-center { position: absolute; z-index: 400; top: 0; bottom: 0; left: calc(100% - 2px); width: 4px; background: linear-gradient(90deg, rgba(0,0,0,.35), rgba(0,0,0,.05)); opacity: 0; pointer-events: none; transition: opacity .4s .3s; }
   #bk-root .bk-book.open .bk-center { opacity: 1; }
+  /* ---- محراب الكتاب: قوس + فوانيس + رف خشب (بيملا الفراغ حوالين الكتاب) ---- */
+  #bk-root .bk-stage { margin: 4px 0 0; border-radius: 120px 120px 14px 14px / 70px 70px 14px 14px; padding-bottom: 14px; height: calc(var(--H) + 58px); border: 1.5px solid var(--foil3); border-bottom: 0;
+    background: radial-gradient(ellipse at 50% 38%, var(--glow), transparent 62%), var(--pat), linear-gradient(180deg, rgba(0,0,0,.38), rgba(0,0,0,.12) 55%, rgba(0,0,0,.34)); box-shadow: inset 0 0 0 4px rgba(0,0,0,.25), inset 0 0 0 5px color-mix(in srgb, var(--foil3) 45%, transparent), inset 0 14px 40px rgba(0,0,0,.45); }
+  #bk-root .bk-shelf { height: 12px; margin: 0 -3px 6px; border-radius: 3px 3px 7px 7px; background: linear-gradient(180deg, var(--foil2), var(--foil3) 45%, var(--cov3)); box-shadow: 0 5px 12px rgba(0,0,0,.5), inset 0 1px 0 var(--foil1); }
+  #bk-root .bk-lamp { position: absolute; top: 8px; width: 20px; height: 44px; pointer-events: none; transform-origin: 50% 0; animation: bkSway 5s ease-in-out infinite alternate; }
+  #bk-root .bk-lamp.l { left: 12px; } #bk-root .bk-lamp.r { right: 12px; animation-delay: -2.4s; }
+  #bk-root .bk-lamp::before { content: ''; position: absolute; left: 9.5px; top: -8px; width: 1px; height: 12px; background: var(--foil2); }
+  #bk-root .bk-lamp i { position: absolute; left: 3px; top: 4px; width: 14px; height: 22px; border-radius: 3px 3px 7px 7px; background: linear-gradient(180deg, var(--foil1), #fff6cf 40%, var(--foil2)); border: 1.5px solid var(--foil3); box-shadow: 0 0 14px 4px var(--glow); }
+  #bk-root .bk-lamp::after { content: ''; position: absolute; left: 4px; top: 0; width: 12px; height: 6px; border-radius: 6px 6px 0 0; background: var(--foil3); }
+  @keyframes bkSway { from { transform: rotate(-4deg); } to { transform: rotate(4deg); } }
+  /* ---- لوحة اختيار الثيم على الصفحة الفاضية ---- */
+  #bk-root .bk-swatches { grid-column: 1; display: flex; flex-direction: column; min-height: 0; border: 1px dashed color-mix(in srgb, var(--foil3) 70%, transparent); border-radius: 9px; padding: 4px 5px 5px; background: color-mix(in srgb, var(--paper3) 28%, transparent); }
+  #bk-root .bk-swatches b { text-align: center; font-size: .66rem; color: var(--foil3); letter-spacing: .04em; margin-bottom: 3px; }
+  #bk-root .bk-swgrid { flex: 1; min-height: 0; display: grid; grid-template-columns: repeat(5, 1fr); gap: 3px; align-content: center; justify-items: center; }
+  #bk-root .bk-sw { all: unset; box-sizing: border-box; width: 100%; max-width: 30px; aspect-ratio: 1; border-radius: 50%; cursor: pointer; border: 1.5px solid var(--ink); background: linear-gradient(135deg, var(--a) 0 50%, var(--b) 50% 100%); box-shadow: 0 1px 3px rgba(0,0,0,.4); transition: transform .15s; }
+  #bk-root .bk-sw:hover { transform: scale(1.12); }
+  #bk-root .bk-sw.on { outline: 2px solid var(--foil2); outline-offset: 1px; box-shadow: 0 0 8px var(--glow); }
+  #bk-root .bk-blank { flex: 1; min-height: 0; display: flex; flex-direction: column; align-items: center; justify-content: center; gap: 6px; margin: 2px 0; border: 1px solid color-mix(in srgb, var(--foil3) 45%, transparent); border-radius: 8px; box-shadow: inset 0 0 0 3px transparent, inset 0 0 0 4px color-mix(in srgb, var(--foil3) 25%, transparent); text-align: center; color: var(--foil3); }
+  #bk-root .bk-bemb { display: block; width: 66%; opacity: .6; }
+  #bk-root .bk-bemb .bk-emblem { position: static; display: block; width: 100%; transform: none; filter: none; }
+  #bk-root .bk-bt { font: 800 calc(var(--W) * .075)/1.3 'Segoe UI', Tahoma, sans-serif; }
+  #bk-root .bk-bt small { display: block; margin-top: 2px; font-size: .62em; font-weight: 600; opacity: .85; }
   #bk-root [inert] { pointer-events: none; }
-  body.dark-mode #bk-root .bk-page { filter: brightness(.82) saturate(.9); }
   @media (prefers-reduced-motion: reduce) { #bk-root * { transition-duration: .01ms !important; animation-duration: .01ms !important; } }
   `;
   document.head.appendChild(st);
 
   // ---------- عناصر زخرفية ----------
-  const corner = (cls) => `<svg class="bk-corner ${cls}" viewBox="0 0 40 40" aria-hidden="true"><path d="M3 38 V9 Q3 3 9 3 H38" fill="none" stroke="#d9a441" stroke-width="1.7"/><path d="M9 38 V15 Q9 9 15 9 H38" fill="none" stroke="#d9a441" stroke-width=".8" opacity=".8"/><circle cx="9" cy="9" r="2.6" fill="#f2c75c"/><path d="M15 15 Q22 15 22 22" fill="none" stroke="#d9a441" stroke-width="1"/></svg>`;
-  const emblem = `<svg class="bk-emblem" viewBox="0 0 100 100" aria-hidden="true"><defs><linearGradient id="bkgold" x1="0" y1="0" x2="1" y2="1"><stop offset="0" stop-color="#fff1b8"/><stop offset=".5" stop-color="#d9a441"/><stop offset="1" stop-color="#8a5a12"/></linearGradient></defs><circle cx="50" cy="50" r="46" fill="none" stroke="url(#bkgold)" stroke-width="1.8"/><circle cx="50" cy="50" r="41" fill="none" stroke="url(#bkgold)" stroke-width=".8" stroke-dasharray="1.6 2.2"/><path d="M50 10 L58 38 L86 30 L66 50 L86 70 L58 62 L50 90 L42 62 L14 70 L34 50 L14 30 L42 38 Z" fill="none" stroke="url(#bkgold)" stroke-width="1.4" stroke-linejoin="round"/><circle cx="50" cy="50" r="13" fill="url(#bkgold)"/><circle cx="50" cy="50" r="8" fill="#4a1017"/><circle cx="50" cy="50" r="3.2" fill="url(#bkgold)"/></svg>`;
+  const corner = (cls) => `<svg class="bk-corner ${cls}" viewBox="0 0 40 40" aria-hidden="true"><path d="M3 38 V9 Q3 3 9 3 H38" fill="none" stroke="currentColor" stroke-width="1.7"/><path d="M9 38 V15 Q9 9 15 9 H38" fill="none" stroke="currentColor" stroke-width=".8" opacity=".8"/><circle cx="9" cy="9" r="2.6" fill="currentColor"/><path d="M15 15 Q22 15 22 22" fill="none" stroke="currentColor" stroke-width="1"/></svg>`;
+  const emblemHtml = () => (window.__themes ? window.__themes.emblem(window.__themes.current.emblem) : '');
 
   // ---------- بناء الكتاب ----------
   const root = document.createElement('div');
@@ -3706,9 +3907,11 @@ socket.on('gate:approved', (d) => {
   const stage = document.createElement('div'); stage.className = 'bk-stage';
   const book = document.createElement('div'); book.className = 'bk-book';
   stage.appendChild(book); root.appendChild(stage);
+  stage.insertAdjacentHTML('afterbegin', '<div class="bk-lamp l"><i></i></div><div class="bk-lamp r"><i></i></div>');
+  const shelf = document.createElement('div'); shelf.className = 'bk-shelf'; root.appendChild(shelf);
   const board = document.createElement('div'); board.className = 'bk-board'; book.appendChild(board);
 
-  const blankPage = (cls) => { const f = document.createElement('div'); f.className = `bk-face ${cls} bk-page`; f.innerHTML = '<div class="bk-orn">❧ ✦ ❧</div><div style="flex:1;display:grid;place-items:center;color:rgba(139,94,30,.35);font-size:2.2rem">❦</div><div class="bk-foot"><span></span><span></span></div>'; return f; };
+  const blankPage = (cls) => { const f = document.createElement('div'); f.className = `bk-face ${cls} bk-page`; f.innerHTML = `<div class="bk-orn">❧ ✦ ❧</div><div class="bk-blank"><span class="bk-bemb">${emblemHtml()}</span><div class="bk-bt">بالتوفيق<small>نلعب ونتعلّم ✦ ونتسلّى</small></div></div><div class="bk-foot"><span></span><span></span></div>`; return f; };
   const base = blankPage('front'); base.style.cssText = 'position:absolute;inset:0;z-index:1';
   base.classList.add('bk-base'); book.appendChild(base);
 
@@ -3719,6 +3922,12 @@ socket.on('gate:approved', (d) => {
     if (!list) return blankPage(side);
     const grid = document.createElement('div'); grid.className = 'bk-grid';
     list.forEach(b => grid.appendChild(b));
+    const free = PER - list.length;
+    if (free >= 2 && n === P && window.__themes) {            // آخر صفحة فيها مكان فاضي: بنحط فيها اختيار الثيم بدل الفراغ
+      const sw = document.createElement('div'); sw.className = 'bk-swatches'; sw.style.gridRow = `span ${free}`;
+      sw.innerHTML = '<b>🖌️ اختر ثيمك</b><div class="bk-swgrid">' + window.__themes.list.map(t => `<button type="button" class="bk-sw" data-th="${t.id}" title="${t.n}" aria-label="${t.n}" style="--a:${t.cov[0]};--b:${t.foil[1]}"></button>`).join('') + '</div>';
+      grid.appendChild(sw);
+    }
     const foot = document.createElement('div'); foot.className = 'bk-foot';
     let nav = '<span></span>';
     if (side === 'back') nav = `<button type="button" class="bk-nav" data-bk="prev">${leafIndex === 0 ? '✕ إغلاق' : '▶ السابق'}</button>`;
@@ -3735,7 +3944,7 @@ socket.on('gate:approved', (d) => {
     let front, back;
     if (i === 0) {
       front = document.createElement('div'); front.className = 'bk-face front bk-cover';
-      front.innerHTML = `<div class="bk-spine"></div>${['tl', 'tr', 'bl', 'br'].map(corner).join('')}${emblem}<div class="bk-title">قائمة اللعبة<small>اضغط لفتح الكتاب</small></div>`;
+      front.innerHTML = `<div class="bk-spine"></div>${['tl', 'tr', 'bl', 'br'].map(corner).join('')}<div class="bk-halo"></div><span class="bk-emb">${emblemHtml()}</span><div class="bk-title">قائمة اللعبة<small>اضغط لفتح الكتاب</small></div>`;
       front.setAttribute('role', 'button'); front.setAttribute('tabindex', '0'); front.setAttribute('aria-label', 'افتح كتاب القائمة');
     } else front = pageFace(2 * i, 'front', i);
     back = pageFace(2 * i + 1, 'back', i);
@@ -3807,11 +4016,7 @@ socket.on('gate:approved', (d) => {
     else if (state === 1) goTo(0); else goTo(state - 1);
     if (n.dataset.bk === 'prev' && n.textContent.includes('إغلاق')) goTo(0);
   });
-  // أي زر بالصفحة (غير الثيم والوضع الليلي) بيسكّر الكتاب بعد ما يشتغل عشان تشوف النافذة اللي انفتحت
-  book.addEventListener('click', (e) => {
-    const b = e.target.closest('.bk-page .btn-main'); if (!b || STAY.has(b.id)) return;
-    setTimeout(() => goTo(0), 260);
-  });
+  // الكتاب بيضل مفتوح بعد ما تكبس أي زر (ما في إغلاق تلقائي)؛ بتسكّره بزر «✕ إغلاق» أو Esc أو بالضغط على الغلاف.
   // سحب بالإصبع: يمين = الصفحة التالية، يسار = السابقة (الكتاب عربي)
   let tx = null, ty = null;
   stage.addEventListener('touchstart', (e) => { if (e.touches.length === 1) { tx = e.touches[0].clientX; ty = e.touches[0].clientY; } }, { passive: true });
@@ -3829,5 +4034,11 @@ socket.on('gate:approved', (d) => {
     else if (e.key === 'ArrowLeft') goTo(state + 1);
     else if (e.key === 'ArrowRight') goTo(state - 1);
   });
+  book.addEventListener('click', (e) => { const w = e.target.closest('[data-th]'); if (w && window.__themes) window.__themes.set(w.dataset.th); });
+  const sync = (t) => {
+    book.querySelectorAll('.bk-emb, .bk-bemb').forEach(em => { em.innerHTML = window.__themes.emblem(t.emblem); });
+    book.querySelectorAll('.bk-sw').forEach(x => x.classList.toggle('on', x.dataset.th === t.id));
+  };
+  if (window.__themes) window.__themes.onChange(sync);
   window.__bookGoTo = goTo;
 })();
