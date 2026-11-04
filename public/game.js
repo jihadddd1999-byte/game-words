@@ -203,6 +203,7 @@ function addChatMessage({ name, message, system = false, color = null, time = ''
     nameSpan.classList.add('chat-name');
     nameSpan.innerHTML = nameHtml(name, rawName, color, fx, meta);
 
+    if (meta && meta.erin === 1) div.classList.add('erin-msg');
     const messageSpan = document.createElement('span');
     messageSpan.classList.add('chat-text');
     if (meta && meta.cc && /^cc_[a-z]+$/.test(meta.cc)) messageSpan.classList.add(meta.cc);
@@ -376,6 +377,25 @@ socket.on('chatMessage', data => {
     meta: data.meta || null
   });
 });
+
+// 🤖 ايرين: مؤشّر الكتابة + ستايل رسائلها
+socket.on('erin:typing', (d) => {
+  const old = chatMessages.querySelector('.erin-typing'); if (old) old.remove();
+  if (!d || !d.on) return;
+  const div = document.createElement('div');
+  div.className = 'chat-message chat-system-message erin-typing';
+  div.textContent = '🤖 ايرين عم تكتب…';
+  chatMessages.appendChild(div);
+  scrollChatToBottom();
+  setTimeout(() => div.remove(), 90000);
+});
+(() => {
+  const st = document.createElement('style');
+  st.textContent = `.chat-message.erin-msg { border-inline-start: 3px solid #a78bfa; background: rgba(167, 139, 250, .12); border-radius: 8px; padding: 5px 9px; }
+  .chat-message.erin-msg .chat-text { line-height: 1.6; }
+  .chat-message.erin-typing { opacity: .75; font-style: italic; }`;
+  document.head.appendChild(st);
+})();
 
 socket.on('playerWon', data => {
   alert(`🎉 مبروك ${data.name} لقد فزت باللعبة!`);
@@ -1814,6 +1834,61 @@ socket.on('gate:approved', (d) => {
         </div>
       </section>`);
   }
+  // ---------- 🤖 قسم ايرين (للأدمن الأساسي فقط) ----------
+  if (thunderSectionEl0()) {
+    thunderSectionEl0().insertAdjacentHTML('afterend', `
+      <section class="admin-section" id="erin-section" style="display:none">
+        <div class="section-header">
+          <div class="section-title">
+            <span class="sec-icon">🤖</span>
+            <h3>ايرين (الذكاء الاصطناعي)</h3>
+          </div>
+        </div>
+        <p class="section-hint">لما أي لاعب يكتب «ايرين» بالشات بتجاوبه وبتبحث بالإنترنت وبتتذكّر اللي حكيتوه. الأخضر = مفعّلة. «مسح الذاكرة» بيحذف كل اللي حكيتوه وخزّنته نهائياً.</p>
+        <div id="erin-status" class="section-hint"></div>
+        <div class="global-actions-grid">
+          <button id="adm-erin-toggle" class="btn-action">
+            <span class="btn-icon">🤖</span>
+            <span class="btn-label">تفعيل ايرين</span>
+          </button>
+          <button id="adm-erin-clear" class="btn-action highlight">
+            <span class="btn-icon">🗑️</span>
+            <span class="btn-label">مسح كل الذاكرة</span>
+          </button>
+        </div>
+        <div id="erin-notes" style="margin-top:10px;max-height:150px;overflow:auto;font-size:.82rem;line-height:1.6"></div>
+      </section>`);
+  }
+  function thunderSectionEl0() { return document.getElementById('thunder-section'); }
+  const erinSection = $('erin-section');
+  const admErinToggle = $('adm-erin-toggle');
+  const admErinClear = $('adm-erin-clear');
+  const erinStatusEl = $('erin-status');
+  const erinNotesEl = $('erin-notes');
+  let erinState = null;
+  function renderErin(s) {
+    if (!s) return;
+    erinState = Object.assign(erinState || {}, s);
+    const e = erinState;
+    setLed(admErinToggle, e.enabled);
+    if (erinStatusEl) {
+      erinStatusEl.textContent = (e.hasKey ? '' : '⚠️ ما في مفتاح ANTHROPIC_API_KEY على السيرفر، ايرين ما رح تشتغل لحد ما تضيفه. · ') +
+        `الذاكرة: ${e.notes} ملاحظة · ${e.hist} رسالة محادثة · أسئلة اليوم: ${e.today}/${e.limit}` + (e.lastError ? ` · آخر خطأ: ${e.lastError}` : '');
+    }
+    if (erinNotesEl && Array.isArray(e.list)) {
+      erinNotesEl.innerHTML = e.list.length ? e.list.slice().reverse().map(n => `<div>• ${n.w ? '<b>' + escapeHtml(n.w) + '</b>: ' : ''}${escapeHtml(n.t)}</div>`).join('') : '<div style="opacity:.6">الذاكرة فاضية</div>';
+    }
+  }
+  function loadErin() { socket.emit('admin:erin:get', (r) => { if (r && r.ok) renderErin(r.s); }); }
+  if (admErinToggle) admErinToggle.addEventListener('click', () => {
+    socket.emit('admin:erin:toggle', { enabled: !(erinState && erinState.enabled) }, (r) => { if (r && r.ok) renderErin(r.s); });
+  });
+  if (admErinClear) admErinClear.addEventListener('click', () => {
+    if (!confirm('تمسح كل اللي حكيته مع ايرين وكل المعلومات اللي خزّنتها؟ ما بتنرجع.')) return;
+    socket.emit('admin:erin:clear', (r) => { if (r && r.ok) { erinState = Object.assign(erinState || {}, { list: [] }); renderErin(r.s); } });
+  });
+  socket.on('admin:erin:state', (s) => { if (isOwner) { renderErin(s); if (s && s.list === undefined) loadErin(); } });
+
   const thunderSection = $('thunder-section');
   const admThunderScreen = $('adm-thunder-screen');
   const admThunderSound = $('adm-thunder-sound');
@@ -1924,6 +1999,7 @@ socket.on('gate:approved', (d) => {
     if (auditSection) auditSection.style.display = isOwner ? '' : 'none';
     if (admBtnStealth) admBtnStealth.style.display = isOwner ? '' : 'none';
     if (thunderSection) thunderSection.style.display = isOwner ? '' : 'none';
+    if (erinSection) { erinSection.style.display = isOwner ? '' : 'none'; if (isOwner) loadErin(); }
     renderAllowed();
   }
 
